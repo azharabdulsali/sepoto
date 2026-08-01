@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import AppShell from '../components/AppShell';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const WA_ADMIN_NUMBER = '6281234567890';
 
@@ -113,6 +114,18 @@ export default function CartPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
+  const [activeEvent, setActiveEvent] = React.useState(null);
+
+  React.useEffect(() => {
+    async function loadEvent() {
+      const res = await api.getActiveEvent();
+      if (res.success && res.event) {
+        setActiveEvent(res.event);
+      }
+    }
+    loadEvent();
+  }, []);
+
   const orderNumber = useMemo(() => generateOrderNumber(), []);
 
   const whatsappUrl = useMemo(
@@ -126,6 +139,22 @@ export default function CartPage() {
       }),
     [orderNumber, currentUser, items, totalPrice]
   );
+
+  const handleConfirmWhatsApp = async (e) => {
+    e.preventDefault();
+    try {
+      const photoIds = items.map((i) => i.id);
+      await api.createTransaction({
+        orderNumber,
+        totalAmount: totalPrice,
+        photoIds,
+      });
+    } catch (err) {
+      console.error('Failed to create transaction record:', err);
+    } finally {
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   if (itemCount === 0) {
     return (
@@ -274,7 +303,13 @@ export default function CartPage() {
               <p className="text-[10px] font-bib text-[#4B5563] uppercase tracking-widest font-bold mb-3">
                 QRIS Statis Pembayaran
               </p>
-              <QrPlaceholder />
+              {activeEvent?.qrCodeUrl ? (
+                <div className="w-52 h-52 bg-white rounded-xl p-2 border border-[#E5E7EB] mx-auto overflow-hidden shadow-sm">
+                  <img src={activeEvent.qrCodeUrl} alt="QRIS Pembayaran" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <QrPlaceholder />
+              )}
               <p className="text-[11px] text-[#9CA3AF] mt-3 leading-relaxed">
                 Scan dengan aplikasi m-banking atau e-wallet apapun di Indonesia
               </p>
@@ -295,6 +330,7 @@ export default function CartPage() {
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
             <a
               href={whatsappUrl}
+              onClick={handleConfirmWhatsApp}
               target="_blank"
               rel="noopener noreferrer"
               id="cart-whatsapp-confirm"

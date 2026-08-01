@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/attachment';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const DUMMY_UPLOADED = Array.from({ length: 12 }, (_, i) => ({
   id:              i + 1,
@@ -88,10 +89,31 @@ function UploadTab() {
   const handleUpload = async () => {
     if (previews.length === 0) return;
     setIsUploading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsUploading(false);
-    setUploadDone(true);
-    setPreviews([]);
+    try {
+      const formData = new FormData();
+      previews.forEach((p) => {
+        formData.append('photos', p.file);
+      });
+
+      const avgPrice = previews[0]?.price || bulkPrice || 25000;
+      const bibs = previews.map((p) => p.bib).filter(Boolean).join(',') || bulkBib || '';
+
+      formData.append('price', avgPrice);
+      formData.append('bibTags', bibs);
+
+      const res = await api.uploadPhotos(formData);
+      if (res.success) {
+        setUploadDone(true);
+        setPreviews([]);
+      } else {
+        alert(res.message || 'Gagal mengunggah foto.');
+      }
+    } catch (err) {
+      console.error('Upload submit error:', err);
+      alert('Terjadi kesalahan saat mengunggah foto.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -336,11 +358,29 @@ function UploadTab() {
 }
 
 function ManageTab() {
-  const [photos, setPhotos]         = useState(DUMMY_UPLOADED);
-  const [selected, setSelected]     = useState(new Set());
+  const [photos, setPhotos]               = useState([]);
+  const [selected, setSelected]           = useState(new Set());
   const [bulkEditPrice, setBulkEditPrice] = useState('');
   const [bulkEditBib, setBulkEditBib]     = useState('');
-  const [search, setSearch]         = useState('');
+  const [search, setSearch]               = useState('');
+
+  const loadPhotos = useCallback(async () => {
+    try {
+      const res = await api.getMyPhotos();
+      if (res.success && res.photos) {
+        setPhotos(res.photos);
+      } else {
+        setPhotos(DUMMY_UPLOADED);
+      }
+    } catch (err) {
+      console.error('Fetch my photos error:', err);
+      setPhotos(DUMMY_UPLOADED);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPhotos();
+  }, [loadPhotos]);
 
   const filtered = photos.filter((p) =>
     !search || p.bibTags?.includes(search) || String(p.id).includes(search)
@@ -366,10 +406,18 @@ function ManageTab() {
     }
   };
 
-  const applyBulkPrice = () => {
+  const applyBulkPrice = async () => {
     if (!bulkEditPrice || selected.size === 0) return;
+    const newPrice = Number(bulkEditPrice);
+    for (const id of Array.from(selected)) {
+      try {
+        await api.updatePhotoPrice(id, newPrice);
+      } catch (err) {
+        console.error('Failed to update price for photo', id, err);
+      }
+    }
     setPhotos((prev) =>
-      prev.map((p) => selected.has(p.id) ? { ...p, price: Number(bulkEditPrice) } : p)
+      prev.map((p) => selected.has(p.id) ? { ...p, price: newPrice } : p)
     );
     setBulkEditPrice('');
   };
@@ -382,7 +430,15 @@ function ManageTab() {
     setBulkEditBib('');
   };
 
-  const deleteSelected = () => {
+  const deleteSelected = async () => {
+    if (selected.size === 0) return;
+    for (const id of Array.from(selected)) {
+      try {
+        await api.deletePhoto(id);
+      } catch (err) {
+        console.error('Failed to delete photo', id, err);
+      }
+    }
     setPhotos((prev) => prev.filter((p) => !selected.has(p.id)));
     setSelected(new Set());
   };

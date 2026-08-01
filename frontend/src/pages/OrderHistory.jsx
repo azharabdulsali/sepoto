@@ -20,6 +20,7 @@ import {
 import AppShell from '../components/AppShell';
 import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v ?? 0);
@@ -91,17 +92,21 @@ function OrderCard({ order }) {
   const handleDownload = async (photoId) => {
     setDownloading(photoId);
     setDownloadSuccess(null);
-    await new Promise((r) => setTimeout(r, 1000));
-    setDownloading(null);
-    setDownloadSuccess({ photoId, fileName: `SEPOTO-HD-4K-${photoId}.jpg` });
-  };
-
-  const handleDownloadAll = async () => {
-    setDownloading('all');
-    setDownloadSuccess(null);
-    await new Promise((r) => setTimeout(r, 1500));
-    setDownloading(null);
-    setDownloadSuccess({ count: order.photos.length, fileName: `${order.orderNumber}-ALL.zip` });
+    try {
+      const res = await api.getDownloadUrl(order.id, photoId);
+      if (res.success && res.downloadUrl) {
+        // Buka presigned URL R2 di tab baru atau langsung download
+        window.open(res.downloadUrl, '_blank', 'noopener,noreferrer');
+        setDownloadSuccess({ photoId, fileName: `SEPOTO-HD-4K-${photoId}.jpg` });
+      } else {
+        alert(res.message || 'Gagal mengunduh foto.');
+      }
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Terjadi kesalahan saat meminta tautan unduh.');
+    } finally {
+      setDownloading(null);
+    }
   };
 
   return (
@@ -256,9 +261,44 @@ function OrderCard({ order }) {
 
 export default function OrderHistory() {
   const { currentUser } = useAuth();
+  const [orders, setOrders] = useState([]);
 
-  const pending  = DUMMY_ORDERS.filter((o) => o.status === 'pending').length;
-  const approved = DUMMY_ORDERS.filter((o) => o.status === 'approved').length;
+  useEffect(() => {
+    async function loadOrders() {
+      setLoading(true);
+      try {
+        const res = await api.getMyTransactions();
+        if (res.success && res.transactions && res.transactions.length > 0) {
+          // Normalisasi photo items untuk OrderCard
+          const formatted = res.transactions.map((tx) => ({
+            id: tx.id,
+            orderNumber: tx.orderNumber,
+            status: tx.status,
+            total: tx.total,
+            createdAt: tx.createdAt,
+            photos: (tx.items || []).map((item) => ({
+              id: item.photoId || item.id,
+              watermarkedUrl: item.watermarkedUrl,
+              bibTags: item.bibTags,
+              price: item.priceAtPurchase,
+            })),
+          }));
+          setOrders(formatted);
+        } else {
+          setOrders(DUMMY_ORDERS);
+        }
+      } catch (err) {
+        console.error('Fetch my transactions error:', err);
+        setOrders(DUMMY_ORDERS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadOrders();
+  }, []);
+
+  const pending  = orders.filter((o) => o.status === 'pending').length;
+  const approved = orders.filter((o) => o.status === 'approved').length;
 
   return (
     <AppShell>
@@ -294,7 +334,7 @@ export default function OrderHistory() {
               )}
             </div>
             <div className="text-right shrink-0 bg-white border border-[#E5E7EB] rounded-2xl px-3.5 py-1.5 shadow-sm">
-              <p className="text-xl font-bold text-[#111827] font-bib">{DUMMY_ORDERS.length}</p>
+              <p className="text-xl font-bold text-[#111827] font-bib">{orders.length}</p>
               <p className="text-[10px] text-[#4B5563]">pesanan</p>
             </div>
           </div>
@@ -305,7 +345,7 @@ export default function OrderHistory() {
           {[
             { label: 'Menunggu', count: pending,  cls: 'bg-amber-50 border-amber-200 text-amber-700' },
             { label: 'Approved', count: approved, cls: 'bg-green-50 border-green-200 text-green-700' },
-            { label: 'Total',    count: DUMMY_ORDERS.length, cls: 'bg-brand/5 border-brand/20 text-brand' },
+            { label: 'Total',    count: orders.length, cls: 'bg-brand/5 border-brand/20 text-brand' },
           ].map(({ label, count, cls }) => (
             <Card key={label} className={`p-3 text-center rounded-2xl border shadow-sm ${cls}`}>
               <p className="text-xl font-bold font-bib">{count}</p>
@@ -328,7 +368,7 @@ export default function OrderHistory() {
 
         {/* Orders List */}
         <div className="space-y-4">
-          {DUMMY_ORDERS.length === 0 ? (
+          {orders.length === 0 ? (
             <div className="text-center py-16">
               <ShoppingBag className="w-12 h-12 text-[#D1D5DB] mx-auto mb-3" />
               <p className="font-bold text-[#111827]">Belum Ada Pesanan</p>
@@ -338,7 +378,7 @@ export default function OrderHistory() {
               </Button>
             </div>
           ) : (
-            DUMMY_ORDERS.map((order) => <OrderCard key={order.id} order={order} />)
+            orders.map((order) => <OrderCard key={order.id} order={order} />)
           )}
         </div>
       </motion.div>

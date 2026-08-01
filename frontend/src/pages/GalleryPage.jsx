@@ -10,6 +10,7 @@ import AppShell from '../components/AppShell';
 import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { api } from '../services/api';
 
 const DUMMY_PHOTOS = [
   { id: 1,  watermarkedUrl: 'https://picsum.photos/seed/sepoto1/600/400',  orientation: 'landscape', price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
@@ -257,25 +258,47 @@ export default function GalleryPage() {
   const navigate = useNavigate();
 
   const PAGE_SIZE = 10;
-  const [searchBib, setSearchBib]         = useState('');
-  const [previewPhoto, setPreviewPhoto]   = useState(null);
-  const [isLoading, setIsLoading]         = useState(true);
-  const [visibleLimit, setVisibleLimit]   = useState(PAGE_SIZE);
+  const [searchBib, setSearchBib]           = useState('');
+  const [previewPhoto, setPreviewPhoto]     = useState(null);
+  const [isLoading, setIsLoading]           = useState(true);
+  const [visibleLimit, setVisibleLimit]     = useState(PAGE_SIZE);
   const [isBatchLoading, setIsBatchLoading] = useState(false);
+  const [realPhotos, setRealPhotos]         = useState([]);
+  const [activeEvent, setActiveEvent]       = useState(null);
 
-  // Simulasi Skeleton Loading saat galeri pertama kali dibuka atau BIB dicari
+  // Ambil event aktif & foto galeri dari backend API
   useEffect(() => {
-    setIsLoading(true);
-    setVisibleLimit(PAGE_SIZE);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 450);
-    return () => clearTimeout(timer);
+    let isMounted = true;
+    async function loadData() {
+      setIsLoading(true);
+      setVisibleLimit(PAGE_SIZE);
+      try {
+        const [eventRes, photoRes] = await Promise.all([
+          api.getActiveEvent(),
+          api.getPhotos(searchBib),
+        ]);
+        if (isMounted) {
+          if (eventRes.success && eventRes.event) setActiveEvent(eventRes.event);
+          if (photoRes.success && photoRes.photos && photoRes.photos.length > 0) {
+            setRealPhotos(photoRes.photos);
+          } else {
+            setRealPhotos([]);
+          }
+        }
+      } catch (err) {
+        console.error('Gallery fetch error:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadData();
+    return () => { isMounted = false; };
   }, [searchBib]);
 
   const pricedPhotos = useMemo(() => {
-    return DUMMY_PHOTOS.filter((p) => p.price != null && Number(p.price) > 0);
-  }, []);
+    const photosToUse = realPhotos.length > 0 ? realPhotos : DUMMY_PHOTOS;
+    return photosToUse.filter((p) => p.price != null && Number(p.price) > 0);
+  }, [realPhotos]);
 
   const filteredPhotos = useMemo(() => {
     const bib = searchBib.trim().toLowerCase();
@@ -321,7 +344,7 @@ export default function GalleryPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">
-                Galeri Foto Event
+                {activeEvent?.title || 'Galeri Foto Event'}
               </h1>
               {currentUser?.name && (
                 <p className="text-sm text-[#4B5563] mt-1 flex items-center gap-1.5 flex-wrap">

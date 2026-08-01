@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v ?? 0);
@@ -114,8 +115,7 @@ function OverviewTab({ transactions }) {
   );
 }
 
-function TransactionsTab() {
-  const [transactions, setTransactions] = useState(DUMMY_TRANSACTIONS);
+function TransactionsTab({ transactions = [], onUpdateStatus }) {
   const [filter, setFilter]             = useState('all');
   const [search, setSearch]             = useState('');
   const [loadingId, setLoadingId]       = useState(null);
@@ -123,11 +123,19 @@ function TransactionsTab() {
 
   const updateStatus = async (id, newStatus) => {
     setLoadingId(id);
-    await new Promise((r) => setTimeout(r, 600));
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-    );
-    setLoadingId(null);
+    try {
+      const res = await api.updateTransactionStatus(id, newStatus);
+      if (res.success) {
+        if (onUpdateStatus) onUpdateStatus(id, newStatus);
+      } else {
+        alert(res.message || 'Gagal mengubah status.');
+      }
+    } catch (err) {
+      console.error('Update status error:', err);
+      alert('Terjadi kesalahan saat mengubah status.');
+    } finally {
+      setLoadingId(null);
+    }
   };
 
   const filtered = transactions.filter((t) => {
@@ -502,8 +510,32 @@ function EventSettingsTab() {
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab]         = useState('overview');
-  const [transactions] = useState(DUMMY_TRANSACTIONS);
+  const [activeTab, setActiveTab]       = useState('overview');
+  const [transactions, setTransactions] = useState([]);
+
+  const fetchTransactions = React.useCallback(async () => {
+    try {
+      const res = await api.getTransactions();
+      if (res.success && res.transactions) {
+        setTransactions(res.transactions);
+      } else {
+        setTransactions(DUMMY_TRANSACTIONS);
+      }
+    } catch (err) {
+      console.error('Fetch transactions error:', err);
+      setTransactions(DUMMY_TRANSACTIONS);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  const handleUpdateStatus = (id, newStatus) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+    );
+  };
 
   const tabs = [
     { id: 'overview',  label: 'Overview',     icon: LayoutDashboard },
@@ -564,7 +596,13 @@ export default function AdminDashboard() {
             transition={{ duration: 0.25 }}
           >
             {activeTab === 'overview'      && <OverviewTab transactions={transactions} />}
-            {activeTab === 'payments'      && <TransactionsTab />}
+            {activeTab === 'payments'      && (
+              <TransactionsTab
+                transactions={transactions}
+                setTransactions={setTransactions}
+                onUpdateStatus={handleUpdateStatus}
+              />
+            )}
             {activeTab === 'participants'  && <ParticipantsTab />}
             {activeTab === 'settings'      && <EventSettingsTab />}
           </motion.div>
