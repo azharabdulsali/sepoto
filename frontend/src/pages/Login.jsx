@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import SepotoLogo from '../components/SepotoLogo';
 
 const containerVariants = {
@@ -34,11 +35,15 @@ export default function Login() {
     if (!fullName.trim() || !bibNumber.trim()) { setError('Nama Lengkap dan Nomor BIB wajib diisi.'); return; }
     setIsLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 800));
-      login({ name: fullName.trim(), bibNumber: bibNumber.trim(), role: 'user', eventId: 1 });
+      const res = await api.loginUser(fullName.trim(), bibNumber.trim());
+      if (!res.success) {
+        setError(res.message || 'Nama atau Nomor BIB tidak ditemukan. Pastikan data sesuai kartu peserta.');
+        return;
+      }
+      login(res.user, res.token);
       navigate('/gallery');
     } catch {
-      setError('Nama atau Nomor BIB tidak ditemukan. Pastikan data sesuai kartu peserta.');
+      setError('Gagal terhubung ke server. Coba lagi.');
     } finally { setIsLoading(false); }
   };
 

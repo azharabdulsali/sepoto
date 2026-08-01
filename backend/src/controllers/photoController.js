@@ -1,0 +1,211 @@
+const { query } = require('../config/db');
+const { uploadToR2 } = require('../services/r2Service');
+const { generateWatermark } = require('../utils/watermark');
+
+/**
+ * GET /api/photos
+ * Ambil semua foto galeri yang dijual (filter by BIB opsional)
+ */
+const getPhotos = async (req, res) => {
+  try {
+    const { bib } = req.query;
+    let sql = `
+      SELECT p.*, u.name as photographer_name 
+      FROM photos p
+      LEFT JOIN users u ON p.photographer_id = u.id
+      WHERE p.price > 0
+    `;
+    const params = [];
+
+    if (bib) {
+      sql += ` AND p.bib_tags LIKE $1`;
+      params.push(`%${bib}%`);
+    }
+
+    sql += ` ORDER BY p.id DESC`;
+    const result = await query(sql, params);
+
+    const photos = result.rows.map((row) => ({
+      id: row.id,
+      watermarkedUrl: row.watermarked_url,
+      originalUrl: row.original_url,
+      price: Number(row.price),
+      bibTags: row.bib_tags,
+      orientation: row.orientation || 'portrait',
+      photographerName: row.photographer_name || 'Fotografer',
+    }));
+
+    return res.json({ success: true, photos });
+  } catch (error) {
+    console.error('Fetch Photos Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengambil foto galeri.' });
+  }
+};
+
+/**
+ * POST /api/photos/upload
+ * Bulk upload foto oleh fotografer → Sharp watermark → Cloudflare R2 → save metadata
+ */
+const uploadPhotos = async (req, res) => {
+  try {
+    const photographerId = req.user.id; // Dari JWT token
+    const { price = 25000, bibTags = '', orientation = 'portrait' } = req.body;
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ success: false, message: 'Tidak ada file foto yang diunggah.' });
+    }
+
+    // Ambil event aktif
+    const eventRes = await query('SELECT id FROM events WHERE is_active = TRUE ORDER BY id DESC LIMIT 1');
+    const eventId = eventRes.rows.length > 0 ? eventRes.rows[0].id : 1;
+
+    const uploadedRecords = [];
+
+    for (const file of files) {
+      const timeId = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const originalKey = `original/RAW-${timeId}.jpg`;
+      const watermarkedKey = `watermarked/WM-${timeId}.jpg`;
+
+      // 1. Generate Watermark Buffer dengan Sharp
+      const wmBuffer = await generateWatermark(file.buffer);
+
+      // 2. Upload file asli (clean) & watermarked ke Cloudflare R2
+      const originalUrl = await uploadToR2(file.buffer, originalKey, file.mimetype);
+      const watermarkedUrl = await uploadToR2(wmBuffer, watermarkedKey, 'image/jpeg');
+
+      // 3. Simpan metadata ke PostgreSQL
+      const dbRes = await query(
+        `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [eventId, photographerId, originalUrl, watermarkedUrl, price, bibTags, orientation]
+      );
+
+      uploadedRecords.push(dbRes.rows[0]);
+    }
+
+    return res.json({
+      success: true,
+      message: `${uploadedRecords.length} foto berhasil diunggah dan di-watermark!`,
+      photos: uploadedRecords,
+    });
+  } catch (error) {
+    console.error('Upload Error:', error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan saat unggah foto ke Cloudflare R2.' });
+  }
+};
+
+/**
+ * GET /api/photos/my
+ * Fotografer ambil foto miliknya sendiri (berdasarkan photographer_id dari JWT)
+ */
+const getMyPhotos = async (req, res) => {
+  try {
+    const photographerId = req.user.id;
+
+    const result = await query(
+      `SELECT * FROM photos WHERE photographer_id = $1 ORDER BY id DESC`,
+      [photographerId]
+    );
+
+    const photos = result.rows.map((row) => ({
+      id: row.id,
+      watermarkedUrl: row.watermarked_url,
+      originalUrl: row.original_url,
+      price: Number(row.price),
+      bibTags: row.bib_tags,
+      orientation: row.orientation || 'portrait',
+      createdAt: row.created_at,
+    }));
+
+    return res.json({ success: true, photos });
+  } catch (error) {
+    console.error('Get My Photos Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengambil foto.' });
+  }
+};
+
+/**
+ * PATCH /api/photos/:id/price
+ * Update harga foto (validasi kepemilikan: hanya pemilik foto yang bisa ubah)
+ */
+const updatePhotoPrice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { price } = req.body;
+    const photographerId = req.user.id;
+
+    if (price === undefined || price === null) {
+      return res.status(400).json({ success: false, message: 'Harga wajib diisi.' });
+    }
+
+    // Validasi kepemilikan foto
+    const photoCheck = await query(
+      'SELECT id FROM photos WHERE id = $1 AND photographer_id = $2',
+      [id, photographerId]
+    );
+
+    if (photoCheck.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Anda tidak memiliki hak untuk mengubah foto ini.',
+      });
+    }
+
+    const result = await query(
+      'UPDATE photos SET price = $1 WHERE id = $2 RETURNING *',
+      [price, id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Harga foto berhasil diperbarui.',
+      photo: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Update Price Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui harga foto.' });
+  }
+};
+
+/**
+ * DELETE /api/photos/:id
+ * Hapus foto (validasi kepemilikan: hanya pemilik foto yang bisa hapus)
+ */
+const deletePhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const photographerId = req.user.id;
+
+    // Validasi kepemilikan foto
+    const photoCheck = await query(
+      'SELECT id FROM photos WHERE id = $1 AND photographer_id = $2',
+      [id, photographerId]
+    );
+
+    if (photoCheck.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Anda tidak memiliki hak untuk menghapus foto ini.',
+      });
+    }
+
+    await query('DELETE FROM photos WHERE id = $1', [id]);
+
+    return res.json({
+      success: true,
+      message: 'Foto berhasil dihapus.',
+    });
+  } catch (error) {
+    console.error('Delete Photo Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal menghapus foto.' });
+  }
+};
+
+module.exports = {
+  getPhotos,
+  uploadPhotos,
+  getMyPhotos,
+  updatePhotoPrice,
+  deletePhoto,
+};

@@ -12,23 +12,29 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Login: simpan data user ke state + localStorage
-  const login = useCallback((userData) => {
+  // Login: simpan data user + token ke state + localStorage
+  const login = useCallback((userData, token = null) => {
     const user = {
       id:       userData.id ?? null,
       name:     userData.name,
-      bibNumber: userData.bibNumber ?? null,
+      bibNumber: userData.bibNumber ?? userData.bib_number ?? null,
       role:     userData.role, // 'user' | 'photographer' | 'super_admin'
-      eventId:  userData.eventId ?? null,
+      eventId:  userData.eventId ?? userData.event_id ?? null,
     };
     setCurrentUser(user);
     localStorage.setItem('sepoto_user', JSON.stringify(user));
+
+    // Simpan JWT token jika ada
+    if (token) {
+      localStorage.setItem('sepoto_token', token);
+    }
   }, []);
 
-  // Logout: bersihkan state + localStorage
+  // Logout: bersihkan state + localStorage (user, token, cart)
   const logout = useCallback(() => {
     setCurrentUser(null);
     localStorage.removeItem('sepoto_user');
+    localStorage.removeItem('sepoto_token');
     localStorage.removeItem('sepoto_cart');
   }, []);
 

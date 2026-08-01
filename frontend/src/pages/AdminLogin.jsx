@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import SepotoLogo from '../components/SepotoLogo';
 
 const containerVariants = {
@@ -34,11 +35,15 @@ export default function AdminLogin() {
     if (!username.trim() || !password) { setError('Username dan Password wajib diisi.'); return; }
     setIsLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 800));
-      login({ id: 1, name: username, role: 'super_admin', eventId: null });
+      const res = await api.loginAdmin(username.trim(), password);
+      if (!res.success) {
+        setError(res.message || 'Username atau Password salah. Coba lagi.');
+        return;
+      }
+      login(res.user, res.token);
       navigate('/admin/dashboard');
     } catch {
-      setError('Username atau Password salah. Coba lagi.');
+      setError('Gagal terhubung ke server. Coba lagi.');
     } finally { setIsLoading(false); }
   };
 

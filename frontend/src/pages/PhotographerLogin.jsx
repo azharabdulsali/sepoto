@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import SepotoLogo from '../components/SepotoLogo';
 
 const containerVariants = {
@@ -34,11 +35,15 @@ export default function PhotographerLogin() {
     if (!email.trim() || !password) { setError('Email dan Password wajib diisi.'); return; }
     setIsLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 800));
-      login({ id: 2, name: email.split('@')[0], role: 'photographer', eventId: 1 });
+      const res = await api.loginPhotographer(email.trim(), password);
+      if (!res.success) {
+        setError(res.message || 'Username atau Password salah. Pastikan akun fotografer Anda sudah dibuat oleh Admin.');
+        return;
+      }
+      login(res.user, res.token);
       navigate('/photographer/dashboard');
     } catch {
-      setError('Email atau Password salah. Pastikan akun fotografer Anda sudah dibuat oleh Admin.');
+      setError('Gagal terhubung ke server. Coba lagi.');
     } finally { setIsLoading(false); }
   };
 
