@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, ShoppingCart, X, Check, Camera, Eye } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppShell from '../components/AppShell';
 import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +41,7 @@ const cardVariants = {
 const PhotoCard = ({ photo, onPreview }) => {
   const { addItem, removeItem, isInCart } = useCart();
   const inCart = isInCart(photo.id);
+  const [loaded, setLoaded] = useState(false);
 
   const handleCartClick = (e) => {
     e.stopPropagation(); // Mencegah membuka modal preview saat tombol cart diklik
@@ -58,11 +60,15 @@ const PhotoCard = ({ photo, onPreview }) => {
       className="group relative bg-[#191C21] rounded-2xl overflow-hidden border border-white/5 hover:border-brand/40 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-orange-900/20 cursor-pointer"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-[#22262E]">
+        {!loaded && (
+          <Skeleton className="absolute inset-0 w-full h-full bg-white/5 animate-pulse rounded-2xl z-0" />
+        )}
         <ProtectedPhoto
           src={photo.watermarkedUrl}
           alt={`Foto event ${photo.bibTags ? `BIB ${photo.bibTags}` : 'Umum'}`}
           loading="lazy"
-          className="w-full h-full"
+          onLoad={() => setLoaded(true)}
+          className={`w-full h-full transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
@@ -123,6 +129,23 @@ const PhotoCard = ({ photo, onPreview }) => {
     </motion.div>
   );
 };
+
+// ─── Component Skeleton Loading Grid ─────────────────────────────────────
+function GallerySkeletonGrid({ count = 10 }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-[#191C21] rounded-2xl overflow-hidden border border-white/5 p-0 space-y-3 shadow-sm">
+          <Skeleton className="aspect-[4/5] w-full bg-[#22262E] rounded-2xl animate-pulse" />
+          <div className="px-3.5 pb-3 flex items-center justify-between gap-2">
+            <Skeleton className="h-3.5 w-24 bg-white/10 rounded-md" />
+            <Skeleton className="h-4 w-12 bg-brand/20 rounded-md" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── Lightbox Modal Preview Foto (Mobile & Desktop Responsive) ───────────
 function PhotoPreviewModal({ photo, onClose }) {
@@ -228,8 +251,22 @@ export default function GalleryPage() {
   const { formattedTotal, itemCount, clearCart } = useCart();
   const navigate = useNavigate();
 
+  const PAGE_SIZE = 10;
   const [searchBib, setSearchBib]         = useState('');
   const [previewPhoto, setPreviewPhoto]   = useState(null);
+  const [isLoading, setIsLoading]         = useState(true);
+  const [visibleLimit, setVisibleLimit]   = useState(PAGE_SIZE);
+  const [isBatchLoading, setIsBatchLoading] = useState(false);
+
+  // Simulasi Skeleton Loading saat galeri pertama kali dibuka atau BIB dicari
+  useEffect(() => {
+    setIsLoading(true);
+    setVisibleLimit(PAGE_SIZE);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [searchBib]);
 
   const pricedPhotos = useMemo(() => {
     return DUMMY_PHOTOS.filter((p) => p.price != null && Number(p.price) > 0);
@@ -253,10 +290,22 @@ export default function GalleryPage() {
     );
   }, [searchBib, currentUser, pricedPhotos]);
 
+  const displayedPhotos = useMemo(() => {
+    return filteredPhotos.slice(0, visibleLimit);
+  }, [filteredPhotos, visibleLimit]);
+
   const userPhotoCount = useMemo(() => {
     if (!currentUser?.bibNumber) return 0;
     return pricedPhotos.filter((p) => p.bibTags === String(currentUser.bibNumber)).length;
   }, [currentUser, pricedPhotos]);
+
+  const handleLoadMore = () => {
+    setIsBatchLoading(true);
+    setTimeout(() => {
+      setVisibleLimit((prev) => prev + PAGE_SIZE);
+      setIsBatchLoading(false);
+    }, 400);
+  };
 
   return (
     <AppShell>
@@ -351,20 +400,55 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Grid Foto dengan Framer Motion Stagger */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: {},
-            visible: { transition: { staggerChildren: 0.05 } },
-          }}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
-        >
-          {filteredPhotos.map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} onPreview={(p) => setPreviewPhoto(p)} />
-          ))}
-        </motion.div>
+        {/* Grid Foto dengan Skeleton State & Incremental Batching */}
+        {isLoading ? (
+          <GallerySkeletonGrid count={10} />
+        ) : (
+          <>
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.05 } },
+              }}
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
+            >
+              {displayedPhotos.map((photo) => (
+                <PhotoCard key={photo.id} photo={photo} onPreview={(p) => setPreviewPhoto(p)} />
+              ))}
+            </motion.div>
+
+            {/* Skeleton Loading Batch Tambahan saat Load More */}
+            {isBatchLoading && (
+              <div className="mt-4">
+                <GallerySkeletonGrid count={5} />
+              </div>
+            )}
+
+            {/* Tombol Load More untuk Meringankan Aplikasi */}
+            {visibleLimit < filteredPhotos.length && (
+              <div className="mt-8 text-center">
+                <Button
+                  id="load-more-photos-btn"
+                  onClick={handleLoadMore}
+                  disabled={isBatchLoading}
+                  variant="outline"
+                  className="h-11 px-8 rounded-2xl border-[#E5E7EB] hover:border-brand/40 text-xs font-bold text-[#111827] bg-white shadow-sm"
+                >
+                  {isBatchLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Skeleton className="w-3.5 h-3.5 rounded-full bg-brand animate-ping" />
+                      <span>Memuat Foto Berikutnya...</span>
+                    </span>
+                  ) : (
+                    `Tampilkan Lebih Banyak Foto (${filteredPhotos.length - visibleLimit} Tersisa)`
+                  )}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
 
         {/* Empty state */}
         {filteredPhotos.length === 0 && (

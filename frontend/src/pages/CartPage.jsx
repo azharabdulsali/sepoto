@@ -143,12 +143,14 @@ export default function CartPage() {
             Belum ada foto yang dipilih. Kembali ke galeri dan tambahkan foto favorit Anda.
           </p>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button asChild className="bg-brand hover:bg-[#C2410C] text-white font-bold rounded-xl h-12 px-6 shadow-lg shadow-orange-600/20">
-              <Link to="/gallery" id="cart-back-to-gallery">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                <span>Kembali ke Galeri</span>
-              </Link>
-            </Button>
+            <Link
+              to="/gallery"
+              id="cart-back-to-gallery"
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 bg-brand hover:bg-[#C2410C] text-white font-bold rounded-xl shadow-lg shadow-orange-600/20 whitespace-nowrap transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 shrink-0 text-white" />
+              <span>Kembali ke Galeri</span>
+            </Link>
           </motion.div>
         </div>
       </AppShell>
