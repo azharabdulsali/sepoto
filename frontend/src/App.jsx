@@ -21,7 +21,7 @@ import PhotographerDashboard from './pages/PhotographerDashboard';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, isAuthenticated } = useAuth();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
 
   if (allowedRoles && !allowedRoles.includes(currentUser?.role)) {
     if (currentUser?.role === 'user')         return <Navigate to="/gallery" replace />;

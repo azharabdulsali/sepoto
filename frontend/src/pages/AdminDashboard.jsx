@@ -395,21 +395,36 @@ function EventSettingsTab() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 py-1">
-          <button
-            type="button"
-            id="toggle-event-active"
-            onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
-            className={`relative w-11 h-6 rounded-full transition-colors ${form.isActive ? 'bg-brand' : 'bg-[#D1D5DB]'}`}
-            role="switch"
-            aria-checked={form.isActive}
-          >
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </button>
-          <span className="text-sm text-[#111827] font-bold">Event Aktif</span>
-          {!form.isActive && (
-            <span className="text-[11px] text-[#9CA3AF]">(event tidak dapat diakses peserta)</span>
-          )}
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div>
+            <p className="text-sm font-bold text-[#111827]">Status Event</p>
+            <p className="text-xs text-[#4B5563] mt-0.5">
+              {form.isActive
+                ? 'Event sedang aktif. Peserta dapat mencari dan membeli foto.'
+                : 'Event non-aktif. Peserta tidak dapat mengakses galeri event.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              id="toggle-event-active"
+              onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                form.isActive ? 'bg-brand' : 'bg-[#D1D5DB]'
+              }`}
+              role="switch"
+              aria-checked={form.isActive}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  form.isActive ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span className={`text-xs font-bold font-bib ${form.isActive ? 'text-brand' : 'text-gray-500'}`}>
+              {form.isActive ? 'AKTIF' : 'NON-AKTIF'}
+            </span>
+          </div>
         </div>
 
         <motion.div whileTap={{ scale: 0.97 }}>

@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, ShoppingCart, X, Check, Camera } from 'lucide-react';
+import { Search, SlidersHorizontal, ShoppingCart, X, Check, Camera, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import AppShell from '../components/AppShell';
+import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -36,37 +37,56 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-const PhotoCard = ({ photo }) => {
+const PhotoCard = ({ photo, onPreview }) => {
   const { addItem, removeItem, isInCart } = useCart();
   const inCart = isInCart(photo.id);
+
+  const handleCartClick = (e) => {
+    e.stopPropagation(); // Mencegah membuka modal preview saat tombol cart diklik
+    if (inCart) {
+      removeItem(photo.id);
+    } else {
+      addItem(photo);
+    }
+  };
 
   return (
     <motion.div
       variants={cardVariants}
       whileHover={{ y: -6, transition: { duration: 0.2 } }}
-      className="group relative bg-[#191C21] rounded-2xl overflow-hidden border border-white/5 hover:border-brand/40 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-orange-900/20"
+      onClick={() => onPreview(photo)}
+      className="group relative bg-[#191C21] rounded-2xl overflow-hidden border border-white/5 hover:border-brand/40 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-orange-900/20 cursor-pointer"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-[#22262E]">
-        <img
+        <ProtectedPhoto
           src={photo.watermarkedUrl}
           alt={`Foto event ${photo.bibTags ? `BIB ${photo.bibTags}` : 'Umum'}`}
           loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full"
+          imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
         {photo.bibTags && (
-          <div className="absolute top-2.5 left-2.5">
+          <div className="absolute top-2.5 left-2.5 z-10">
             <Badge className="font-bib text-[10px] bg-brand text-white border-0 shadow-md px-2 py-0.5">
               #{photo.bibTags}
             </Badge>
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+        {/* Eye Preview Hint Badge di pojok kanan atas */}
+        <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-7 h-7 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+            <Eye className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Hover Overlay Desktop */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2 p-3 text-center">
           <motion.div whileTap={{ scale: 0.9 }}>
             <Button
               id={`cart-toggle-${photo.id}`}
-              onClick={() => inCart ? removeItem(photo.id) : addItem(photo)}
+              onClick={handleCartClick}
               size="sm"
               className={`rounded-full transition-all active:scale-95 shadow-xl font-bold ${
                 inCart
@@ -82,6 +102,7 @@ const PhotoCard = ({ photo }) => {
               )}
             </Button>
           </motion.div>
+          <span className="text-[10px] text-gray-300 font-medium hidden sm:inline">Klik foto untuk Pratinjau / Zoom</span>
         </div>
       </div>
 
@@ -94,7 +115,7 @@ const PhotoCard = ({ photo }) => {
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute top-2.5 right-2.5 w-6 h-6 bg-brand rounded-full flex items-center justify-center shadow-lg"
+          className="absolute top-2.5 right-2.5 z-10 w-6 h-6 bg-brand rounded-full flex items-center justify-center shadow-lg"
         >
           <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
         </motion.div>
@@ -103,12 +124,112 @@ const PhotoCard = ({ photo }) => {
   );
 };
 
+// ─── Lightbox Modal Preview Foto (Mobile & Desktop Responsive) ───────────
+function PhotoPreviewModal({ photo, onClose }) {
+  const { addItem, removeItem, isInCart } = useCart();
+  const inCart = photo ? isInCart(photo.id) : false;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  if (!photo) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-2xl w-full bg-[#191C21] rounded-3xl overflow-hidden border border-white/10 shadow-2xl text-white flex flex-col max-h-[90vh]"
+      >
+        {/* Header Modal */}
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-2.5">
+            <Camera className="w-4 h-4 text-brand" />
+            <span className="text-sm font-bold truncate max-w-[180px] sm:max-w-xs">{photo.photographerName}</span>
+            {photo.bibTags && (
+              <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
+                BIB #{photo.bibTags}
+              </Badge>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Tutup pratinjau"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Preview Image Container */}
+        <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center min-h-[300px] max-h-[60vh] p-2">
+          <ProtectedPhoto
+            src={photo.watermarkedUrl}
+            alt={`Preview Foto ${photo.bibTags ? `BIB ${photo.bibTags}` : ''}`}
+            className="w-full h-full max-h-[58vh] flex items-center justify-center"
+            imgClassName="w-full h-full object-contain max-h-[58vh] rounded-xl select-none"
+          />
+        </div>
+
+        {/* Footer / Mobile Action Bar */}
+        <div className="p-4 sm:p-5 border-t border-white/10 bg-[#191C21] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bib uppercase tracking-widest text-gray-400">Harga Foto HD</p>
+            <p className="font-bib text-xl font-bold text-brand">{formatRupiah(photo.price)}</p>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <Button
+              id={`modal-cart-toggle-${photo.id}`}
+              onClick={() => inCart ? removeItem(photo.id) : addItem(photo)}
+              className={`flex-1 sm:flex-none h-12 px-6 rounded-2xl font-bold text-xs sm:text-sm shadow-lg transition-all ${
+                inCart
+                  ? 'bg-white text-[#111827] hover:bg-red-50 hover:text-red-500'
+                  : 'bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/30'
+              }`}
+            >
+              {inCart ? (
+                <><Check className="w-4 h-4 mr-2 text-green-600" /><span>Sudah Ada di Keranjang</span></>
+              ) : (
+                <><ShoppingCart className="w-4 h-4 mr-2" /><span>Tambah ke Keranjang</span></>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="h-12 px-4 rounded-2xl border-white/20 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-bold shrink-0"
+            >
+              Tutup
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function GalleryPage() {
   const { currentUser } = useAuth();
   const { formattedTotal, itemCount, clearCart } = useCart();
   const navigate = useNavigate();
 
-  const [searchBib, setSearchBib] = useState('');
+  const [searchBib, setSearchBib]         = useState('');
+  const [previewPhoto, setPreviewPhoto]   = useState(null);
 
   const pricedPhotos = useMemo(() => {
     return DUMMY_PHOTOS.filter((p) => p.price != null && Number(p.price) > 0);
@@ -241,7 +362,7 @@ export default function GalleryPage() {
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
         >
           {filteredPhotos.map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} />
+            <PhotoCard key={photo.id} photo={photo} onPreview={(p) => setPreviewPhoto(p)} />
           ))}
         </motion.div>
 
@@ -253,6 +374,13 @@ export default function GalleryPage() {
           </div>
         )}
       </div>
+
+      {/* Lightbox Modal Preview (Jika foto dipilih) */}
+      <AnimatePresence>
+        {previewPhoto && (
+          <PhotoPreviewModal photo={previewPhoto} onClose={() => setPreviewPhoto(null)} />
+        )}
+      </AnimatePresence>
 
       {/* Sticky Cart Bar (Framer Motion AnimatePresence) */}
       <AnimatePresence>
