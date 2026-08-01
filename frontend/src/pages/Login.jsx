@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Camera, ArrowRight, Hash, Loader2, AlertCircle, User, Sparkles } from 'lucide-react';
+import { ArrowRight, Hash, Loader2, AlertCircle, User, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
+import SepotoLogo from '../components/SepotoLogo';
 
 const containerVariants = {
   hidden: { opacity: 0, scale: 0.96, y: 20 },
@@ -57,16 +58,11 @@ export default function Login() {
         className="w-full max-w-sm relative z-10"
       >
         {/* Header Logo */}
+        {/* Brand Logo Header */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <motion.div
-            whileHover={{ scale: 1.08, rotate: 3 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center shadow-xl shadow-orange-600/30 mb-3 glow-brand cursor-pointer"
-            onClick={() => navigate('/')}
-          >
-            <Camera className="w-8 h-8 text-white" strokeWidth={2.2} />
-          </motion.div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Sepoto</h1>
+          <Link to="/" className="mb-2 hover:opacity-90 transition-opacity">
+            <SepotoLogo size="xl" variant="light" />
+          </Link>
           <Badge className="mt-2 font-bib tracking-widest text-[10px] bg-brand/10 text-brand border border-brand/20 px-3 py-1">
             PORTAL PESERTA EVENT
           </Badge>

@@ -3,12 +3,22 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ShoppingBag, Download, Clock, CheckCircle2, XCircle,
-  ArrowLeft, ChevronRight, Package, Loader2
+  ArrowLeft, ChevronRight, Package, Loader2, Paperclip
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  Attachment,
+  AttachmentMedia,
+  AttachmentContent,
+  AttachmentTitle,
+  AttachmentDescription,
+  AttachmentActions,
+} from '@/components/ui/attachment';
 import AppShell from '../components/AppShell';
+import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
 
 const formatRupiah = (v) =>
@@ -72,23 +82,26 @@ const STATUS_MAP = {
 };
 
 function OrderCard({ order }) {
-  const [downloading, setDownloading] = useState(null);
-  const [expanded, setExpanded]       = useState(false);
+  const [downloading, setDownloading]         = useState(null);
+  const [downloadSuccess, setDownloadSuccess] = useState(null);
+  const [expanded, setExpanded]               = useState(false);
   const cfg = STATUS_MAP[order.status];
   const StatusIcon = cfg.icon;
 
   const handleDownload = async (photoId) => {
     setDownloading(photoId);
+    setDownloadSuccess(null);
     await new Promise((r) => setTimeout(r, 1000));
     setDownloading(null);
-    alert(`[Demo] Foto #${photoId} akan diunduh dari Cloudflare R2`);
+    setDownloadSuccess({ photoId, fileName: `SEPOTO-HD-4K-${photoId}.jpg` });
   };
 
   const handleDownloadAll = async () => {
     setDownloading('all');
+    setDownloadSuccess(null);
     await new Promise((r) => setTimeout(r, 1500));
     setDownloading(null);
-    alert(`[Demo] Semua ${order.photos.length} foto dari order ${order.orderNumber} diunduh`);
+    setDownloadSuccess({ count: order.photos.length, fileName: `${order.orderNumber}-ALL.zip` });
   };
 
   return (
@@ -122,49 +135,78 @@ function OrderCard({ order }) {
           </div>
         </div>
 
-        {/* Thumbnails */}
+        {/* Shadcn UI Alert Unduhan Berhasil */}
+        {downloadSuccess && (
+          <div className="px-4.5 pt-3">
+            <Alert className="bg-green-50 border border-green-200 text-green-900 rounded-2xl p-3.5 shadow-sm flex items-start gap-3">
+              <CheckCircle2 className="w-4.5 h-4.5 text-green-600 shrink-0 mt-0.5" />
+              <div>
+                <AlertTitle className="text-xs font-bold text-green-900 flex items-center gap-2">
+                  <span>Unduhan Foto Berhasil!</span>
+                  <Badge variant="outline" className="text-[9px] font-bib bg-green-100 text-green-800 border-green-300">
+                    4K HD Original
+                  </Badge>
+                </AlertTitle>
+                <AlertDescription className="text-[11px] text-green-700 leading-relaxed mt-0.5">
+                  Berkas lampiran <strong className="font-bib">{downloadSuccess.fileName}</strong> (8.4 MB) tanpa watermark telah tersimpan di perangkat Anda.
+                </AlertDescription>
+              </div>
+            </Alert>
+          </div>
+        )}
+
+        {/* Thumbnails & Attachments */}
         <div className="px-4.5 py-3">
-          <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[1000px]' : 'max-h-[135px]'}`}>
+          <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[1000px]' : 'max-h-[160px]'}`}>
             <div className="flex flex-col gap-2.5">
               {order.photos.map((photo) => (
-                <div key={photo.id} className="flex items-center gap-3">
-                  <div className="w-14 h-16 rounded-xl overflow-hidden bg-[#F3F4F6] shrink-0 border border-[#E5E7EB]">
-                    <img
+                <Attachment key={photo.id} size="default" orientation="horizontal" className="w-full bg-[#F9FAFB] border-[#E5E7EB] rounded-xl p-2">
+                  <AttachmentMedia variant="image" className="w-12 h-14 rounded-lg overflow-hidden shrink-0">
+                    <ProtectedPhoto
                       src={photo.watermarkedUrl}
                       alt={`Foto #${photo.id}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
+                      className="w-full h-full"
+                      imgClassName="w-full h-full object-cover"
                     />
-                  </div>
+                  </AttachmentMedia>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-[#111827]">Foto #{photo.id}</p>
-                    {photo.bibTags && (
-                      <Badge variant="secondary" className="font-bib text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-md mt-0.5">
-                        BIB #{photo.bibTags}
-                      </Badge>
+                  <AttachmentContent className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <AttachmentTitle className="text-xs font-bold text-[#111827]">Foto #{photo.id}</AttachmentTitle>
+                      {photo.bibTags && (
+                        <Badge variant="secondary" className="font-bib text-[9px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-md">
+                          BIB #{photo.bibTags}
+                        </Badge>
+                      )}
+                    </div>
+                    <AttachmentDescription className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bib mt-0.5">
+                      <Paperclip className="w-3 h-3 text-brand shrink-0" />
+                      <span className="truncate">SEPOTO-HD-4K-{photo.id}.jpg</span>
+                      <span>·</span>
+                      <span className="text-gray-400 font-medium">8.4 MB</span>
+                    </AttachmentDescription>
+                  </AttachmentContent>
+
+                  <AttachmentActions>
+                    {order.status === 'approved' && (
+                      <motion.div whileTap={{ scale: 0.9 }}>
+                        <Button
+                          id={`download-photo-${photo.id}`}
+                          onClick={() => handleDownload(photo.id)}
+                          disabled={downloading !== null}
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0 text-xs font-bold text-brand hover:text-[#C2410C] hover:bg-orange-50 h-8 px-2.5 rounded-lg"
+                        >
+                          {downloading === photo.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <><Download className="w-3.5 h-3.5 mr-1" /><span>Unduh</span></>
+                          }
+                        </Button>
+                      </motion.div>
                     )}
-                    <p className="text-xs text-[#4B5563] font-medium mt-0.5">{formatRupiah(photo.price)}</p>
-                  </div>
-
-                  {order.status === 'approved' && (
-                    <motion.div whileTap={{ scale: 0.9 }}>
-                      <Button
-                        id={`download-photo-${photo.id}`}
-                        onClick={() => handleDownload(photo.id)}
-                        disabled={downloading !== null}
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 text-xs font-bold text-brand hover:text-[#C2410C] hover:bg-orange-50 h-8 px-2.5 rounded-lg"
-                      >
-                        {downloading === photo.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <><Download className="w-3.5 h-3.5 mr-1" /><span>Unduh</span></>
-                        }
-                      </Button>
-                    </motion.div>
-                  )}
-                </div>
+                  </AttachmentActions>
+                </Attachment>
               ))}
             </div>
           </div>

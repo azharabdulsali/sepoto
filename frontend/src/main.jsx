@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import App from './App';
 import './index.css';
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <CartProvider>
-          <App />
+          <TooltipProvider>
+            <App />
+          </TooltipProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>

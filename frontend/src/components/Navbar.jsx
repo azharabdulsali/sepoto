@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
-  ShoppingCart, LogOut, Camera, Menu, X, User,
+  ShoppingCart, LogOut, Menu, X, User,
   ClipboardList, Home, LayoutDashboard, Aperture, ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import SepotoLogo from './SepotoLogo';
 
 // ─── Navbar — Mobile-First, Sticky, Glassmorphism ─────────────────────
 export default function Navbar() {
@@ -16,10 +27,10 @@ export default function Navbar() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const triggerLogoutConfirm = () => {
+    setShowLogoutDialog(true);
   };
 
   const roleLabel = isAdmin ? 'Super Admin' : isPhotographer ? 'Fotografer' : null;
@@ -40,18 +51,10 @@ export default function Navbar() {
           {/* Logo */}
           <Link
             to={isAuthenticated ? (isUser ? '/gallery' : isAdmin ? '/admin/dashboard' : '/photographer/dashboard') : '/'}
-            className="flex items-center gap-2 shrink-0 group"
+            className="flex items-center shrink-0 hover:opacity-90 transition-opacity"
             aria-label="Sepoto - Home"
           >
-            <div className="w-7 h-7 rounded-lg bg-brand flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-              <Camera className="w-4 h-4 text-white" strokeWidth={2.5} />
-            </div>
-            <span className="font-sans font-semibold text-[#111827] tracking-tight text-base">
-              Sepoto
-            </span>
-            <span className="hidden sm:inline text-xs font-bib text-brand opacity-70 mt-0.5">
-              GALERI
-            </span>
+            <SepotoLogo size="md" />
           </Link>
 
           {/* Right actions */}
@@ -165,7 +168,7 @@ export default function Navbar() {
             {isAuthenticated && (
               <button
                 id="nav-logout-btn"
-                onClick={handleLogout}
+                onClick={triggerLogoutConfirm}
                 className="tap-target flex items-center justify-center w-10 h-10 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors text-[#4B5563]"
                 aria-label="Keluar"
                 title="Keluar"
@@ -281,7 +284,7 @@ export default function Navbar() {
             })}
 
             <button
-              onClick={handleLogout}
+              onClick={triggerLogoutConfirm}
               id="bottom-nav-logout"
               className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[#4B5563]"
               aria-label="Keluar"
@@ -292,6 +295,47 @@ export default function Navbar() {
           </div>
         </nav>
       )}
+
+      {/* ─── Shadcn UI Alert Dialog Konfirmasi Logout ───────────────────── */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent className="bg-[#191C21] border border-white/10 text-white rounded-3xl max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white text-lg font-bold flex items-center gap-2">
+              <LogOut className="w-5 h-5 text-red-500 shrink-0" />
+              <span>Konfirmasi Keluar Sesi</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300 text-xs sm:text-sm leading-relaxed mt-2">
+              {isAdmin ? (
+                <>Apakah Anda yakin ingin keluar dari <strong className="text-red-400">Sesi Super Admin</strong> Sepoto?</>
+              ) : isPhotographer ? (
+                <>Apakah Anda yakin ingin keluar dari <strong className="text-blue-400">Sesi Fotografer</strong> Sepoto?</>
+              ) : (
+                <>Apakah Anda yakin ingin keluar dari akun <strong className="text-brand font-bib font-bold">Sepoto</strong> Anda?</>
+              )}
+              <br />
+              <span className="text-gray-400 text-xs mt-2 block">
+                Anda akan diarahkan kembali ke Halaman Utama / Landing Page.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
+            <AlertDialogCancel className="bg-white/10 hover:bg-white/20 text-white border-0 rounded-xl text-xs font-bold h-10 mt-0">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              id="confirm-logout-action-btn"
+              onClick={() => {
+                logout();
+                setShowLogoutDialog(false);
+                navigate('/');
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold h-10 px-5 shadow-md shadow-red-600/30"
+            >
+              Ya, Keluar Sekarang
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

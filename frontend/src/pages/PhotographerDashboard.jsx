@@ -2,12 +2,23 @@ import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CloudUpload, Image as ImageIcon, Check, Trash2, X,
-  Camera, Search, Loader2, CheckSquare, Square, Tag
+  Camera, Search, Loader2, CheckSquare, Square, Tag, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  Attachment,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentContent,
+  AttachmentTitle,
+  AttachmentDescription,
+  AttachmentActions,
+  AttachmentAction,
+} from '@/components/ui/attachment';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
 
@@ -125,10 +136,21 @@ function UploadTab() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 text-sm font-semibold px-4 py-3.5 rounded-2xl"
         >
-          <Check className="w-5 h-5 text-green-600 shrink-0" />
-          <span>Foto berhasil diupload! Sistem telah membuat versi watermark otomatis.</span>
+          <Alert className="bg-green-50 border border-green-200 text-green-900 rounded-2xl p-4 shadow-sm flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+            <div>
+              <AlertTitle className="text-sm font-bold text-green-900 flex items-center gap-2">
+                <span>Berhasil Mengunggah Foto!</span>
+                <Badge variant="outline" className="text-[10px] font-bib bg-green-100 text-green-800 border-green-300">
+                  {previews.length || 1} Lampiran Disimpan
+                </Badge>
+              </AlertTitle>
+              <AlertDescription className="text-xs text-green-700 leading-relaxed mt-1">
+                Foto aksi beresolusi tinggi berhasil dilampirkan ke sistem. Watermark otomatis dan pembatasan pratinjau publik telah aktif.
+              </AlertDescription>
+            </div>
+          </Alert>
         </motion.div>
       )}
 
@@ -213,10 +235,37 @@ function UploadTab() {
         </Card>
       )}
 
-      {/* Grid Previews */}
+      {/* Grid Previews & Attachment Group */}
       {previews.length > 0 && (
         <div className="space-y-3">
-          <p className="text-sm font-bold text-[#111827]">{previews.length} foto siap diupload</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-[#111827]">{previews.length} foto siap diupload</p>
+            <Badge variant="outline" className="font-bib text-[10px] bg-brand/10 text-brand border-brand/20">
+              Lampiran Antrean
+            </Badge>
+          </div>
+
+          <AttachmentGroup className="py-1">
+            {previews.map((p, idx) => (
+              <Attachment key={p.id} size="sm" orientation="horizontal" className="bg-white border-[#E5E7EB] shadow-xs">
+                <AttachmentMedia variant="image" className="w-8 h-8 rounded overflow-hidden">
+                  <img src={p.url} alt="" className="w-full h-full object-cover" />
+                </AttachmentMedia>
+                <AttachmentContent className="pr-1">
+                  <AttachmentTitle className="text-xs font-bold text-[#111827]">Foto #{idx + 1}</AttachmentTitle>
+                  <AttachmentDescription className="text-[10px] text-gray-500 font-bib">
+                    {p.file?.name ? p.file.name : `SEPOTO-RAW-${idx + 1}.jpg`}
+                  </AttachmentDescription>
+                </AttachmentContent>
+                <AttachmentActions>
+                  <AttachmentAction onClick={() => removePreview(p.id)} className="h-6 w-6 text-gray-400 hover:text-red-500">
+                    <X className="w-3 h-3" />
+                  </AttachmentAction>
+                </AttachmentActions>
+              </Attachment>
+            ))}
+          </AttachmentGroup>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {previews.map((p) => (
               <Card key={p.id} className="relative group bg-[#F9FAFB] border-[#E5E7EB] rounded-2xl overflow-hidden p-0 shadow-sm">

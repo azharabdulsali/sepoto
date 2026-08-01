@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Camera,
   User,
   ShieldCheck,
   Aperture,
@@ -21,6 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import AppShell from "../components/AppShell";
 import ProtectedPhoto from "../components/ProtectedPhoto";
+import SepotoLogo from "../components/SepotoLogo";
 
 // ─── Animation Variants (Framer Motion) ────────────────────────────────
 const containerVariants = {
@@ -107,7 +107,7 @@ export default function LandingPage() {
               className="text-2xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-[#111827] leading-[1.2] sm:leading-[1.15]"
             >
               Abadikan Setiap Momen Terbaik di{" "}
-              <span className="text-gradient-brand px-0.5">Sepoto</span>
+              <SepotoLogo size="inherit" variant="gradient" />
             </motion.h1>
 
             {/* Subtitle */}
@@ -176,7 +176,7 @@ export default function LandingPage() {
                     inputMode="numeric"
                     value={demoBib}
                     onChange={(e) => setDemoBib(e.target.value)}
-                    placeholder="Ketik Nomor BIB (misal: 101)..."
+                    placeholder="Ketik Nomor BIB ..."
                     className="pl-9 h-10 border-0 bg-transparent text-xs sm:text-sm font-bib focus-visible:ring-0"
                   />
                 </div>
@@ -555,11 +555,8 @@ export default function LandingPage() {
         {/* ─── 6. FOOTER ──────────────────────────────────────────────── */}
         <footer className="bg-white border-t border-[#E5E7EB] pt-6 pb-20 sm:pb-8 px-4 text-center">
           <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-brand flex items-center justify-center shadow-sm">
-                <Camera className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bold text-base text-[#111827]">Sepoto</span>
+            <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start">
+              <SepotoLogo size="md" />
               <span className="text-xs text-[#9CA3AF]">
                 © 2026 Sepoto. All rights reserved.
               </span>

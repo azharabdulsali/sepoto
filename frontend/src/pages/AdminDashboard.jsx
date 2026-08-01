@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
 
@@ -103,16 +114,18 @@ function OverviewTab({ transactions }) {
   );
 }
 
-function PaymentsTab({ transactions, setTransactions }) {
-  const [search, setSearch]   = useState('');
-  const [filter, setFilter]   = useState('all');
-  const [loadingId, setLoadingId] = useState(null);
+function TransactionsTab() {
+  const [transactions, setTransactions] = useState(DUMMY_TRANSACTIONS);
+  const [filter, setFilter]             = useState('all');
+  const [search, setSearch]             = useState('');
+  const [loadingId, setLoadingId]       = useState(null);
+  const [actionConfirm, setActionConfirm] = useState(null);
 
   const updateStatus = async (id, newStatus) => {
     setLoadingId(id);
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((r) => setTimeout(r, 600));
     setTransactions((prev) =>
-      prev.map((t) => t.id === id ? { ...t, status: newStatus } : t)
+      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
     );
     setLoadingId(null);
   };
@@ -179,7 +192,7 @@ function PaymentsTab({ transactions, setTransactions }) {
                 <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
                   <Button
                     id={`approve-${t.id}`}
-                    onClick={() => updateStatus(t.id, 'approved')}
+                    onClick={() => setActionConfirm({ type: 'approve', item: t })}
                     disabled={loadingId === t.id}
                     className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm"
                   >
@@ -190,7 +203,7 @@ function PaymentsTab({ transactions, setTransactions }) {
                 <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
                   <Button
                     id={`reject-${t.id}`}
-                    onClick={() => updateStatus(t.id, 'rejected')}
+                    onClick={() => setActionConfirm({ type: 'reject', item: t })}
                     disabled={loadingId === t.id}
                     variant="outline"
                     className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl"
@@ -204,6 +217,61 @@ function PaymentsTab({ transactions, setTransactions }) {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={Boolean(actionConfirm)} onOpenChange={(open) => !open && setActionConfirm(null)}>
+        <AlertDialogContent className="bg-[#191C21] border border-white/10 text-white rounded-3xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white text-lg font-bold">
+              {actionConfirm?.type === 'approve' ? 'Konfirmasi Persetujuan Pembayaran' : 'Konfirmasi Penolakan Pembayaran'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300 text-xs sm:text-sm leading-relaxed mt-2">
+              {actionConfirm?.type === 'approve' ? (
+                <>
+                  Apakah Anda yakin ingin menyetujui transaksi{' '}
+                  <strong className="text-white font-bib">{actionConfirm?.item?.orderNumber}</strong> milik{' '}
+                  <strong className="text-white">{actionConfirm?.item?.userName}</strong> (BIB #{actionConfirm?.item?.bibNumber}) sebesar{' '}
+                  <strong className="text-brand font-bib">{formatRupiah(actionConfirm?.item?.total)}</strong>?
+                  <br />
+                  <span className="text-green-400 text-xs mt-2 block">
+                    ✓ Akses unduhan foto HD tanpa watermark akan langsung diberikan kepada peserta.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Apakah Anda yakin ingin menolak transaksi{' '}
+                  <strong className="text-white font-bib">{actionConfirm?.item?.orderNumber}</strong> milik{' '}
+                  <strong className="text-white">{actionConfirm?.item?.userName}</strong> (BIB #{actionConfirm?.item?.bibNumber})?
+                  <br />
+                  <span className="text-red-400 text-xs mt-2 block">
+                    ✕ Peserta tidak dapat mengakses unduhan foto HD untuk transaksi ini.
+                  </span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
+            <AlertDialogCancel className="bg-white/10 hover:bg-white/20 text-white border-0 rounded-xl text-xs font-bold h-10 mt-0">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              id="confirm-payment-action-btn"
+              onClick={() => {
+                if (actionConfirm) {
+                  updateStatus(actionConfirm.item.id, actionConfirm.type === 'approve' ? 'approved' : 'rejected');
+                  setActionConfirm(null);
+                }
+              }}
+              className={`rounded-xl text-xs font-bold h-10 px-5 text-white shadow-md transition-colors ${
+                actionConfirm?.type === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700 shadow-green-600/30'
+                  : 'bg-red-600 hover:bg-red-700 shadow-red-600/30'
+              }`}
+            >
+              {actionConfirm?.type === 'approve' ? 'Ya, Approve Pembayaran' : 'Ya, Tolak Pembayaran'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -405,22 +473,11 @@ function EventSettingsTab() {
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
+            <Switch
               id="toggle-event-active"
-              onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                form.isActive ? 'bg-brand' : 'bg-[#D1D5DB]'
-              }`}
-              role="switch"
-              aria-checked={form.isActive}
-            >
-              <span
-                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  form.isActive ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
+              checked={form.isActive}
+              onCheckedChange={(checked) => setForm((f) => ({ ...f, isActive: checked }))}
+            />
             <span className={`text-xs font-bold font-bib ${form.isActive ? 'text-brand' : 'text-gray-500'}`}>
               {form.isActive ? 'AKTIF' : 'NON-AKTIF'}
             </span>
@@ -446,7 +503,7 @@ function EventSettingsTab() {
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab]         = useState('overview');
-  const [transactions, setTransactions]   = useState(DUMMY_TRANSACTIONS);
+  const [transactions] = useState(DUMMY_TRANSACTIONS);
 
   const tabs = [
     { id: 'overview',  label: 'Overview',     icon: LayoutDashboard },
@@ -507,7 +564,7 @@ export default function AdminDashboard() {
             transition={{ duration: 0.25 }}
           >
             {activeTab === 'overview'      && <OverviewTab transactions={transactions} />}
-            {activeTab === 'payments'      && <PaymentsTab transactions={transactions} setTransactions={setTransactions} />}
+            {activeTab === 'payments'      && <TransactionsTab />}
             {activeTab === 'participants'  && <ParticipantsTab />}
             {activeTab === 'settings'      && <EventSettingsTab />}
           </motion.div>

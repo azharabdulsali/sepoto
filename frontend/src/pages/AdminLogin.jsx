@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Camera, ArrowRight, Lock, Mail, Loader2, AlertCircle, ShieldCheck, KeyRound } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Loader2, AlertCircle, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '../context/AuthContext';
+import SepotoLogo from '../components/SepotoLogo';
 
 const containerVariants = {
   hidden: { opacity: 0, scale: 0.96, y: 20 },
@@ -57,19 +58,11 @@ export default function AdminLogin() {
         className="w-full max-w-sm relative z-10"
       >
         {/* Logo */}
+        {/* Brand Logo Header */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <motion.div
-            whileHover={{ scale: 1.08, rotate: -3 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative w-16 h-16 rounded-2xl bg-[#191C21] border border-red-500/30 flex items-center justify-center shadow-xl mb-3 cursor-pointer"
-            onClick={() => navigate('/')}
-          >
-            <Camera className="w-8 h-8 text-red-500" strokeWidth={2} />
-            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-              <ShieldCheck className="w-3 h-3 text-white" />
-            </div>
-          </motion.div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Sepoto</h1>
+          <Link to="/" className="mb-2 hover:opacity-90 transition-opacity">
+            <SepotoLogo size="xl" variant="light" />
+          </Link>
           <Badge className="mt-2 font-bib tracking-widest text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1">
             ADMIN CONTROL PANEL
           </Badge>

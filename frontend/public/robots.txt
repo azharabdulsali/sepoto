@@ -1,0 +1,16 @@
+# Robots.txt for Sepoto (https://sepoto.project)
+User-agent: *
+Allow: /
+Allow: /gallery
+Allow: /login
+Allow: /photographer/login
+Allow: /admin/login
+
+# Disallow private/protected transactional & dashboard pages
+Disallow: /cart
+Disallow: /orders
+Disallow: /admin/dashboard
+Disallow: /photographer/dashboard
+
+# XML Sitemap Location
+Sitemap: https://sepoto.project/sitemap.xml

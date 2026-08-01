@@ -1,0 +1,18 @@
+{
+  "short_name": "Sepoto",
+  "name": "Sepoto — Platform Foto Event & Unduh Digital",
+  "description": "Platform galeri foto event maraton dan olahraga dengan sistem pencarian Nomor BIB.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "48x48 96x96 192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#191C21",
+  "theme_color": "#EA580C",
+  "display": "standalone",
+  "orientation": "portrait"
+}
