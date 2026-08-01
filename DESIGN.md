@@ -91,3 +91,10 @@ Pertahankan hierarki visual yang kuat, kontras permukaan gelap (`surface #191C21
 - Jangan merusak struktur kontras antara background terang dan permukaan surface gelap.
 - Pertahankan sudut lengkung (_border-radius_) yang konsisten pada tombol dan kartu (`8px`).
 - Jaga konsistensi penempatan tombol aksi utama menggunakan warna _primary_ (`#EA580C`).
+
+## Komponen & Integrasi Shadcn UI
+
+- **Basis Komponen:** Menggunakan komponen dari **Shadcn UI** (seperti Button, Input, Dialog, Sheet/Cart, Card).
+- **Konfigurasi Warna (Tailwind & CSS Variables):**
+  - Warna _Primary_ (`#EA580C`) diselaraskan ke dalam variabel warna utama Tailwind.
+  - Komponen kartu (_Card_) dan kontainer utama menggunakan palet permukaan gelap surface (`#191C21`) sesuai standar tema Auralis, dipadukan dengan komponen shadcn yang bersih.
