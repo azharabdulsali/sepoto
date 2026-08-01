@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
 // Pages — Public
+import LandingPage          from './pages/LandingPage';
 import Login                from './pages/Login';
 import AdminLogin           from './pages/AdminLogin';
 import PhotographerLogin    from './pages/PhotographerLogin';
@@ -20,12 +21,11 @@ import PhotographerDashboard from './pages/PhotographerDashboard';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, isAuthenticated } = useAuth();
 
-  if (!isAuthenticated) return <Navigate to="/" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   if (allowedRoles && !allowedRoles.includes(currentUser?.role)) {
-    // Redirect ke home yang sesuai role
-    if (currentUser?.role === 'user')        return <Navigate to="/gallery" replace />;
-    if (currentUser?.role === 'super_admin') return <Navigate to="/admin/dashboard" replace />;
+    if (currentUser?.role === 'user')         return <Navigate to="/gallery" replace />;
+    if (currentUser?.role === 'super_admin')  return <Navigate to="/admin/dashboard" replace />;
     if (currentUser?.role === 'photographer') return <Navigate to="/photographer/dashboard" replace />;
   }
 
@@ -36,30 +36,48 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 export default function App() {
   const { isAuthenticated, currentUser } = useAuth();
 
+  // Helper redirect jika sudah login
+  const getAuthenticatedRedirect = () => {
+    if (currentUser?.role === 'user')         return <Navigate to="/gallery" replace />;
+    if (currentUser?.role === 'super_admin')  return <Navigate to="/admin/dashboard" replace />;
+    if (currentUser?.role === 'photographer') return <Navigate to="/photographer/dashboard" replace />;
+    return <Navigate to="/" replace />;
+  };
+
   return (
     <Routes>
-      {/* ─── Public: Login Pages ─── */}
+      {/* ─── Public Root: Landing Page / Public Dashboard ─── */}
       <Route
         path="/"
         element={
-          isAuthenticated && currentUser?.role === 'user'
-            ? <Navigate to="/gallery" replace />
+          isAuthenticated
+            ? getAuthenticatedRedirect()
+            : <LandingPage />
+        }
+      />
+
+      {/* ─── Public Login Routes ─── */}
+      <Route
+        path="/login"
+        element={
+          isAuthenticated
+            ? getAuthenticatedRedirect()
             : <Login />
         }
       />
       <Route
         path="/admin/login"
         element={
-          isAuthenticated && currentUser?.role === 'super_admin'
-            ? <Navigate to="/admin/dashboard" replace />
+          isAuthenticated
+            ? getAuthenticatedRedirect()
             : <AdminLogin />
         }
       />
       <Route
         path="/photographer/login"
         element={
-          isAuthenticated && currentUser?.role === 'photographer'
-            ? <Navigate to="/photographer/dashboard" replace />
+          isAuthenticated
+            ? getAuthenticatedRedirect()
             : <PhotographerLogin />
         }
       />

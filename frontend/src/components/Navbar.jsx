@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, LogOut, Camera, Menu, X, User,
-  ClipboardList, Home, LayoutDashboard, Aperture
+  ClipboardList, Home, LayoutDashboard, Aperture, ArrowRight
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -33,7 +35,7 @@ export default function Navbar() {
     <>
       {/* ─── Top Navbar ──────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 w-full glass border-b border-[#E5E7EB]">
-        <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between md:h-16">
 
           {/* Logo */}
           <Link
@@ -47,20 +49,67 @@ export default function Navbar() {
             <span className="font-sans font-semibold text-[#111827] tracking-tight text-base">
               Sepoto
             </span>
-            {/* Label GALERI hanya di sm+ */}
             <span className="hidden sm:inline text-xs font-bib text-brand opacity-70 mt-0.5">
               GALERI
             </span>
           </Link>
 
           {/* Right actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
 
+            {/* ─── Non-Authenticated (Public Nav Links) ──────────── */}
+            {!isAuthenticated && (
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className={`text-xs font-medium h-9 rounded-xl ${
+                    location.pathname === '/login' ? 'bg-brand/10 text-brand' : 'text-[#4B5563] hover:text-[#111827]'
+                  }`}
+                >
+                  <Link to="/login" id="nav-public-user-login">
+                    <User className="w-3.5 h-3.5 mr-1.5" />
+                    <span>Peserta Login</span>
+                  </Link>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className={`text-xs font-medium h-9 rounded-xl ${
+                    location.pathname === '/photographer/login' ? 'bg-blue-50 text-blue-600' : 'text-[#4B5563] hover:text-blue-600'
+                  }`}
+                >
+                  <Link to="/photographer/login" id="nav-public-photographer-login">
+                    <Aperture className="w-3.5 h-3.5 mr-1.5" />
+                    <span>Fotografer</span>
+                  </Link>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className={`text-xs font-medium h-9 rounded-xl ${
+                    location.pathname === '/admin/login' ? 'bg-red-50 text-red-600' : 'text-[#4B5563] hover:text-red-600'
+                  }`}
+                >
+                  <Link to="/admin/login" id="nav-public-admin-login">
+                    <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" />
+                    <span>Admin</span>
+                  </Link>
+                </Button>
+              </div>
+            )}
+
+            {/* ─── Authenticated Navigation Controls ───────────── */}
             {/* Role badge (sm+) */}
             {isAuthenticated && roleLabel && (
-              <span className={`hidden sm:flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bib uppercase mr-1 ${roleColor}`}>
+              <Badge variant="outline" className={`hidden sm:flex items-center px-2.5 py-1 rounded-full text-[10px] font-bib uppercase mr-1 ${roleColor}`}>
                 {roleLabel}
-              </span>
+              </Badge>
             )}
 
             {/* User info (sm+) — hanya user peserta */}
@@ -93,7 +142,7 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Cart icon — user peserta (SELALU tampil, bukan hidden) */}
+            {/* Cart icon — user peserta */}
             {isAuthenticated && isUser && (
               <Link
                 to="/cart"
@@ -125,12 +174,12 @@ export default function Navbar() {
               </button>
             )}
 
-            {/* Hamburger — hanya di halaman publik (belum login) */}
+            {/* Hamburger — di halaman publik (mobile) */}
             {!isAuthenticated && (
               <button
                 id="nav-menu-toggle"
                 onClick={() => setMobileMenuOpen((o) => !o)}
-                className="tap-target flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
+                className="md:hidden tap-target flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors"
                 aria-label="Menu"
               >
                 {mobileMenuOpen
@@ -144,25 +193,39 @@ export default function Navbar() {
 
         {/* Mobile dropdown — halaman publik */}
         {mobileMenuOpen && !isAuthenticated && (
-          <div className="border-t border-[#E5E7EB] bg-white/95 backdrop-blur-md animate-fade-in-up">
-            <nav className="px-4 py-3 flex flex-col gap-1">
+          <div className="md:hidden border-t border-[#E5E7EB] bg-white/95 backdrop-blur-md animate-fade-in-up">
+            <nav className="px-4 py-3 flex flex-col gap-1.5">
               <Link
-                to="/admin/login"
-                id="mobile-admin-link"
-                className="flex items-center gap-2.5 px-3 py-3 text-sm text-[#4B5563] hover:text-[#111827] hover:bg-gray-50 rounded-lg transition-colors font-medium"
+                to="/login"
+                id="mobile-user-link"
+                className="flex items-center justify-between px-3 py-3 text-sm text-[#111827] bg-brand/5 border border-brand/10 rounded-xl font-semibold"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <LayoutDashboard className="w-4 h-4" />
-                Login Admin
+                <div className="flex items-center gap-2 text-brand">
+                  <User className="w-4 h-4" />
+                  <span>Login Peserta</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-brand" />
               </Link>
+
               <Link
                 to="/photographer/login"
                 id="mobile-photographer-link"
-                className="flex items-center gap-2.5 px-3 py-3 text-sm text-[#4B5563] hover:text-[#111827] hover:bg-gray-50 rounded-lg transition-colors font-medium"
+                className="flex items-center gap-2.5 px-3 py-3 text-sm text-[#4B5563] hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors font-medium"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <Aperture className="w-4 h-4" />
-                Login Fotografer
+                <Aperture className="w-4 h-4 text-blue-600" />
+                <span>Login Fotografer</span>
+              </Link>
+
+              <Link
+                to="/admin/login"
+                id="mobile-admin-link"
+                className="flex items-center gap-2.5 px-3 py-3 text-sm text-[#4B5563] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <LayoutDashboard className="w-4 h-4 text-red-600" />
+                <span>Login Admin</span>
               </Link>
             </nav>
           </div>
@@ -217,7 +280,6 @@ export default function Navbar() {
               );
             })}
 
-            {/* Logout di bottom nav */}
             <button
               onClick={handleLogout}
               id="bottom-nav-logout"

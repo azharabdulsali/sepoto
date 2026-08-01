@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, CheckCircle2, XCircle, Clock,
   Upload, Users, Settings, Search,
@@ -33,13 +34,13 @@ const DUMMY_PARTICIPANTS = [
 
 const StatusBadge = ({ status }) => {
   const map = {
-    pending:  { label: 'Menunggu',  cls: 'bg-amber-50 text-amber-600 border-amber-200',  icon: Clock },
-    approved: { label: 'Disetujui', cls: 'bg-green-50 text-green-600 border-green-200',  icon: CheckCircle2 },
-    rejected: { label: 'Ditolak',   cls: 'bg-red-50 text-red-500 border-red-200',        icon: XCircle },
+    pending:  { label: 'Menunggu',  cls: 'bg-amber-50 text-amber-700 border-amber-200',  icon: Clock },
+    approved: { label: 'Disetujui', cls: 'bg-green-50 text-green-700 border-green-200',  icon: CheckCircle2 },
+    rejected: { label: 'Ditolak',   cls: 'bg-red-50 text-red-700 border-red-200',        icon: XCircle },
   };
   const { label, cls, icon: Icon } = map[status] ?? map.pending;
   return (
-    <Badge variant="outline" className={`inline-flex items-center gap-1 font-bib text-[10px] uppercase px-2 py-0.5 rounded-full border ${cls}`}>
+    <Badge variant="outline" className={`inline-flex items-center gap-1 font-bib text-[10px] uppercase px-2.5 py-0.5 rounded-full border ${cls}`}>
       <Icon className="w-2.5 h-2.5" />
       {label}
     </Badge>
@@ -55,38 +56,42 @@ function OverviewTab({ transactions }) {
     .reduce((s, t) => s + t.total, 0);
 
   const stats = [
-    { label: 'Menunggu Verifikasi', value: pending,              sub: 'transaksi',         cls: 'bg-amber-50 border-amber-200',   textCls: 'text-amber-600' },
-    { label: 'Disetujui',           value: approved,             sub: 'transaksi',         cls: 'bg-green-50 border-green-200',   textCls: 'text-green-600' },
-    { label: 'Ditolak',             value: rejected,             sub: 'transaksi',         cls: 'bg-red-50 border-red-200',       textCls: 'text-red-500' },
+    { label: 'Menunggu Verifikasi', value: pending,              sub: 'transaksi',         cls: 'bg-amber-50/80 border-amber-200',   textCls: 'text-amber-700' },
+    { label: 'Disetujui',           value: approved,             sub: 'transaksi',         cls: 'bg-green-50/80 border-green-200',   textCls: 'text-green-700' },
+    { label: 'Ditolak',             value: rejected,             sub: 'transaksi',         cls: 'bg-red-50/80 border-red-200',       textCls: 'text-red-600' },
     { label: 'Total Pendapatan',    value: formatRupiah(totalRevenue), sub: 'dari order approved', cls: 'bg-brand/5 border-brand/20', textCls: 'text-brand' },
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map(({ label, value, sub, cls, textCls }) => (
-          <Card key={label} className={`rounded-xl border p-4 ${cls}`}>
-            <p className={`text-xl font-bold ${textCls}`}>{value}</p>
-            <p className="text-xs font-semibold text-[#111827] mt-0.5">{label}</p>
-            <p className="text-[11px] text-[#4B5563]">{sub}</p>
-          </Card>
+          <motion.div key={label} whileHover={{ y: -3, transition: { duration: 0.2 } }}>
+            <Card className={`rounded-2xl border p-4 shadow-sm ${cls}`}>
+              <p className={`text-xl sm:text-2xl font-bold font-bib ${textCls}`}>{value}</p>
+              <p className="text-xs font-bold text-[#111827] mt-0.5">{label}</p>
+              <p className="text-[11px] text-[#4B5563] mt-0.5">{sub}</p>
+            </Card>
+          </motion.div>
         ))}
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-[#111827] mb-2">Menunggu Approval ({pending})</h3>
+        <h3 className="text-sm font-bold text-[#111827] mb-3">Menunggu Approval ({pending})</h3>
         {transactions.filter((t) => t.status === 'pending').length === 0 ? (
-          <p className="text-sm text-[#4B5563] py-4 text-center">Tidak ada transaksi yang menunggu</p>
+          <Card className="p-8 text-center bg-white border-[#E5E7EB] rounded-2xl">
+            <p className="text-sm text-[#4B5563]">Tidak ada transaksi yang menunggu verifikasi.</p>
+          </Card>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {transactions.filter((t) => t.status === 'pending').map((t) => (
-              <Card key={t.id} className="bg-white border-[#E5E7EB] rounded-xl px-4 py-3 flex flex-row items-center gap-3 shadow-sm">
+              <Card key={t.id} className="bg-white border-[#E5E7EB] rounded-2xl p-4 flex flex-row items-center gap-3.5 shadow-sm hover:shadow-md transition-all">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#111827] truncate">{t.userName}</p>
-                  <p className="font-bib text-[10px] text-[#4B5563]">{t.orderNumber} · BIB #{t.bibNumber}</p>
+                  <p className="text-sm font-bold text-[#111827] truncate">{t.userName}</p>
+                  <p className="font-bib text-xs text-[#4B5563] mt-0.5">{t.orderNumber} · BIB #{t.bibNumber}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-brand">{formatRupiah(t.total)}</p>
+                  <p className="text-sm font-bold text-brand font-bib">{formatRupiah(t.total)}</p>
                   <p className="text-[11px] text-[#4B5563]">{t.items} foto</p>
                 </div>
               </Card>
@@ -121,23 +126,23 @@ function PaymentsTab({ transactions, setTransactions }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563] pointer-events-none z-10" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563] pointer-events-none z-10" />
           <Input
             id="payment-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama, nomor order, atau BIB..."
-            className="pl-9 pr-4 h-10 border-[#E5E7EB] rounded-xl text-sm"
+            className="pl-10 h-11 border-[#E5E7EB] rounded-xl text-sm"
           />
         </div>
         <select
           id="payment-filter"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="border border-[#E5E7EB] rounded-xl px-3 h-10 text-sm focus:outline-none focus:border-brand/50 bg-white"
+          className="border border-[#E5E7EB] rounded-xl px-3.5 h-11 text-sm focus:outline-none focus:border-brand/50 bg-white font-medium text-[#111827]"
         >
           <option value="all">Semua Status</option>
           <option value="pending">Menunggu</option>
@@ -146,50 +151,54 @@ function PaymentsTab({ transactions, setTransactions }) {
         </select>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {filtered.length === 0 && (
-          <p className="text-sm text-[#4B5563] py-8 text-center">Tidak ada data yang cocok</p>
+          <p className="text-sm text-[#4B5563] py-12 text-center">Tidak ada data transaksi yang cocok</p>
         )}
         {filtered.map((t) => (
-          <Card key={t.id} className="bg-white border-[#E5E7EB] rounded-xl p-4 shadow-sm">
+          <Card key={t.id} className="bg-white border-[#E5E7EB] rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <p className="text-sm font-semibold text-[#111827]">{t.userName}</p>
-                  <Badge variant="secondary" className="font-bib text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded">
+                  <p className="text-sm font-bold text-[#111827]">{t.userName}</p>
+                  <Badge variant="secondary" className="font-bib text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full">
                     BIB #{t.bibNumber}
                   </Badge>
                   <StatusBadge status={t.status} />
                 </div>
-                <p className="font-bib text-[10px] text-[#4B5563] mb-1">{t.orderNumber}</p>
+                <p className="font-bib text-xs text-[#4B5563] mb-1">{t.orderNumber}</p>
                 <p className="text-[11px] text-[#9CA3AF]">{t.items} foto · {t.createdAt}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-bold text-brand">{formatRupiah(t.total)}</p>
+                <p className="font-bold text-brand font-bib text-base">{formatRupiah(t.total)}</p>
               </div>
             </div>
 
             {t.status === 'pending' && (
-              <div className="flex gap-2 mt-3 pt-3 border-t border-[#F3F4F6]">
-                <Button
-                  id={`approve-${t.id}`}
-                  onClick={() => updateStatus(t.id, 'approved')}
-                  disabled={loadingId === t.id}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs font-bold h-9 rounded-lg"
-                >
-                  {loadingId === t.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
-                  Approve
-                </Button>
-                <Button
-                  id={`reject-${t.id}`}
-                  onClick={() => updateStatus(t.id, 'rejected')}
-                  disabled={loadingId === t.id}
-                  variant="outline"
-                  className="flex-1 bg-red-50 hover:bg-red-100 text-red-500 border-red-200 text-xs font-bold h-9 rounded-lg"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Tolak
-                </Button>
+              <div className="flex gap-2.5 mt-3.5 pt-3.5 border-t border-[#F3F4F6]">
+                <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
+                  <Button
+                    id={`approve-${t.id}`}
+                    onClick={() => updateStatus(t.id, 'approved')}
+                    disabled={loadingId === t.id}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm"
+                  >
+                    {loadingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
+                    Approve Pembayaran
+                  </Button>
+                </motion.div>
+                <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
+                  <Button
+                    id={`reject-${t.id}`}
+                    onClick={() => updateStatus(t.id, 'rejected')}
+                    disabled={loadingId === t.id}
+                    variant="outline"
+                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl"
+                  >
+                    <X className="w-3.5 h-3.5 mr-1.5" />
+                    Tolak
+                  </Button>
+                </motion.div>
               </div>
             )}
           </Card>
@@ -218,42 +227,50 @@ function ParticipantsTab() {
 
   return (
     <div className="space-y-5">
-      <Card className="bg-[#F9FAFB] border-[#E5E7EB] rounded-2xl p-5">
-        <div className="flex items-start gap-3 mb-4">
-          <FileSpreadsheet className="w-5 h-5 text-brand shrink-0 mt-0.5" />
+      <Card className="bg-[#F9FAFB] border-[#E5E7EB] rounded-2xl p-5 shadow-sm">
+        <div className="flex items-start gap-3.5 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+            <FileSpreadsheet className="w-5 h-5" />
+          </div>
           <div>
-            <h3 className="text-sm font-semibold text-[#111827]">Import Peserta via CSV/Excel</h3>
+            <h3 className="text-sm font-bold text-[#111827]">Import Peserta via CSV/Excel</h3>
             <p className="text-xs text-[#4B5563] mt-0.5 leading-relaxed">
-              Upload file CSV/Excel dengan kolom: <span className="font-bib text-brand">Nama Lengkap</span> dan <span className="font-bib text-brand">Nomor BIB</span>.
+              Upload file CSV/Excel dengan kolom: <span className="font-bib text-brand font-bold">Nama Lengkap</span> dan <span className="font-bib text-brand font-bold">Nomor BIB</span>.
             </p>
           </div>
         </div>
 
         {importSuccess && (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2.5 rounded-xl mb-3 animate-fade-in">
-            <Check className="w-4 h-4 shrink-0" />
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 text-xs font-semibold px-4 py-3 rounded-xl mb-3"
+          >
+            <Check className="w-4 h-4 shrink-0 text-green-600" />
             {importSuccess}
-          </div>
+          </motion.div>
         )}
 
-        <div className="flex gap-2">
-          <Button
-            id="import-csv-btn"
-            onClick={() => csvRef.current?.click()}
-            disabled={isImporting}
-            className="bg-brand hover:bg-[#C2410C] text-white text-sm font-semibold h-10 px-4 rounded-xl"
-          >
-            {isImporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-            {isImporting ? 'Mengimport...' : 'Pilih File CSV/Excel'}
-          </Button>
+        <div className="flex gap-2.5 flex-wrap">
+          <motion.div whileTap={{ scale: 0.97 }}>
+            <Button
+              id="import-csv-btn"
+              onClick={() => csvRef.current?.click()}
+              disabled={isImporting}
+              className="bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-11 px-5 rounded-xl shadow-md shadow-orange-600/20"
+            >
+              {isImporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+              {isImporting ? 'Mengimport...' : 'Pilih File CSV/Excel'}
+            </Button>
+          </motion.div>
           <Button
             variant="ghost"
             asChild
             id="download-template"
-            className="text-sm text-[#4B5563] hover:text-brand px-3 h-10"
+            className="text-xs font-semibold text-[#4B5563] hover:text-brand px-4 h-11"
           >
             <a href="#" onClick={(e) => e.preventDefault()}>
-              <Download className="w-3.5 h-3.5 mr-1.5" />
+              <Download className="w-4 h-4 mr-1.5" />
               Template CSV
             </a>
           </Button>
@@ -263,20 +280,20 @@ function ParticipantsTab() {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-[#111827]">Daftar Peserta ({participants.length})</h3>
+          <h3 className="text-sm font-bold text-[#111827]">Daftar Peserta ({participants.length})</h3>
         </div>
 
-        <div className="sm:hidden space-y-2">
+        <div className="sm:hidden space-y-2.5">
           {participants.map((p, i) => (
-            <Card key={p.id} className="bg-white border-[#E5E7EB] rounded-xl px-4 py-3 flex flex-row items-center gap-3 shadow-sm">
+            <Card key={p.id} className="bg-white border-[#E5E7EB] rounded-2xl px-4 py-3 flex flex-row items-center gap-3.5 shadow-sm">
               <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
                 <span className="text-xs font-bold text-brand">{i + 1}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#111827] truncate">{p.name}</p>
+                <p className="text-sm font-bold text-[#111827] truncate">{p.name}</p>
                 <p className="text-[11px] text-[#9CA3AF]">{p.createdAt}</p>
               </div>
-              <Badge variant="outline" className="font-bib text-sm font-bold text-brand border-brand/20 bg-brand/10 shrink-0">
+              <Badge variant="outline" className="font-bib text-sm font-bold text-brand border-brand/20 bg-brand/10 shrink-0 px-2.5 py-0.5">
                 #{p.bibNumber}
               </Badge>
             </Card>
@@ -287,17 +304,17 @@ function ParticipantsTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-                <th className="text-left px-4 py-3 text-xs font-bib text-[#4B5563] uppercase tracking-wider">Nama Lengkap</th>
-                <th className="text-left px-4 py-3 text-xs font-bib text-[#4B5563] uppercase tracking-wider">Nomor BIB</th>
-                <th className="text-left px-4 py-3 text-xs font-bib text-[#4B5563] uppercase tracking-wider">Terdaftar</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Nama Lengkap</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Nomor BIB</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Terdaftar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F3F4F6]">
               {participants.map((p) => (
                 <tr key={p.id} className="hover:bg-[#F9FAFB] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[#111827]">{p.name}</td>
-                  <td className="px-4 py-3 font-bib text-brand font-bold">#{p.bibNumber}</td>
-                  <td className="px-4 py-3 text-[#4B5563] text-xs">{p.createdAt}</td>
+                  <td className="px-5 py-3.5 font-bold text-[#111827]">{p.name}</td>
+                  <td className="px-5 py-3.5 font-bib text-brand font-bold text-sm">#{p.bibNumber}</td>
+                  <td className="px-5 py-3.5 text-[#4B5563] text-xs">{p.createdAt}</td>
                 </tr>
               ))}
             </tbody>
@@ -328,16 +345,20 @@ function EventSettingsTab() {
 
   return (
     <div className="max-w-lg space-y-5">
-      <form id="event-settings-form" onSubmit={handleSave} className="space-y-4">
+      <form id="event-settings-form" onSubmit={handleSave} className="space-y-4.5">
         {saved && (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl animate-fade-in">
-            <Check className="w-4 h-4" />
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 text-xs font-semibold px-4 py-3 rounded-xl"
+          >
+            <Check className="w-4 h-4 text-green-600" />
             Pengaturan event berhasil disimpan.
-          </div>
+          </motion.div>
         )}
 
-        <div className="space-y-2">
-          <label htmlFor="event-title" className="block text-xs font-bib uppercase tracking-widest text-[#4B5563]">
+        <div className="space-y-1.5">
+          <label htmlFor="event-title" className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
             Nama Event
           </label>
           <Input
@@ -349,8 +370,8 @@ function EventSettingsTab() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="event-date" className="block text-xs font-bib uppercase tracking-widest text-[#4B5563]">
+        <div className="space-y-1.5">
+          <label htmlFor="event-date" className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
             Tanggal Event
           </label>
           <Input
@@ -362,13 +383,13 @@ function EventSettingsTab() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563]">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
             QR Code Pembayaran QRIS Statis
           </label>
-          <div className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-5 text-center hover:border-brand/40 transition-colors cursor-pointer">
-            <QrCode className="w-8 h-8 text-[#D1D5DB] mx-auto mb-2" />
-            <p className="text-sm text-[#4B5563]">Upload gambar QR Code QRIS</p>
+          <div className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-6 text-center hover:border-brand/40 transition-colors cursor-pointer bg-[#F9FAFB]">
+            <QrCode className="w-9 h-9 text-[#D1D5DB] mx-auto mb-2" />
+            <p className="text-sm font-semibold text-[#111827]">Upload gambar QR Code QRIS</p>
             <p className="text-[11px] text-[#9CA3AF] mt-1">PNG atau JPG · Maks. 2MB</p>
             <input type="file" accept="image/*" className="sr-only" id="qr-upload-input" />
           </div>
@@ -385,21 +406,23 @@ function EventSettingsTab() {
           >
             <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
-          <span className="text-sm text-[#111827] font-medium">Event Aktif</span>
+          <span className="text-sm text-[#111827] font-bold">Event Aktif</span>
           {!form.isActive && (
             <span className="text-[11px] text-[#9CA3AF]">(event tidak dapat diakses peserta)</span>
           )}
         </div>
 
-        <Button
-          id="save-event-settings"
-          type="submit"
-          disabled={isSaving}
-          className="bg-brand hover:bg-[#C2410C] text-white text-sm font-bold h-11 px-5 rounded-xl"
-        >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-          {isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}
-        </Button>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <Button
+            id="save-event-settings"
+            type="submit"
+            disabled={isSaving}
+            className="bg-brand hover:bg-[#C2410C] text-white text-sm font-bold h-11 px-6 rounded-xl shadow-md shadow-orange-600/20"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+            {isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+          </Button>
+        </motion.div>
       </form>
     </div>
   );
@@ -421,37 +444,37 @@ export default function AdminDashboard() {
 
   return (
     <AppShell>
-      <div className="max-w-screen-lg mx-auto px-4 pb-10">
+      <div className="max-w-screen-lg mx-auto px-4 pb-12">
 
         <div className="py-6 md:py-8 border-b border-[#E5E7EB]">
           <Badge variant="outline" className="inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest text-red-600 bg-red-50 border-red-200 px-3 py-1 rounded-full mb-2">
-            <LayoutDashboard className="w-3 h-3" />
+            <LayoutDashboard className="w-3.5 h-3.5" />
             Super Admin
           </Badge>
-          <h1 className="text-2xl font-semibold text-[#111827] tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">Admin Dashboard</h1>
           <p className="text-sm text-[#4B5563] mt-1">
-            Selamat datang, <span className="font-medium text-[#111827]">{currentUser?.name}</span>
+            Selamat datang, <span className="font-semibold text-[#111827]">{currentUser?.name}</span>
           </p>
         </div>
 
         <div className="-mx-4 px-4 mt-5 mb-6 overflow-x-auto">
-          <div className="flex gap-1 bg-[#F3F4F6] p-1 rounded-xl w-max min-w-full">
+          <div className="flex gap-1.5 bg-[#F3F4F6] p-1.5 rounded-2xl w-max min-w-full">
             {tabs.map(({ id, label, icon: Icon }) => (
               <Button
                 key={id}
                 id={`admin-tab-${id}`}
                 variant="ghost"
                 onClick={() => setActiveTab(id)}
-                className={`relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-1 justify-center ${
+                className={`relative flex items-center gap-2 px-4 h-10 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-1 justify-center ${
                   activeTab === id
-                    ? 'bg-white text-[#111827] shadow-sm'
+                    ? 'bg-white text-[#111827] shadow-md'
                     : 'text-[#4B5563] hover:text-[#111827]'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                <span className="hidden xs:inline sm:inline">{label}</span>
+                <span>{label}</span>
                 {id === 'payments' && pendingCount > 0 && (
-                  <Badge className="bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full p-0 flex items-center justify-center border-0">
+                  <Badge className="bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full p-0 flex items-center justify-center border-0 ml-1">
                     {pendingCount}
                   </Badge>
                 )}
@@ -460,12 +483,20 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="animate-fade-in" key={activeTab}>
-          {activeTab === 'overview'      && <OverviewTab transactions={transactions} />}
-          {activeTab === 'payments'      && <PaymentsTab transactions={transactions} setTransactions={setTransactions} />}
-          {activeTab === 'participants'  && <ParticipantsTab />}
-          {activeTab === 'settings'      && <EventSettingsTab />}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+          >
+            {activeTab === 'overview'      && <OverviewTab transactions={transactions} />}
+            {activeTab === 'payments'      && <PaymentsTab transactions={transactions} setTransactions={setTransactions} />}
+            {activeTab === 'participants'  && <ParticipantsTab />}
+            {activeTab === 'settings'      && <EventSettingsTab />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </AppShell>
   );
