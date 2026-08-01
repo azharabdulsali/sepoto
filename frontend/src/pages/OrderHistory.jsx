@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShoppingBag, Download, Clock, CheckCircle2, XCircle,
-  Camera, ArrowLeft, RefreshCw, ChevronRight, Package,
-  ExternalLink, Loader2
+  Camera, ArrowLeft, ChevronRight, Package, Loader2
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
 
-// ─── Format Rupiah ────────────────────────────────────────────────────
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v ?? 0);
 
-// ─── Dummy order history peserta ──────────────────────────────────────
 const DUMMY_ORDERS = [
   {
     id:          1,
@@ -49,32 +50,27 @@ const DUMMY_ORDERS = [
   },
 ];
 
-// ─── Status config ────────────────────────────────────────────────────
 const STATUS_MAP = {
   pending:  {
     label: 'Menunggu Verifikasi',
     desc:  'Pembayaran Anda sedang diverifikasi oleh Admin. Mohon tunggu.',
     icon:  Clock,
     cls:   'text-amber-600 bg-amber-50 border-amber-200',
-    badge: 'bg-amber-50 text-amber-600 border-amber-200',
   },
   approved: {
     label: 'Disetujui — Siap Diunduh',
     desc:  'Pembayaran disetujui! Klik tombol unduh untuk mendapatkan foto asli beresolusi tinggi.',
     icon:  CheckCircle2,
     cls:   'text-green-600 bg-green-50 border-green-200',
-    badge: 'bg-green-50 text-green-600 border-green-200',
   },
   rejected: {
     label: 'Ditolak',
     desc:  'Pembayaran tidak dapat diverifikasi. Hubungi Admin untuk informasi lebih lanjut.',
     icon:  XCircle,
     cls:   'text-red-500 bg-red-50 border-red-200',
-    badge: 'bg-red-50 text-red-500 border-red-200',
   },
 };
 
-// ─── OrderCard ────────────────────────────────────────────────────────
 function OrderCard({ order }) {
   const [downloading, setDownloading] = useState(null);
   const [expanded, setExpanded]       = useState(false);
@@ -83,10 +79,8 @@ function OrderCard({ order }) {
 
   const handleDownload = async (photoId) => {
     setDownloading(photoId);
-    // TODO: GET /api/photos/:id/download → pre-signed URL dari Cloudflare R2
     await new Promise((r) => setTimeout(r, 1000));
     setDownloading(null);
-    // Simulasi buka URL unduh
     alert(`[Demo] Foto #${photoId} akan diunduh dari URL pre-signed R2`);
   };
 
@@ -98,9 +92,9 @@ function OrderCard({ order }) {
   };
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
+    <Card className="bg-white border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
       {/* Header Order */}
-      <div className={`px-4 pt-4 pb-3 border-b border-[#F3F4F6]`}>
+      <div className="px-4 pt-4 pb-3 border-b border-[#F3F4F6]">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -126,13 +120,10 @@ function OrderCard({ order }) {
 
       {/* Foto thumbnails */}
       <div className="px-4 py-3">
-        <div
-          className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[1000px]' : 'max-h-[120px]'}`}
-        >
+        <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-[1000px]' : 'max-h-[120px]'}`}>
           <div className="flex flex-col gap-2">
             {order.photos.map((photo) => (
               <div key={photo.id} className="flex items-center gap-3">
-                {/* Thumbnail */}
                 <div className="w-14 h-16 rounded-lg overflow-hidden bg-[#F3F4F6] shrink-0">
                   <img
                     src={photo.watermarkedUrl}
@@ -142,67 +133,65 @@ function OrderCard({ order }) {
                   />
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-[#111827]">Foto #{photo.id}</p>
                   {photo.bibTags && (
-                    <span className="font-bib text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded">
+                    <Badge variant="secondary" className="font-bib text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded">
                       BIB #{photo.bibTags}
-                    </span>
+                    </Badge>
                   )}
                   <p className="text-xs text-[#4B5563] mt-0.5">{formatRupiah(photo.price)}</p>
                 </div>
 
-                {/* Download per foto */}
                 {order.status === 'approved' && (
-                  <button
+                  <Button
                     id={`download-photo-${photo.id}`}
                     onClick={() => handleDownload(photo.id)}
                     disabled={downloading !== null}
-                    className="shrink-0 flex items-center gap-1 text-xs font-semibold text-brand hover:text-[#C2410C] disabled:opacity-50 transition-colors"
-                    aria-label={`Unduh foto #${photo.id}`}
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-xs font-semibold text-brand hover:text-[#C2410C] h-8 px-2"
                   >
                     {downloading === photo.id
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       : <Download className="w-3.5 h-3.5" />
                     }
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Expand/collapse jika foto > 2 */}
         {order.photos.length > 2 && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-2 text-xs text-[#4B5563] hover:text-brand transition-colors flex items-center gap-1"
+            className="mt-2 text-xs text-[#4B5563] hover:text-brand px-0 h-auto"
           >
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+            <ChevronRight className={`w-3.5 h-3.5 mr-1 transition-transform ${expanded ? 'rotate-90' : ''}`} />
             {expanded ? 'Sembunyikan' : `Lihat ${order.photos.length - 2} foto lainnya`}
-          </button>
+          </Button>
         )}
       </div>
 
-      {/* Download all button — hanya jika approved */}
       {order.status === 'approved' && (
         <div className="px-4 pb-4 pt-2 border-t border-[#F3F4F6]">
-          <button
+          <Button
             id={`download-all-${order.id}`}
             onClick={handleDownloadAll}
             disabled={downloading !== null}
-            className="w-full flex items-center justify-center gap-2 bg-[#191C21] hover:bg-[#22262E] disabled:opacity-60 text-white text-sm font-semibold py-3 rounded-xl transition-colors active:scale-[0.98]"
+            className="w-full h-11 bg-[#191C21] hover:bg-[#22262E] text-white text-sm font-semibold rounded-xl"
           >
             {downloading === 'all'
-              ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyiapkan unduhan...</span></>
-              : <><Download className="w-4 h-4" /><span>Unduh Semua Foto ({order.photos.length} foto)</span></>
+              ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /><span>Menyiapkan unduhan...</span></>
+              : <><Download className="w-4 h-4 mr-2" /><span>Unduh Semua Foto ({order.photos.length} foto)</span></>
             }
-          </button>
+          </Button>
         </div>
       )}
 
-      {/* Rejected: info kontak */}
       {order.status === 'rejected' && (
         <div className="px-4 pb-4 pt-2 border-t border-[#F3F4F6]">
           <p className="text-[11px] text-[#9CA3AF] text-center">
@@ -210,11 +199,10 @@ function OrderCard({ order }) {
           </p>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
-// ─── OrderHistory Page ────────────────────────────────────────────────
 export default function OrderHistory() {
   const { currentUser } = useAuth();
 
@@ -227,14 +215,12 @@ export default function OrderHistory() {
 
         {/* Header */}
         <div className="py-6">
-          <Link
-            to="/gallery"
-            id="orders-back-to-gallery"
-            className="flex items-center gap-1.5 text-sm text-[#4B5563] hover:text-[#111827] transition-colors mb-3"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Kembali ke Galeri
-          </Link>
+          <Button variant="ghost" size="sm" asChild className="mb-3 px-0 text-xs text-[#4B5563] hover:text-[#111827] h-auto">
+            <Link to="/gallery" id="orders-back-to-gallery">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Kembali ke Galeri
+            </Link>
+          </Button>
 
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -245,7 +231,7 @@ export default function OrderHistory() {
                 <p className="text-sm text-[#4B5563] mt-1">
                   {currentUser.name}
                   {currentUser.bibNumber && (
-                    <> · <span className="font-bib text-brand">BIB #{currentUser.bibNumber}</span></>
+                    <> · <Badge variant="outline" className="font-bib text-brand border-brand/20 bg-brand/10">BIB #{currentUser.bibNumber}</Badge></>
                   )}
                 </p>
               )}
@@ -264,10 +250,10 @@ export default function OrderHistory() {
             { label: 'Approved', count: approved, cls: 'bg-green-50 border-green-200 text-green-600' },
             { label: 'Total',    count: DUMMY_ORDERS.length, cls: 'bg-brand/5 border-brand/20 text-brand' },
           ].map(({ label, count, cls }) => (
-            <div key={label} className={`rounded-xl border p-3 text-center ${cls}`}>
+            <Card key={label} className={`p-3 text-center rounded-xl border ${cls}`}>
               <p className="text-xl font-bold">{count}</p>
               <p className="text-[11px] font-semibold">{label}</p>
-            </div>
+            </Card>
           ))}
         </div>
 
@@ -286,9 +272,9 @@ export default function OrderHistory() {
               <ShoppingBag className="w-12 h-12 text-[#D1D5DB] mx-auto mb-3" />
               <p className="font-semibold text-[#111827]">Belum ada pesanan</p>
               <p className="text-sm text-[#4B5563] mt-1 mb-4">Pilih foto di galeri dan lakukan checkout</p>
-              <Link to="/gallery" className="text-sm font-semibold text-brand hover:underline">
-                Ke Galeri →
-              </Link>
+              <Button asChild variant="link" className="text-brand font-semibold">
+                <Link to="/gallery">Ke Galeri →</Link>
+              </Button>
             </div>
           ) : (
             DUMMY_ORDERS.map((order) => <OrderCard key={order.id} order={order} />)

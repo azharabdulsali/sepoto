@@ -23,11 +23,11 @@
   --background:           oklch(1 0 0);               /* #FFFFFF */
   --foreground:           oklch(0.13 0.02 264);        /* #111827 */
 
-  --card:                 oklch(0.145 0.01 250);       /* #191C21 surface gelap */
-  --card-foreground:      oklch(0.985 0 0);            /* putih di atas surface */
+  --card:                 oklch(1 0 0);
+  --card-foreground:      oklch(0.13 0.02 264);
 
-  --popover:              oklch(0.145 0.01 250);
-  --popover-foreground:   oklch(0.985 0 0);
+  --popover:              oklch(1 0 0);
+  --popover-foreground:   oklch(0.13 0.02 264);
 
   /* Primary → Oranye Auralis */
   --primary:              oklch(0.595 0.213 38.0);     /* #EA580C */
@@ -116,6 +116,26 @@
     @apply border-border outline-ring/50 box-border;
   }
 
+  /* Custom Modern Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(234, 88, 12, 0.7);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+  }
+
   html {
     @apply font-sans;
     font-size: 16px;
@@ -129,7 +149,6 @@
     @apply bg-background text-foreground m-0;
   }
 
-  /* Hapus fixed width Nova template — ganti ke full-width mobile-first */
   #root {
     width: 100%;
     min-height: 100svh;

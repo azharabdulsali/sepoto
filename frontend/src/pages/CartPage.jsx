@@ -2,17 +2,18 @@ import React, { useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ShoppingCart, Trash2, ArrowLeft, MessageCircle,
-  QrCode, CheckCircle2, Package, Camera, ChevronRight,
-  AlertCircle
+  QrCode, Package, Camera, ChevronRight, AlertCircle
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import AppShell from '../components/AppShell';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
-// ─── Konfigurasi WhatsApp (hardcode sementara — ganti ke env var nanti) ──
-const WA_ADMIN_NUMBER = '6281234567890'; // Ganti dengan nomor WA Super Admin
+const WA_ADMIN_NUMBER = '6281234567890';
 
-// ─── Utility: Format Rupiah ───────────────────────────────────────────────
 const formatRupiah = (amount) =>
   new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -20,8 +21,6 @@ const formatRupiah = (amount) =>
     minimumFractionDigits: 0,
   }).format(amount);
 
-// ─── Utility: Generate Nomor Order ───────────────────────────────────────
-// Format: SEPOTO-YYYYMMDD-XXXX (4 digit random)
 const generateOrderNumber = () => {
   const now   = new Date();
   const year  = now.getFullYear();
@@ -31,7 +30,6 @@ const generateOrderNumber = () => {
   return `SEPOTO-${year}${month}${day}-${rand}`;
 };
 
-// ─── Utility: Build WhatsApp message template ─────────────────────────────
 const buildWhatsAppUrl = ({ orderNumber, userName, bibNumber, items, total }) => {
   const photoList = items
     .map((item, idx) => `  ${idx + 1}. Foto ID #${item.id} (BIB: ${item.bibTags ?? 'Umum'}) — ${formatRupiah(item.price)}`)
@@ -57,10 +55,8 @@ const buildWhatsAppUrl = ({ orderNumber, userName, bibNumber, items, total }) =>
   return `https://wa.me/${WA_ADMIN_NUMBER}?text=${encodeURIComponent(message)}`;
 };
 
-// ─── CartItem Component ───────────────────────────────────────────────────
 const CartItem = ({ photo, onRemove }) => (
-  <div className="flex items-center gap-3 py-3.5 border-b border-[#E5E7EB] last:border-0 group">
-    {/* Thumbnail */}
+  <div className="flex items-center gap-3 py-3 border-b border-[#E5E7EB] last:border-0 group">
     <div className="w-16 h-20 rounded-lg overflow-hidden bg-[#F3F4F6] shrink-0">
       <img
         src={photo.watermarkedUrl}
@@ -70,53 +66,48 @@ const CartItem = ({ photo, onRemove }) => (
       />
     </div>
 
-    {/* Info */}
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-1.5 mb-1">
         <Camera className="w-3 h-3 text-[#4B5563] shrink-0" />
         <span className="text-[11px] text-[#4B5563] truncate">{photo.photographerName ?? 'Fotografer'}</span>
       </div>
       {photo.bibTags && (
-        <span className="inline-flex items-center font-bib text-[10px] text-brand bg-brand/10 px-2 py-0.5 rounded-full mb-1">
+        <Badge variant="secondary" className="font-bib text-[10px] text-brand bg-brand/10 mb-1">
           BIB #{photo.bibTags}
-        </span>
+        </Badge>
       )}
       <p className="text-sm font-semibold text-brand">{formatRupiah(photo.price)}</p>
     </div>
 
-    {/* Hapus */}
-    <button
+    <Button
       id={`cart-remove-${photo.id}`}
       onClick={() => onRemove(photo.id)}
-      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-      aria-label={`Hapus foto #${photo.id} dari keranjang`}
+      variant="ghost"
+      size="icon"
+      className="shrink-0 w-8 h-8 rounded-lg text-[#9CA3AF] hover:text-red-500 hover:bg-red-50"
+      aria-label={`Hapus foto #${photo.id}`}
     >
       <Trash2 className="w-3.5 h-3.5" />
-    </button>
+    </Button>
   </div>
 );
 
-// ─── QR Code Placeholder ─────────────────────────────────────────────────
 const QrPlaceholder = () => (
   <div className="flex flex-col items-center justify-center w-44 h-44 bg-[#F9FAFB] border-2 border-dashed border-[#E5E7EB] rounded-2xl mx-auto">
     <QrCode className="w-16 h-16 text-[#D1D5DB] mb-2" />
     <p className="text-[10px] font-bib text-[#9CA3AF] uppercase tracking-widest text-center px-2">
       QR Code<br />Pembayaran
     </p>
-    {/* TODO: Ganti dengan <img src={qrCodeUrl} /> setelah backend siap */}
   </div>
 );
 
-// ─── CartPage ─────────────────────────────────────────────────────────────
 export default function CartPage() {
   const { items, removeItem, clearCart, totalPrice, formattedTotal, itemCount } = useCart();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Generate nomor order sekali saja per render (stabil dengan useMemo)
   const orderNumber = useMemo(() => generateOrderNumber(), []);
 
-  // URL WhatsApp dengan template pesan terisi otomatis
   const whatsappUrl = useMemo(
     () =>
       buildWhatsAppUrl({
@@ -129,7 +120,6 @@ export default function CartPage() {
     [orderNumber, currentUser, items, totalPrice]
   );
 
-  // ─── Empty State ───────────────────────────────────────────────────
   if (itemCount === 0) {
     return (
       <AppShell>
@@ -141,14 +131,12 @@ export default function CartPage() {
           <p className="text-sm text-[#4B5563] mb-6 max-w-xs">
             Belum ada foto yang dipilih. Kembali ke galeri dan tambahkan foto yang ingin dibeli.
           </p>
-          <Link
-            to="/gallery"
-            id="cart-back-to-gallery"
-            className="inline-flex items-center gap-2 bg-brand hover:bg-[#C2410C] text-white font-semibold text-sm px-5 py-3 rounded-xl transition-all shadow-md shadow-orange-600/20"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Galeri</span>
-          </Link>
+          <Button asChild className="bg-brand hover:bg-[#C2410C] text-white font-semibold rounded-xl h-11 px-5">
+            <Link to="/gallery" id="cart-back-to-gallery">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              <span>Kembali ke Galeri</span>
+            </Link>
+          </Button>
         </div>
       </AppShell>
     );
@@ -161,34 +149,36 @@ export default function CartPage() {
         {/* ─── Header ─────────────────────────────────────── */}
         <div className="py-6 flex items-center justify-between">
           <div>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => navigate(-1)}
               id="cart-back-btn"
-              className="flex items-center gap-1.5 text-sm text-[#4B5563] hover:text-[#111827] transition-colors mb-2"
+              className="text-xs text-[#4B5563] hover:text-[#111827] px-0 h-auto mb-2"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" />
               <span>Kembali</span>
-            </button>
+            </Button>
             <h1 className="text-2xl font-semibold text-[#111827] tracking-tight">
               Keranjang Foto
             </h1>
           </div>
-          <span className="font-bib text-[11px] bg-[#F3F4F6] text-[#4B5563] px-3 py-1.5 rounded-full">
+          <Badge variant="secondary" className="font-bib text-[11px] bg-[#F3F4F6] text-[#4B5563] px-3 py-1">
             {itemCount} foto
-          </span>
+          </Badge>
         </div>
 
         {/* ─── Nomor Order ────────────────────────────────── */}
-        <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+        <Card className="bg-[#F9FAFB] border-[#E5E7EB] rounded-xl px-4 py-3 mb-4 flex-row items-center gap-3">
           <Package className="w-4 h-4 text-[#4B5563] shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-[#9CA3AF] font-bib uppercase tracking-widest">Nomor Order</p>
             <p className="font-bib text-sm text-[#111827] font-semibold tracking-wide">{orderNumber}</p>
           </div>
-        </div>
+        </Card>
 
         {/* ─── Daftar Foto ────────────────────────────────── */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-4 mb-4 shadow-sm">
+        <Card className="bg-white border-[#E5E7EB] rounded-2xl px-4 mb-4 shadow-sm">
           <div className="flex items-center justify-between py-3 border-b border-[#F3F4F6]">
             <h2 className="text-sm font-semibold text-[#111827]">Foto yang Dipilih</h2>
             <button
@@ -203,11 +193,11 @@ export default function CartPage() {
           {items.map((photo) => (
             <CartItem key={photo.id} photo={photo} onRemove={removeItem} />
           ))}
-        </div>
+        </Card>
 
         {/* ─── Ringkasan Harga ─────────────────────────────── */}
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-4 py-4 mb-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-[#111827] mb-3">Ringkasan Pembayaran</h2>
+        <Card className="bg-white border-[#E5E7EB] rounded-2xl p-4 mb-5 shadow-sm space-y-3">
+          <h2 className="text-sm font-semibold text-[#111827]">Ringkasan Pembayaran</h2>
           <div className="space-y-2">
             {items.map((photo) => (
               <div key={photo.id} className="flex items-center justify-between text-sm">
@@ -219,23 +209,22 @@ export default function CartPage() {
               </div>
             ))}
           </div>
-          <div className="border-t border-[#E5E7EB] mt-3 pt-3 flex items-center justify-between">
+          <Separator />
+          <div className="flex items-center justify-between pt-1">
             <span className="font-semibold text-[#111827]">Total</span>
             <span className="font-bib text-lg font-bold text-brand">{formattedTotal}</span>
           </div>
-        </div>
+        </Card>
 
         {/* ─── Instruksi Pembayaran ────────────────────────── */}
         <div className="bg-[#191C21] rounded-2xl overflow-hidden mb-4">
-          {/* Header */}
           <div className="px-4 pt-5 pb-4 border-b border-white/5">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest text-brand bg-brand/10 border border-brand/20 px-3 py-1 rounded-full mb-3">
+            <Badge className="font-bib uppercase tracking-widest text-brand bg-brand/10 border-brand/20 px-3 py-1 mb-3">
               Langkah Pembayaran
-            </span>
+            </Badge>
             <h2 className="text-white text-base font-semibold">Cara Melakukan Pembayaran</h2>
           </div>
 
-          {/* Steps */}
           <div className="px-4 py-4 space-y-4">
             {[
               { step: '1', title: 'Scan QR Code di bawah', desc: 'Gunakan aplikasi m-banking atau dompet digital (GoPay, OVO, Dana, dll.) untuk scan QRIS.' },
@@ -254,7 +243,6 @@ export default function CartPage() {
             ))}
           </div>
 
-          {/* QR Code area */}
           <div className="px-4 pb-5">
             <div className="bg-white rounded-xl p-4">
               <p className="text-[10px] font-bib text-[#4B5563] uppercase tracking-widest text-center mb-3">
@@ -279,24 +267,23 @@ export default function CartPage() {
 
         {/* ─── CTA: Tombol WhatsApp ────────────────────────── */}
         <div className="space-y-3">
-          <a
+          <Button
+            asChild
             id="cart-whatsapp-confirm"
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full tap-target flex items-center justify-center gap-2.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-sm py-4 px-5 rounded-2xl transition-all shadow-lg shadow-green-500/25 active:scale-[0.98]"
+            className="w-full h-14 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-sm rounded-2xl shadow-lg shadow-green-500/25 active:scale-[0.98] flex items-center justify-center gap-2.5"
           >
-            <MessageCircle className="w-5 h-5 fill-white/20" />
-            <span>Konfirmasi Pembayaran via WhatsApp</span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </a>
+            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="w-5 h-5 fill-white/20" />
+              <span>Konfirmasi Pembayaran via WhatsApp</span>
+              <ChevronRight className="w-4 h-4 opacity-70" />
+            </a>
+          </Button>
 
           <p className="text-[11px] text-[#9CA3AF] text-center">
             Tombol ini akan membuka WhatsApp dengan pesan konfirmasi yang sudah terisi otomatis
           </p>
         </div>
 
-        {/* Bottom spacer untuk mobile */}
         <div className="h-4" />
       </div>
     </AppShell>
