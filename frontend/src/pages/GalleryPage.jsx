@@ -12,18 +12,18 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 const DUMMY_PHOTOS = [
-  { id: 1,  watermarkedUrl: 'https://picsum.photos/seed/sepoto1/400/500',  price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
-  { id: 2,  watermarkedUrl: 'https://picsum.photos/seed/sepoto2/400/500',  price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
-  { id: 3,  watermarkedUrl: 'https://picsum.photos/seed/sepoto3/400/500',  price: 0,     bibTags: '102',  photographerName: 'Reza Foto' },
-  { id: 4,  watermarkedUrl: 'https://picsum.photos/seed/sepoto4/400/500',  price: 25000, bibTags: '101',  photographerName: 'Dian Lens' },
-  { id: 5,  watermarkedUrl: 'https://picsum.photos/seed/sepoto5/400/500',  price: 20000, bibTags: '',     photographerName: 'Reza Foto' },
-  { id: 6,  watermarkedUrl: 'https://picsum.photos/seed/sepoto6/400/500',  price: 30000, bibTags: '205',  photographerName: 'Dian Lens' },
-  { id: 7,  watermarkedUrl: 'https://picsum.photos/seed/sepoto7/400/500',  price: 0,     bibTags: null,   photographerName: 'Reza Foto' },
-  { id: 8,  watermarkedUrl: 'https://picsum.photos/seed/sepoto8/400/500',  price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
-  { id: 9,  watermarkedUrl: 'https://picsum.photos/seed/sepoto9/400/500',  price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
-  { id: 10, watermarkedUrl: 'https://picsum.photos/seed/sepoto10/400/500', price: 15000, bibTags: '312',  photographerName: 'Reza Foto' },
-  { id: 11, watermarkedUrl: 'https://picsum.photos/seed/sepoto11/400/500', price: 25000, bibTags: null,   photographerName: 'Dian Lens' },
-  { id: 12, watermarkedUrl: 'https://picsum.photos/seed/sepoto12/400/500', price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
+  { id: 1,  watermarkedUrl: 'https://picsum.photos/seed/sepoto1/600/400',  orientation: 'landscape', price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
+  { id: 2,  watermarkedUrl: 'https://picsum.photos/seed/sepoto2/400/500',  orientation: 'portrait',  price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
+  { id: 3,  watermarkedUrl: 'https://picsum.photos/seed/sepoto3/600/400',  orientation: 'landscape', price: 0,     bibTags: '102',  photographerName: 'Reza Foto' },
+  { id: 4,  watermarkedUrl: 'https://picsum.photos/seed/sepoto4/400/500',  orientation: 'portrait',  price: 25000, bibTags: '101',  photographerName: 'Dian Lens' },
+  { id: 5,  watermarkedUrl: 'https://picsum.photos/seed/sepoto5/600/400',  orientation: 'landscape', price: 20000, bibTags: '',     photographerName: 'Reza Foto' },
+  { id: 6,  watermarkedUrl: 'https://picsum.photos/seed/sepoto6/400/500',  orientation: 'portrait',  price: 30000, bibTags: '205',  photographerName: 'Dian Lens' },
+  { id: 7,  watermarkedUrl: 'https://picsum.photos/seed/sepoto7/600/400',  orientation: 'landscape', price: 0,     bibTags: null,   photographerName: 'Reza Foto' },
+  { id: 8,  watermarkedUrl: 'https://picsum.photos/seed/sepoto8/400/500',  orientation: 'portrait',  price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
+  { id: 9,  watermarkedUrl: 'https://picsum.photos/seed/sepoto9/600/400',  orientation: 'landscape', price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
+  { id: 10, watermarkedUrl: 'https://picsum.photos/seed/sepoto10/400/500', orientation: 'portrait',  price: 15000, bibTags: '312',  photographerName: 'Reza Foto' },
+  { id: 11, watermarkedUrl: 'https://picsum.photos/seed/sepoto11/600/400', orientation: 'landscape', price: 25000, bibTags: null,   photographerName: 'Dian Lens' },
+  { id: 12, watermarkedUrl: 'https://picsum.photos/seed/sepoto12/400/500', orientation: 'portrait',  price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
 ];
 
 const formatRupiah = (amount) =>
@@ -180,12 +180,17 @@ function PhotoPreviewModal({ photo, onClose }) {
       >
         {/* Header Modal */}
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <Camera className="w-4 h-4 text-brand" />
             <span className="text-sm font-bold truncate max-w-[180px] sm:max-w-xs">{photo.photographerName}</span>
             {photo.bibTags && (
               <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
                 BIB #{photo.bibTags}
+              </Badge>
+            )}
+            {photo.orientation && (
+              <Badge variant="outline" className="font-bib text-[9px] bg-white/10 text-white border-white/20 uppercase px-1.5 py-0.5">
+                {photo.orientation}
               </Badge>
             )}
           </div>
