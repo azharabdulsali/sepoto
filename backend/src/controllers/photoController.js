@@ -202,10 +202,36 @@ const deletePhoto = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/photos/file/*
+ * Proxy gambar dari Cloudflare R2 via Backend (menghindari blokir Telkomsel / Internet Baik DNS pada *.r2.dev)
+ */
+const proxyR2Image = async (req, res) => {
+  try {
+    const key = req.params.folder && req.params.filename ? `${req.params.folder}/${req.params.filename}` : req.params[0];
+    const { r2Client } = require('../services/r2Service');
+    const { GetObjectCommand } = require('@aws-sdk/client-s3');
+
+    const command = new GetObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME || 'sepoto-photos',
+      Key: key,
+    });
+
+    const response = await r2Client.send(command);
+    res.setHeader('Content-Type', response.ContentType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    response.Body.pipe(res);
+  } catch (error) {
+    console.error('Proxy R2 Image Error:', error);
+    res.status(404).send('Gambar tidak ditemukan.');
+  }
+};
+
 module.exports = {
   getPhotos,
   uploadPhotos,
   getMyPhotos,
   updatePhotoPrice,
   deletePhoto,
+  proxyR2Image,
 };

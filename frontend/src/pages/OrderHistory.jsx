@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -25,7 +25,7 @@ import { api } from '../services/api';
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v ?? 0);
 
-const DUMMY_ORDERS = [
+const _DUMMY_ORDERS = [
   {
     id:          1,
     orderNumber: 'SEPOTO-20260801-4821',
@@ -104,6 +104,19 @@ function OrderCard({ order }) {
     } catch (err) {
       console.error('Download error:', err);
       alert('Terjadi kesalahan saat meminta tautan unduh.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    setDownloading('all');
+    try {
+      for (const photo of order.photos) {
+        await handleDownload(photo.id);
+      }
+    } catch (err) {
+      console.error('Download all error:', err);
     } finally {
       setDownloading(null);
     }
@@ -265,11 +278,9 @@ export default function OrderHistory() {
 
   useEffect(() => {
     async function loadOrders() {
-      setLoading(true);
       try {
         const res = await api.getMyTransactions();
-        if (res.success && res.transactions && res.transactions.length > 0) {
-          // Normalisasi photo items untuk OrderCard
+        if (res.success && Array.isArray(res.transactions)) {
           const formatted = res.transactions.map((tx) => ({
             id: tx.id,
             orderNumber: tx.orderNumber,
@@ -278,20 +289,16 @@ export default function OrderHistory() {
             createdAt: tx.createdAt,
             photos: (tx.items || []).map((item) => ({
               id: item.photoId || item.id,
+              photoId: item.photoId || item.id,
               watermarkedUrl: item.watermarkedUrl,
               bibTags: item.bibTags,
               price: item.priceAtPurchase,
             })),
           }));
           setOrders(formatted);
-        } else {
-          setOrders(DUMMY_ORDERS);
         }
       } catch (err) {
         console.error('Fetch my transactions error:', err);
-        setOrders(DUMMY_ORDERS);
-      } finally {
-        setLoading(false);
       }
     }
     loadOrders();

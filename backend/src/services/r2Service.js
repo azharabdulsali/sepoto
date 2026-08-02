@@ -33,10 +33,13 @@ async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
 
     await r2Client.send(command);
 
-    if (PUBLIC_DOMAIN) {
+    // Jika domain publik menggunakan r2.dev yang sering diblokir Telkomsel/Internet Baik,
+    // gunakan proxy Express local (/api/photos/file/${key}) agar gambar selalu tampil sempurna di browser.
+    if (PUBLIC_DOMAIN && !PUBLIC_DOMAIN.includes('r2.dev')) {
       return `${PUBLIC_DOMAIN.replace(/\/$/, '')}/${key}`;
     }
-    return `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${BUCKET_NAME}/${key}`;
+    const port = process.env.PORT || 5000;
+    return `http://localhost:${port}/api/photos/file/${key}`;
   } catch (error) {
     console.error('❌ Cloudflare R2 Upload Error:', error);
     throw error;

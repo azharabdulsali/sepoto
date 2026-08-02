@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CloudUpload, Image as ImageIcon, Check, Trash2, X,
@@ -565,66 +565,81 @@ function ManageTab() {
       </div>
 
       {/* Grid Foto */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {filtered.map((photo) => {
-          const isSelected = selected.has(photo.id);
-          return (
-            <motion.div key={photo.id} whileHover={{ y: -2 }}>
-              <Card
-                className={`relative rounded-2xl overflow-hidden border-2 transition-all p-0 shadow-sm ${
-                  isSelected ? 'border-brand shadow-md shadow-orange-500/20' : 'border-transparent'
-                }`}
-              >
-                <button
-                  id={`select-photo-${photo.id}`}
-                  onClick={() => toggleSelect(photo.id)}
-                  className="absolute top-2.5 left-2.5 z-10 w-5 h-5 rounded-md border-2 border-white/80 bg-black/30 flex items-center justify-center transition-colors shadow-md"
-                  style={{ background: isSelected ? '#EA580C' : 'rgba(0,0,0,0.3)', borderColor: isSelected ? '#EA580C' : 'rgba(255,255,255,0.8)' }}
-                  aria-label={`Pilih foto ${photo.id}`}
+      {filtered.length === 0 ? (
+        <Card className="p-12 text-center bg-white border-[#E5E7EB] rounded-2xl">
+          <ImageIcon className="w-12 h-12 text-[#D1D5DB] mx-auto mb-3" />
+          <p className="font-bold text-[#111827]">Belum Ada Foto Unggahan</p>
+          <p className="text-xs text-[#4B5563] mt-1">
+            Gunakan tab <strong>Upload Foto</strong> untuk menambahkan foto hasil jepretan Anda.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {filtered.map((photo) => {
+            const isSelected = selected.has(photo.id);
+            const imgUrl = photo.watermarkedUrl || photo.watermarked_url || '';
+            const bibVal = photo.bibTags ?? photo.bib_tags ?? '';
+            const priceVal = photo.price ?? 0;
+            const dateStr = photo.uploadedAt || (photo.createdAt ? new Date(photo.createdAt).toLocaleString('id-ID') : '');
+
+            return (
+              <motion.div key={photo.id} whileHover={{ y: -2 }}>
+                <Card
+                  className={`relative rounded-2xl overflow-hidden border-2 transition-all p-0 shadow-sm ${
+                    isSelected ? 'border-brand shadow-md shadow-orange-500/20' : 'border-transparent'
+                  }`}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                </button>
+                  <button
+                    id={`select-photo-${photo.id}`}
+                    onClick={() => toggleSelect(photo.id)}
+                    className="absolute top-2.5 left-2.5 z-10 w-5 h-5 rounded-md border-2 border-white/80 bg-black/30 flex items-center justify-center transition-colors shadow-md"
+                    style={{ background: isSelected ? '#EA580C' : 'rgba(0,0,0,0.3)', borderColor: isSelected ? '#EA580C' : 'rgba(255,255,255,0.8)' }}
+                    aria-label={`Pilih foto ${photo.id}`}
+                  >
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                  </button>
 
-                <div className="aspect-[4/5] overflow-hidden bg-[#F3F4F6]">
-                  <img
-                    src={photo.watermarkedUrl}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-
-                <div className="bg-white px-2.5 py-2.5 space-y-1.5">
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#9CA3AF] font-bold">Rp</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={photo.price}
-                      onChange={(e) => updatePrice(photo.id, e.target.value)}
-                      placeholder="Harga"
-                      className="pl-7 h-8 text-xs font-bold border-[#E5E7EB]"
+                  <div className="aspect-[4/5] overflow-hidden bg-[#F3F4F6]">
+                    <img
+                      src={imgUrl}
+                      alt={`Foto ${photo.id}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   </div>
 
-                  <div className="relative">
-                    <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
-                    <Input
-                      type="text"
-                      value={photo.bibTags ?? ''}
-                      onChange={(e) => updateBib(photo.id, e.target.value)}
-                      placeholder="Tag BIB"
-                      className="pl-8 h-8 text-xs font-bib border-[#E5E7EB]"
-                    />
-                  </div>
+                  <div className="bg-white px-2.5 py-2.5 space-y-1.5">
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#9CA3AF] font-bold">Rp</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={priceVal}
+                        onChange={(e) => updatePrice(photo.id, e.target.value)}
+                        placeholder="Harga"
+                        className="pl-7 h-8 text-xs font-bold border-[#E5E7EB]"
+                      />
+                    </div>
 
-                  <p className="text-[10px] text-[#9CA3AF] text-right font-medium">{photo.uploadedAt}</p>
-                </div>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
+                    <div className="relative">
+                      <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+                      <Input
+                        type="text"
+                        value={bibVal}
+                        onChange={(e) => updateBib(photo.id, e.target.value)}
+                        placeholder="Tag BIB"
+                        className="pl-8 h-8 text-xs font-bib border-[#E5E7EB]"
+                      />
+                    </div>
+
+                    {dateStr && <p className="text-[10px] text-[#9CA3AF] text-right font-medium">{dateStr}</p>}
+                  </div>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

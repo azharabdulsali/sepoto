@@ -1,6 +1,4 @@
 import * as React from "react"
-import { mergeProps } from "@base-ui/react/merge-props"
-import { useRender } from "@base-ui/react/use-render"
 import { cva } from "class-variance-authority";
 
 import { cn } from "@/lib/utils"
@@ -151,21 +149,16 @@ function AttachmentAction({
 
 function AttachmentTrigger({
   className,
-  render,
-  type,
+  type = "button",
   ...props
 }) {
-  return useRender({
-    defaultTagName: "button",
-    props: mergeProps({
-      type: render ? type : (type ?? "button"),
-      className: cn("absolute inset-0 z-10 outline-none", className),
-    }, props),
-    render,
-    state: {
-      slot: "attachment-trigger",
-    },
-  });
+  return (
+    <button
+      type={type}
+      className={cn("absolute inset-0 z-10 outline-none", className)}
+      {...props}
+    />
+  );
 }
 
 function AttachmentGroup({

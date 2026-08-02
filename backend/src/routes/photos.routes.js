@@ -4,6 +4,9 @@ const photoController = require('../controllers/photoController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const { bulkUploadPhotos } = require('../middleware/uploadMiddleware');
 
+// GET /api/photos/file/:folder/:filename (Publik: Proxy R2 image via Express bypass Telkomsel/ISP DNS block)
+router.get('/file/:folder/:filename', photoController.proxyR2Image);
+
 // GET /api/photos (Publik: Ambil semua foto galeri yang dijual)
 router.get('/', photoController.getPhotos);
 

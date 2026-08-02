@@ -1,15 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, CheckCircle2, XCircle, Clock,
   Upload, Users, Settings, Search,
-  FileSpreadsheet, Download, Check, X, Loader2, QrCode
+  FileSpreadsheet, Download, Check, X, Loader2, QrCode,
+  UserPlus, Trash2, User, Camera, Lock, Hash, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +45,7 @@ const DUMMY_TRANSACTIONS = [
   { id: 6, orderNumber: 'SEPOTO-20260801-9901', userName: 'Lestari Wulan',   bibNumber: '456', items: 4, total: 100000, status: 'pending',  createdAt: '2026-08-01 11:02' },
 ];
 
-const DUMMY_PARTICIPANTS = [
+const _DUMMY_PARTICIPANTS = [
   { id: 1, name: 'Budi Santoso',  bibNumber: '101', createdAt: '2026-08-01' },
   { id: 2, name: 'Sari Dewi',     bibNumber: '205', createdAt: '2026-08-01' },
   { id: 3, name: 'Riko Pratama',  bibNumber: '043', createdAt: '2026-08-01' },
@@ -76,13 +85,13 @@ function OverviewTab({ transactions }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         {stats.map(({ label, value, sub, cls, textCls }) => (
           <motion.div key={label} whileHover={{ y: -3, transition: { duration: 0.2 } }}>
-            <Card className={`rounded-2xl border p-4 shadow-sm ${cls}`}>
-              <p className={`text-xl sm:text-2xl font-bold font-bib ${textCls}`}>{value}</p>
-              <p className="text-xs font-bold text-[#111827] mt-0.5">{label}</p>
-              <p className="text-[11px] text-[#4B5563] mt-0.5">{sub}</p>
+            <Card className={`rounded-2xl border p-3.5 sm:p-4 shadow-sm ${cls}`}>
+              <p className={`text-base sm:text-2xl font-bold font-bib ${textCls} truncate`}>{value}</p>
+              <p className="text-xs font-bold text-[#111827] mt-0.5 truncate">{label}</p>
+              <p className="text-[10px] sm:text-[11px] text-[#4B5563] mt-0.5 truncate">{sub}</p>
             </Card>
           </motion.div>
         ))}
@@ -114,6 +123,13 @@ function OverviewTab({ transactions }) {
     </div>
   );
 }
+
+const STATUS_LABELS = {
+  all: 'Semua Status',
+  pending: 'Menunggu',
+  approved: 'Disetujui',
+  rejected: 'Ditolak',
+};
 
 function TransactionsTab({ transactions = [], onUpdateStatus }) {
   const [filter, setFilter]             = useState('all');
@@ -147,8 +163,8 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2.5">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-2.5 items-center">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563] pointer-events-none z-10" />
           <Input
             id="payment-search"
@@ -159,17 +175,20 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
             className="pl-10 h-11 border-[#E5E7EB] rounded-xl text-sm"
           />
         </div>
-        <select
-          id="payment-filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="border border-[#E5E7EB] rounded-xl px-3.5 h-11 text-sm focus:outline-none focus:border-brand/50 bg-white font-medium text-[#111827]"
-        >
-          <option value="all">Semua Status</option>
-          <option value="pending">Menunggu</option>
-          <option value="approved">Disetujui</option>
-          <option value="rejected">Ditolak</option>
-        </select>
+        <Select value={filter} onValueChange={(val) => setFilter(val)}>
+          <SelectTrigger
+            id="payment-filter"
+            className="!h-11 w-full sm:w-48 border border-[#E5E7EB] rounded-xl px-4 text-sm bg-white font-medium text-[#111827] shadow-sm flex items-center justify-between shrink-0"
+          >
+            <SelectValue>{STATUS_LABELS[filter] || 'Semua Status'}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+            <SelectItem value="all">Semua Status</SelectItem>
+            <SelectItem value="pending">Menunggu</SelectItem>
+            <SelectItem value="approved">Disetujui</SelectItem>
+            <SelectItem value="rejected">Ditolak</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3">
@@ -196,16 +215,17 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
             </div>
 
             {t.status === 'pending' && (
-              <div className="flex gap-2.5 mt-3.5 pt-3.5 border-t border-[#F3F4F6]">
+              <div className="flex gap-2 sm:gap-2.5 mt-3.5 pt-3.5 border-t border-[#F3F4F6]">
                 <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
                   <Button
                     id={`approve-${t.id}`}
                     onClick={() => setActionConfirm({ type: 'approve', item: t })}
                     disabled={loadingId === t.id}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm px-2 sm:px-4"
                   >
-                    {loadingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
-                    Approve Pembayaran
+                    {loadingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+                    <span className="hidden sm:inline">Approve Pembayaran</span>
+                    <span className="sm:hidden">Approve</span>
                   </Button>
                 </motion.div>
                 <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
@@ -214,9 +234,9 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
                     onClick={() => setActionConfirm({ type: 'reject', item: t })}
                     disabled={loadingId === t.id}
                     variant="outline"
-                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl"
+                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl px-2 sm:px-4"
                   >
-                    <X className="w-3.5 h-3.5 mr-1.5" />
+                    <X className="w-3.5 h-3.5 mr-1" />
                     Tolak
                   </Button>
                 </motion.div>
@@ -286,9 +306,42 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
 
 function ParticipantsTab() {
   const csvRef = useRef(null);
-  const [participants] = useState(DUMMY_PARTICIPANTS);
-  const [isImporting, setIsImporting]   = useState(false);
+  const [users, setUsers]                 = useState([]);
+  const [isImporting, setIsImporting]     = useState(false);
   const [importSuccess, setImportSuccess] = useState('');
+
+  // Shadcn Alert State untuk Feedback Pengguna
+  const [actionAlert, setActionAlert]     = useState(null);
+
+  // Dialog State untuk Tambah / Edit Pengguna
+  const [isModalOpen, setIsModalOpen]       = useState(false);
+  const [editingUser, setEditingUser]       = useState(null); // null jika Tambah, object jika Edit
+  const [addRole, setAddRole]               = useState('user'); // 'user' | 'photographer'
+  const [formName, setFormName]             = useState('');
+  const [formBib, setFormBib]               = useState('');
+  const [formUsername, setFormUsername]     = useState('');
+  const [formPassword, setFormPassword]     = useState('');
+  const [formError, setFormError]           = useState('');
+  const [formLoading, setFormLoading]       = useState(false);
+
+  // Delete User State
+  const [deleteConfirm, setDeleteConfirm]   = useState(null);
+  const [deletingId, setDeletingId]         = useState(null);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const res = await api.getAllUsers();
+      if (res.success && res.users) {
+        setUsers(res.users);
+      }
+    } catch (err) {
+      console.error('Fetch users error:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleCsvImport = async (e) => {
     const file = e.target.files?.[0];
@@ -301,8 +354,145 @@ function ParticipantsTab() {
     e.target.value = '';
   };
 
+  const openAddModal = () => {
+    setEditingUser(null);
+    setAddRole('user');
+    setFormName('');
+    setFormBib('');
+    setFormUsername('');
+    setFormPassword('');
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (u) => {
+    setEditingUser(u);
+    setAddRole(u.role === 'photographer' ? 'photographer' : 'user');
+    setFormName(u.name || '');
+    setFormBib(u.bibNumber !== '-' ? u.bibNumber : '');
+    setFormUsername(u.username !== '-' ? u.username : '');
+    setFormPassword('');
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!formName.trim()) {
+      setFormError('Nama Lengkap wajib diisi.');
+      return;
+    }
+
+    if (addRole === 'user' && !formBib.trim()) {
+      setFormError('Nomor BIB wajib diisi untuk peserta.');
+      return;
+    }
+
+    if (addRole === 'photographer' && !editingUser && (!formUsername.trim() || !formPassword)) {
+      setFormError('Username dan Password wajib diisi untuk fotografer baru.');
+      return;
+    }
+
+    setFormLoading(true);
+    try {
+      const payload = {
+        role: addRole,
+        name: formName.trim(),
+        bibNumber: formBib.trim(),
+        username: formUsername.trim(),
+        password: formPassword,
+      };
+
+      let res;
+      if (editingUser) {
+        res = await api.updateUser(editingUser.id, payload);
+      } else {
+        res = await api.createUser(payload);
+      }
+
+      if (res.success) {
+        loadUsers();
+        setIsModalOpen(false);
+        setActionAlert({
+          type: 'success',
+          title: editingUser ? 'Pengguna Diperbarui!' : 'Pengguna Ditambahkan!',
+          message: res.message || `Data ${formName.trim()} telah tersimpan di database PostgreSQL.`,
+        });
+      } else {
+        setFormError(res.message || 'Gagal menyimpan data pengguna.');
+      }
+    } catch (err) {
+      console.error('Submit user error:', err);
+      setFormError('Terjadi kesalahan server saat menyimpan data pengguna.');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    setDeletingId(id);
+    const targetName = deleteConfirm?.name || 'Pengguna';
+    try {
+      const res = await api.deleteUser(id);
+      if (res.success) {
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+        setDeleteConfirm(null);
+        setActionAlert({
+          type: 'success',
+          title: 'Pengguna Dihapus!',
+          message: `Data ${targetName} berhasil dihapus dari database PostgreSQL.`,
+        });
+      } else {
+        setActionAlert({
+          type: 'error',
+          title: 'Gagal Menghapus!',
+          message: res.message || 'Tidak dapat menghapus pengguna.',
+        });
+      }
+    } catch (err) {
+      console.error('Delete user error:', err);
+      setActionAlert({
+        type: 'error',
+        title: 'Error Server',
+        message: 'Terjadi kesalahan saat menghapus pengguna.',
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      {/* Shadcn UI Alert Feedback Notifikasi */}
+      {actionAlert && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Alert className={`rounded-2xl p-4 shadow-sm flex items-center justify-between ${
+            actionAlert.type === 'success' ? 'bg-green-50 border border-green-200 text-green-900' : 'bg-red-50 border border-red-200 text-red-900'
+          }`}>
+            <div className="flex items-center gap-3">
+              {actionAlert.type === 'success'
+                ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                : <XCircle className="w-5 h-5 text-red-600 shrink-0" />
+              }
+              <div>
+                <AlertTitle className="text-xs font-bold tracking-tight">{actionAlert.title}</AlertTitle>
+                <AlertDescription className="text-xs mt-0.5 opacity-90">{actionAlert.message}</AlertDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setActionAlert(null)}
+              className="h-7 w-7 text-gray-400 hover:text-gray-700 rounded-full shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </Alert>
+        </motion.div>
+      )}
+
       <Card className="bg-[#F9FAFB] border-[#E5E7EB] rounded-2xl p-5 shadow-sm">
         <div className="flex items-start gap-3.5 mb-4">
           <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
@@ -355,48 +545,343 @@ function ParticipantsTab() {
       </Card>
 
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[#111827]">Daftar Peserta ({participants.length})</h3>
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <h3 className="text-sm font-bold text-[#111827]">Daftar Pengguna / Peserta ({users.length})</h3>
+          
+          <Button
+            id="open-add-user-modal"
+            onClick={openAddModal}
+            size="sm"
+            className="bg-[#191C21] hover:bg-[#272B33] text-white text-xs font-bold h-9 px-3.5 rounded-xl shadow-sm"
+          >
+            <UserPlus className="w-4 h-4 mr-1.5" />
+            Tambah Pengguna
+          </Button>
         </div>
 
+        {/* Mobile View */}
         <div className="sm:hidden space-y-2.5">
-          {participants.map((p, i) => (
-            <Card key={p.id} className="bg-white border-[#E5E7EB] rounded-2xl px-4 py-3 flex flex-row items-center gap-3.5 shadow-sm">
-              <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
+          {users.map((u, i) => (
+            <Card key={u.id} className="bg-white border-[#E5E7EB] rounded-2xl px-3.5 py-3 flex flex-row items-center gap-3 shadow-sm">
+              <div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
                 <span className="text-xs font-bold text-brand">{i + 1}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[#111827] truncate">{p.name}</p>
-                <p className="text-[11px] text-[#9CA3AF]">{p.createdAt}</p>
+                <p className="text-sm font-bold text-[#111827] truncate">{u.name}</p>
+                <p className="text-[11px] font-mono text-[#9CA3AF] truncate">
+                  {u.role === 'user' ? 'Peserta' : (u.username !== '-' ? `@${u.username}` : '')}
+                </p>
               </div>
-              <Badge variant="outline" className="font-bib text-sm font-bold text-brand border-brand/20 bg-brand/10 shrink-0 px-2.5 py-0.5">
-                #{p.bibNumber}
-              </Badge>
+              <div className="text-right shrink-0 flex items-center gap-2">
+                <div className="flex flex-col items-end justify-center">
+                  {u.bibNumber && u.bibNumber !== '-' ? (
+                    <>
+                      <Badge variant="outline" className="font-bib text-xs font-bold text-brand border-brand/20 bg-brand/10 px-2 py-0.5 mb-0.5">
+                        #{u.bibNumber}
+                      </Badge>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">PESERTA</span>
+                    </>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className={`font-semibold text-[10px] px-2 py-0.5 rounded-full ${
+                        u.role === 'super_admin'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}
+                    >
+                      {u.role === 'super_admin' ? 'Super Admin' : 'Fotografer'}
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Action Icons (Mobile) */}
+                <div className="flex items-center gap-0.5 ml-1">
+                  <Button
+                    onClick={() => openEditModal(u)}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg shrink-0"
+                    title="Edit Pengguna"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  {u.role !== 'super_admin' && (
+                    <Button
+                      onClick={() => setDeleteConfirm(u)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+                      title="Hapus Pengguna"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </Card>
           ))}
         </div>
 
+        {/* Desktop View */}
         <Card className="hidden sm:block bg-white border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
                 <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Nama Lengkap</th>
                 <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Nomor BIB</th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Terdaftar</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Username</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Role</th>
+                <th className="text-right px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F3F4F6]">
-              {participants.map((p) => (
-                <tr key={p.id} className="hover:bg-[#F9FAFB] transition-colors">
-                  <td className="px-5 py-3.5 font-bold text-[#111827]">{p.name}</td>
-                  <td className="px-5 py-3.5 font-bib text-brand font-bold text-sm">#{p.bibNumber}</td>
-                  <td className="px-5 py-3.5 text-[#4B5563] text-xs">{p.createdAt}</td>
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors">
+                  <td className="px-5 py-3.5 font-bold text-[#111827]">{u.name}</td>
+                  <td className="px-5 py-3.5 font-bib text-brand font-bold text-sm">
+                    {u.bibNumber !== '-' ? `#${u.bibNumber}` : '-'}
+                  </td>
+                  <td className="px-5 py-3.5 font-mono text-xs text-gray-600">{u.username}</td>
+                  <td className="px-5 py-3.5 text-xs">
+                    <Badge
+                      variant="outline"
+                      className={`font-semibold capitalize px-2.5 py-0.5 rounded-full ${
+                        u.role === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                        u.role === 'photographer' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}
+                    >
+                      {u.role === 'super_admin' ? 'Super Admin' : u.role === 'photographer' ? 'Fotografer' : 'Peserta'}
+                    </Badge>
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    {/* Action Icon Buttons Only */}
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        id={`edit-user-${u.id}`}
+                        onClick={() => openEditModal(u)}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-xl"
+                        title="Edit Pengguna"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      {u.role !== 'super_admin' ? (
+                        <Button
+                          id={`delete-user-${u.id}`}
+                          onClick={() => setDeleteConfirm(u)}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                          title="Hapus Pengguna"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 italic ml-1">Utama</span>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Card>
       </div>
+
+      {/* Dialog Modal: Tambah / Edit Pengguna */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-[#E5E7EB] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3">
+                <div className="flex items-center gap-2">
+                  {editingUser ? <Pencil className="w-5 h-5 text-brand" /> : <UserPlus className="w-5 h-5 text-brand" />}
+                  <h3 className="text-base font-bold text-[#111827]">
+                    {editingUser ? `Edit Data: ${editingUser.name}` : 'Tambah Pengguna Baru'}
+                  </h3>
+                </div>
+                <Button
+                  onClick={() => setIsModalOpen(false)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-400 hover:text-gray-600 rounded-full"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Selector Pilihan Role (Peserta atau Fotografer) - Disabled jika mode Edit */}
+              <div className="grid grid-cols-2 gap-2 bg-[#F3F4F6] p-1.5 rounded-xl">
+                <button
+                  type="button"
+                  disabled={!!editingUser}
+                  onClick={() => setAddRole('user')}
+                  className={`flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                    addRole === 'user'
+                      ? 'bg-white text-brand shadow-sm font-extrabold'
+                      : 'text-gray-500 hover:text-gray-700'
+                  } ${editingUser ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  <User className="w-4 h-4" />
+                  <span>Peserta</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!!editingUser}
+                  onClick={() => setAddRole('photographer')}
+                  className={`flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                    addRole === 'photographer'
+                      ? 'bg-white text-brand shadow-sm font-extrabold'
+                      : 'text-gray-500 hover:text-gray-700'
+                  } ${editingUser ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Fotografer</span>
+                </button>
+              </div>
+
+              {formError && (
+                <div className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3.5 py-2.5 rounded-xl">
+                  {formError}
+                </div>
+              )}
+
+              <form onSubmit={handleFormSubmit} className="space-y-3.5 pt-1">
+                {/* Form Field: Nama Lengkap (Selalu Ada) */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    Nama Lengkap
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      required
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder={addRole === 'user' ? 'Contoh: Budi Santoso' : 'Contoh: Reza Fotografer'}
+                      className="pl-9 h-10 text-xs border-[#E5E7EB] rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Form Fields Khusus Peserta */}
+                {addRole === 'user' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                      Nomor BIB
+                    </label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        type="text"
+                        required
+                        value={formBib}
+                        onChange={(e) => setFormBib(e.target.value)}
+                        placeholder="Contoh: 101"
+                        className="pl-9 h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Fields Khusus Fotografer */}
+                {addRole === 'photographer' && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                        Username
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="text"
+                          required
+                          value={formUsername}
+                          onChange={(e) => setFormUsername(e.target.value)}
+                          placeholder="Contoh: fotografer_pro"
+                          className="pl-9 h-10 text-xs font-mono border-[#E5E7EB] rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                        {editingUser ? 'Password Baru (Opsional)' : 'Password (Bcrypt Hash)'}
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="password"
+                          required={!editingUser}
+                          value={formPassword}
+                          onChange={(e) => setFormPassword(e.target.value)}
+                          placeholder={editingUser ? 'Kosongkan jika tidak ingin diubah' : 'Kata sandi fotografer...'}
+                          className="pl-9 h-10 text-xs border-[#E5E7EB] rounded-xl"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2 pt-3 border-t border-[#F3F4F6]">
+                  <Button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    variant="ghost"
+                    className="flex-1 h-10 text-xs font-bold rounded-xl"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={formLoading}
+                    className="flex-1 bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-10 rounded-xl shadow-md"
+                  >
+                    {formLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                    {formLoading ? 'Menyimpan...' : (editingUser ? 'Simpan Perubahan' : 'Simpan Pengguna')}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Dialog Hapus User */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent className="rounded-2xl bg-white border border-[#E5E7EB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#111827] font-bold flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Konfirmasi Hapus Pengguna
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-[#4B5563] pt-1">
+              Apakah Anda yakin ingin menghapus <strong>{deleteConfirm?.name}</strong> ({deleteConfirm?.role}) dari database?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl text-xs font-bold border-[#E5E7EB]">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirm && handleDeleteUser(deleteConfirm.id)}
+              disabled={deletingId !== null}
+              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+            >
+              {deletingId !== null ? 'Menghapus...' : 'Ya, Hapus Pengguna'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -561,24 +1046,24 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <div className="-mx-4 px-4 mt-5 mb-6 overflow-x-auto">
-          <div className="flex gap-1.5 bg-[#F3F4F6] p-1.5 rounded-2xl w-max min-w-full">
+        <div className="mt-5 mb-6">
+          <div className="grid grid-cols-4 gap-1 p-1 bg-[#F3F4F6] rounded-2xl w-full">
             {tabs.map(({ id, label, icon: Icon }) => (
               <Button
                 key={id}
                 id={`admin-tab-${id}`}
                 variant="ghost"
                 onClick={() => setActiveTab(id)}
-                className={`relative flex items-center gap-2 px-4 h-10 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-1 justify-center ${
+                className={`relative flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 h-10 rounded-xl text-[11px] sm:text-sm font-bold transition-all truncate w-full ${
                   activeTab === id
-                    ? 'bg-white text-[#111827] shadow-md'
+                    ? 'bg-white text-[#111827] shadow-sm'
                     : 'text-[#4B5563] hover:text-[#111827]'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{label}</span>
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">{label}</span>
                 {id === 'payments' && pendingCount > 0 && (
-                  <Badge className="bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full p-0 flex items-center justify-center border-0 ml-1">
+                  <Badge className="bg-red-500 text-white text-[9px] font-bold w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full p-0 flex items-center justify-center border-0 shrink-0">
                     {pendingCount}
                   </Badge>
                 )}

@@ -79,6 +79,25 @@ export const api = {
 
   getMe: () => fetchApi('/auth/me'),
 
+  getAllUsers: () => fetchApi('/auth/users'),
+
+  createUser: (data) =>
+    fetchApi('/auth/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateUser: (id, data) =>
+    fetchApi(`/auth/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteUser: (id) =>
+    fetchApi(`/auth/users/${id}`, {
+      method: 'DELETE',
+    }),
+
   // ─── Photos API ────────────────────────────────────────────────────────
   getPhotos: (bib = '') => fetchApi(`/photos${bib ? `?bib=${encodeURIComponent(bib)}` : ''}`),
 
