@@ -80,6 +80,13 @@ async function initDb() {
       $$;
     `);
 
+    // Partial Unique Index untuk Nomor BIB Peserta
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_bib 
+      ON users (bib_number) 
+      WHERE bib_number IS NOT NULL AND role = 'user';
+    `);
+
     // 3. Tabel photos
     await query(`
       CREATE TABLE IF NOT EXISTS photos (

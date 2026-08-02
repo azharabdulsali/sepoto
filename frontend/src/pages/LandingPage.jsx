@@ -46,32 +46,32 @@ const itemVariants = {
 // Sample photos for preview showcase
 const SAMPLE_PHOTOS = [
   {
-    id: 101,
-    url: "https://picsum.photos/seed/sepoto10/400/500",
-    bib: "101",
-    price: "Rp 25.000",
-    author: "Reza Foto",
-  },
-  {
-    id: 205,
-    url: "https://picsum.photos/seed/sepoto6/400/500",
-    bib: "205",
+    id: 1,
+    url: "/images/sample-1.jpg",
+    bib: "36",
     price: "Rp 30.000",
-    author: "Dian Lens",
+    author: "Robi Syianturi",
   },
   {
-    id: 312,
-    url: "https://picsum.photos/seed/sepoto10/400/500",
-    bib: "312",
-    price: "Rp 15.000",
-    author: "Reza Foto",
+    id: 2,
+    url: "/images/sample-2.jpg",
+    bib: "2424",
+    price: "Rp 10.000",
+    author: "Cigul",
   },
   {
-    id: 404,
-    url: "https://picsum.photos/seed/sepoto8/400/500",
-    bib: "101",
+    id: 3,
+    url: "/images/sample-3.jpg",
+    bib: "108",
     price: "Rp 25.000",
-    author: "Reza Foto",
+    author: "Ibnu Jamil",
+  },
+  {
+    id: 4,
+    url: "/images/sample-4.jpg",
+    bib: "20084",
+    price: "Rp 10.000",
+    author: "dr. Tirta",
   },
 ];
 
@@ -150,7 +150,7 @@ export default function LandingPage() {
                 whileTap={{ scale: 0.97 }}
                 className="w-full sm:w-auto"
               >
-                <Button
+                {/* <Button
                   id="hero-cta-photographer"
                   onClick={() => navigate("/photographer/login")}
                   variant="outline"
@@ -159,7 +159,7 @@ export default function LandingPage() {
                 >
                   <Aperture className="w-4 h-4 text-blue-600" />
                   <span>Portal Fotografer</span>
-                </Button>
+                </Button> */}
               </motion.div>
             </motion.div>
 
