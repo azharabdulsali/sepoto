@@ -49,7 +49,8 @@ const getPhotos = async (req, res) => {
 const uploadPhotos = async (req, res) => {
   try {
     const photographerId = req.user.id; // Dari JWT token
-    const { price = 25000, bibTags = '', orientation = 'portrait' } = req.body;
+    const { price = 0, bibTags = '', orientation = 'portrait' } = req.body;
+    const photoPrice = Number(price) || 0;
     const files = req.files;
 
     if (!files || files.length === 0) {
@@ -78,7 +79,7 @@ const uploadPhotos = async (req, res) => {
       const dbRes = await query(
         `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [eventId, photographerId, originalUrl, watermarkedUrl, price, bibTags, orientation]
+        [eventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation]
       );
 
       uploadedRecords.push(dbRes.rows[0]);

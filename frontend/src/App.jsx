@@ -17,6 +17,8 @@ import OrderHistory         from './pages/OrderHistory';
 import AdminDashboard       from './pages/AdminDashboard';
 import PhotographerDashboard from './pages/PhotographerDashboard';
 
+import IdleTimeoutHandler from './components/IdleTimeoutHandler';
+
 // ─── Protected Route Wrapper ──────────────────────────────────────────
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, isAuthenticated } = useAuth();
@@ -45,7 +47,9 @@ export default function App() {
   };
 
   return (
-    <Routes>
+    <>
+      <IdleTimeoutHandler />
+      <Routes>
       {/* ─── Public Root: Landing Page / Public Dashboard ─── */}
       <Route
         path="/"
@@ -131,5 +135,6 @@ export default function App() {
       {/* ─── 404 Fallback ─── */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

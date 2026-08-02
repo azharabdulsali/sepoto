@@ -908,13 +908,16 @@ function EventSettingsTab() {
     <div className="max-w-lg space-y-5">
       <form id="event-settings-form" onSubmit={handleSave} className="space-y-4.5">
         {saved && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 text-xs font-semibold px-4 py-3 rounded-xl"
-          >
-            <Check className="w-4 h-4 text-green-600" />
-            Pengaturan event berhasil disimpan.
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+            <Alert className="bg-green-50 border border-green-200 text-green-900 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-green-600 shrink-0" />
+                <div>
+                  <AlertTitle className="text-xs font-bold">Pengaturan Berhasil Disimpan!</AlertTitle>
+                  <AlertDescription className="text-xs mt-0.5 opacity-90">Perubahan konfigurasi event telah disimpan.</AlertDescription>
+                </div>
+              </div>
+            </Alert>
           </motion.div>
         )}
 

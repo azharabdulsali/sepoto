@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Hash, Loader2, AlertCircle, User, Sparkles } from 'lucide-react';
+import { ArrowRight, Hash, Loader2, AlertCircle, User, Sparkles, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import SepotoLogo from '../components/SepotoLogo';
@@ -23,11 +24,14 @@ const containerVariants = {
 export default function Login() {
   const { login } = useAuth();
   const navigate   = useNavigate();
+  const location   = useLocation();
 
   const [fullName, setFullName]   = useState('');
   const [bibNumber, setBibNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState('');
+
+  const sessionExpired = location.state?.sessionExpired;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -90,6 +94,20 @@ export default function Login() {
           </CardHeader>
 
           <CardContent className="pt-6 px-6">
+            {sessionExpired && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+                <Alert className="bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-2xl p-3.5 shadow-sm flex items-start gap-2.5">
+                  <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <AlertTitle className="text-xs font-bold text-amber-300">Sesi Login Berakhir</AlertTitle>
+                    <AlertDescription className="text-xs text-amber-400/90 mt-0.5 leading-relaxed">
+                      Sesi Anda telah berakhir karena tidak ada aktivitas. Silakan login kembali.
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              </motion.div>
+            )}
+
             <form id="user-login-form" onSubmit={handleLogin} className="space-y-4.5" noValidate>
 
               {error && (

@@ -2,13 +2,23 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CloudUpload, Image as ImageIcon, Check, Trash2, X,
-  Camera, Search, Loader2, CheckSquare, Square, Tag, CheckCircle2
+  Camera, Search, Loader2, CheckSquare, Square, Tag, CheckCircle2, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Attachment,
   AttachmentGroup,
@@ -20,6 +30,7 @@ import {
   AttachmentAction,
 } from '@/components/ui/attachment';
 import AppShell from '../components/AppShell';
+import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -31,6 +42,93 @@ const DUMMY_UPLOADED = Array.from({ length: 12 }, (_, i) => ({
   uploadedAt:      new Date(Date.now() - i * 3600000).toLocaleString('id-ID'),
 }));
 
+// ─── Lightbox Modal Preview Foto untuk Fotografer ────────────────────────
+function PhotoPreviewModal({ photo, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  if (!photo) return null;
+
+  const imgUrl = photo.watermarkedUrl || photo.watermarked_url || photo.originalUrl || '';
+  const bibVal = photo.bibTags ?? photo.bib_tags ?? '';
+  const priceVal = photo.price ?? 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-2xl w-full bg-[#191C21] rounded-3xl overflow-hidden border border-white/10 shadow-2xl text-white flex flex-col max-h-[90vh]"
+      >
+        {/* Header Modal */}
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Camera className="w-4 h-4 text-brand" />
+            <span className="text-sm font-bold">Pratinjau Hasil Jepretan</span>
+            {bibVal && (
+              <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
+                BIB #{bibVal}
+              </Badge>
+            )}
+            <Badge variant="outline" className="font-bib text-[10px] bg-white/10 text-white border-white/20">
+              ID #{photo.id}
+            </Badge>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Tutup pratinjau"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Preview Image Container */}
+        <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center min-h-[300px] max-h-[60vh] p-2">
+          <ProtectedPhoto
+            src={imgUrl}
+            alt={`Pratinjau Foto ID ${photo.id}`}
+            className="w-full h-full max-h-[58vh] flex items-center justify-center"
+            imgClassName="w-full h-full object-contain max-h-[58vh] rounded-xl select-none"
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 sm:p-5 border-t border-white/10 bg-[#191C21] flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bib uppercase tracking-widest text-gray-400">Status Harga Galeri</p>
+            <p className="font-bib text-xl font-bold text-brand">
+              {Number(priceVal) > 0 ? `Rp ${Number(priceVal).toLocaleString('id-ID')}` : 'Belum Diberi Harga (Rp 0)'}
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="h-11 px-6 rounded-xl border-white/20 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-bold shrink-0"
+          >
+            Tutup
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function UploadTab() {
   const fileInputRef           = useRef(null);
   const [previews, setPreviews] = useState([]);
@@ -39,6 +137,7 @@ function UploadTab() {
   const [bulkPrice, setBulkPrice]     = useState('');
   const [bulkBib, setBulkBib]         = useState('');
   const [uploadDone, setUploadDone]   = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   const addFiles = useCallback((files) => {
     const newPreviews = Array.from(files)
@@ -95,7 +194,7 @@ function UploadTab() {
         formData.append('photos', p.file);
       });
 
-      const avgPrice = previews[0]?.price || bulkPrice || 25000;
+      const avgPrice = previews[0]?.price ? Number(previews[0].price) : (bulkPrice ? Number(bulkPrice) : 0);
       const bibs = previews.map((p) => p.bib).filter(Boolean).join(',') || bulkBib || '';
 
       formData.append('price', avgPrice);
@@ -104,13 +203,14 @@ function UploadTab() {
       const res = await api.uploadPhotos(formData);
       if (res.success) {
         setUploadDone(true);
+        setUploadError(null);
         setPreviews([]);
       } else {
-        alert(res.message || 'Gagal mengunggah foto.');
+        setUploadError(res.message || 'Gagal mengunggah foto.');
       }
     } catch (err) {
       console.error('Upload submit error:', err);
-      alert('Terjadi kesalahan saat mengunggah foto.');
+      setUploadError('Terjadi kesalahan koneksi saat mengunggah foto.');
     } finally {
       setIsUploading(false);
     }
@@ -153,6 +253,33 @@ function UploadTab() {
           onChange={(e) => addFiles(e.target.files)}
         />
       </motion.div>
+
+      {uploadError && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Alert className="bg-red-50 border border-red-200 text-red-900 rounded-2xl p-4 shadow-sm flex items-start gap-3">
+            <X className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <AlertTitle className="text-sm font-bold text-red-900">
+                Gagal Mengunggah Foto
+              </AlertTitle>
+              <AlertDescription className="text-xs text-red-700 leading-relaxed mt-1">
+                {uploadError}
+              </AlertDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setUploadError(null)}
+              className="h-6 w-6 text-red-400 hover:text-red-700 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </Alert>
+        </motion.div>
+      )}
 
       {uploadDone && (
         <motion.div
@@ -364,17 +491,23 @@ function ManageTab() {
   const [bulkEditBib, setBulkEditBib]     = useState('');
   const [search, setSearch]               = useState('');
 
+  // Shadcn UI Alert, AlertDialog & Preview State
+  const [previewPhoto, setPreviewPhoto]   = useState(null);
+  const [actionAlert, setActionAlert]     = useState(null);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); // { type: 'single' | 'bulk', photoId?: number, count: number }
+  const [isDeleting, setIsDeleting]       = useState(false);
+
   const loadPhotos = useCallback(async () => {
     try {
       const res = await api.getMyPhotos();
       if (res.success && res.photos) {
         setPhotos(res.photos);
       } else {
-        setPhotos(DUMMY_UPLOADED);
+        setPhotos([]);
       }
     } catch (err) {
       console.error('Fetch my photos error:', err);
-      setPhotos(DUMMY_UPLOADED);
+      setPhotos([]);
     }
   }, []);
 
@@ -420,6 +553,11 @@ function ManageTab() {
       prev.map((p) => selected.has(p.id) ? { ...p, price: newPrice } : p)
     );
     setBulkEditPrice('');
+    setActionAlert({
+      type: 'success',
+      title: 'Harga Diperbarui!',
+      message: `Harga untuk ${selected.size} foto berhasil diset ke Rp ${newPrice.toLocaleString('id-ID')}.`,
+    });
   };
 
   const applyBulkBib = () => {
@@ -427,20 +565,79 @@ function ManageTab() {
     setPhotos((prev) =>
       prev.map((p) => selected.has(p.id) ? { ...p, bibTags: bulkEditBib.trim() } : p)
     );
+    const count = selected.size;
     setBulkEditBib('');
+    setActionAlert({
+      type: 'success',
+      title: 'Tag BIB Diperbarui!',
+      message: `Nomor BIB #${bulkEditBib.trim()} berhasil diterapkan ke ${count} foto.`,
+    });
   };
 
-  const deleteSelected = async () => {
+  // Memicu Modal Konfirmasi Hapus Single
+  const requestDeleteSingle = (photoId) => {
+    setDeleteConfirmModal({
+      type: 'single',
+      photoId,
+      count: 1,
+    });
+  };
+
+  // Memicu Modal Konfirmasi Hapus Bulk (Terpilih)
+  const requestDeleteBulk = () => {
     if (selected.size === 0) return;
-    for (const id of Array.from(selected)) {
-      try {
+    setDeleteConfirmModal({
+      type: 'bulk',
+      photoId: null,
+      count: selected.size,
+    });
+  };
+
+  // Eksekusi Penghapusan Foto setelah Konfirmasi di AlertDialog
+  const confirmDelete = async () => {
+    if (!deleteConfirmModal) return;
+    setIsDeleting(true);
+    const count = deleteConfirmModal.count;
+
+    try {
+      if (deleteConfirmModal.type === 'single' && deleteConfirmModal.photoId) {
+        const id = deleteConfirmModal.photoId;
         await api.deletePhoto(id);
-      } catch (err) {
-        console.error('Failed to delete photo', id, err);
+        setPhotos((prev) => prev.filter((p) => p.id !== id));
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      } else if (deleteConfirmModal.type === 'bulk') {
+        const ids = Array.from(selected);
+        for (const id of ids) {
+          try {
+            await api.deletePhoto(id);
+          } catch (err) {
+            console.error('Failed to delete photo', id, err);
+          }
+        }
+        setPhotos((prev) => prev.filter((p) => !selected.has(p.id)));
+        setSelected(new Set());
       }
+
+      setDeleteConfirmModal(null);
+      setActionAlert({
+        type: 'success',
+        title: 'Foto Berhasil Dihapus!',
+        message: `${count} foto telah berhasil dihapus secara permanen dari galeri & server.`,
+      });
+    } catch (err) {
+      console.error('Delete photo error:', err);
+      setActionAlert({
+        type: 'error',
+        title: 'Gagal Menghapus Foto',
+        message: 'Terjadi kesalahan server saat menghapus foto.',
+      });
+    } finally {
+      setIsDeleting(false);
     }
-    setPhotos((prev) => prev.filter((p) => !selected.has(p.id)));
-    setSelected(new Set());
   };
 
   const updatePrice = (id, price) => {
@@ -453,6 +650,34 @@ function ManageTab() {
 
   return (
     <div className="space-y-4">
+      {/* Shadcn UI Alert Feedback Notifikasi */}
+      {actionAlert && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Alert className={`rounded-2xl p-4 shadow-sm flex items-center justify-between ${
+            actionAlert.type === 'success' ? 'bg-green-50 border border-green-200 text-green-900' : 'bg-red-50 border border-red-200 text-red-900'
+          }`}>
+            <div className="flex items-center gap-3">
+              {actionAlert.type === 'success'
+                ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                : <X className="w-5 h-5 text-red-600 shrink-0" />
+              }
+              <div>
+                <AlertTitle className="text-xs font-bold tracking-tight">{actionAlert.title}</AlertTitle>
+                <AlertDescription className="text-xs mt-0.5 opacity-90">{actionAlert.message}</AlertDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setActionAlert(null)}
+              className="h-7 w-7 text-gray-400 hover:text-gray-700 rounded-full shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </Alert>
+        </motion.div>
+      )}
+
       {/* Search & Stats */}
       <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1">
@@ -485,7 +710,7 @@ function ManageTab() {
                 <span className="text-sm font-bold text-brand">{selected.size} foto dipilih</span>
                 <Button
                   id="delete-selected-btn"
-                  onClick={deleteSelected}
+                  onClick={requestDeleteBulk}
                   variant="destructive"
                   size="sm"
                   className="h-8 text-xs font-bold rounded-xl px-3"
@@ -589,6 +814,7 @@ function ManageTab() {
                     isSelected ? 'border-brand shadow-md shadow-orange-500/20' : 'border-transparent'
                   }`}
                 >
+                  {/* Select Checkbox */}
                   <button
                     id={`select-photo-${photo.id}`}
                     onClick={() => toggleSelect(photo.id)}
@@ -599,13 +825,47 @@ function ManageTab() {
                     {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                   </button>
 
-                  <div className="aspect-[4/5] overflow-hidden bg-[#F3F4F6]">
-                    <img
+                  {/* Tombol Pratinjau Foto Individual */}
+                  <button
+                    id={`preview-photo-${photo.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewPhoto(photo);
+                    }}
+                    className="absolute top-2.5 right-11 z-10 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-all shadow-md"
+                    title="Pratinjau Foto"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Tombol Hapus Foto Individual (Per Foto) */}
+                  <button
+                    id={`delete-single-photo-${photo.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      requestDeleteSingle(photo.id);
+                    }}
+                    className="absolute top-2.5 right-2.5 z-10 w-7 h-7 bg-red-600/90 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition-all shadow-md"
+                    title="Hapus foto ini"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div
+                    onClick={() => setPreviewPhoto(photo)}
+                    className="aspect-[4/5] overflow-hidden bg-[#F3F4F6] cursor-pointer group/img relative"
+                  >
+                    <ProtectedPhoto
                       src={imgUrl}
                       alt={`Foto ${photo.id}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
+                      className="w-full h-full"
+                      imgClassName="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
                     />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center shadow-lg">
+                        <Eye className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="bg-white px-2.5 py-2.5 space-y-1.5">
@@ -640,6 +900,44 @@ function ManageTab() {
           })}
         </div>
       )}
+
+      {/* Shadcn UI AlertDialog Konfirmasi Hapus Foto */}
+      <AlertDialog open={!!deleteConfirmModal} onOpenChange={() => setDeleteConfirmModal(null)}>
+        <AlertDialogContent className="rounded-2xl bg-white border border-[#E5E7EB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#111827] font-bold flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Konfirmasi Hapus Foto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-[#4B5563] pt-1">
+              Apakah Anda yakin ingin menghapus <strong>{deleteConfirmModal?.count} foto</strong> ini secara permanen dari galeri dan server cloud?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl text-xs font-bold border-[#E5E7EB]">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+            >
+              {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              {isDeleting ? 'Menghapus...' : 'Ya, Hapus Foto'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Lightbox Modal Preview Foto untuk Fotografer */}
+      <AnimatePresence>
+        {previewPhoto && (
+          <PhotoPreviewModal
+            photo={previewPhoto}
+            onClose={() => setPreviewPhoto(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -9,6 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import AppShell from '../components/AppShell';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -114,7 +124,12 @@ export default function CartPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const [activeEvent, setActiveEvent] = React.useState(null);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = React.useState(false);
+
+  const handleClearCart = () => {
+    clearCart();
+    setIsClearConfirmOpen(false);
+  };
 
   React.useEffect(() => {
     async function loadEvent() {
@@ -233,7 +248,7 @@ export default function CartPage() {
             <h2 className="text-sm font-bold text-[#111827]">Foto yang Dipilih ({itemCount})</h2>
             <button
               id="cart-clear-all"
-              onClick={clearCart}
+              onClick={() => setIsClearConfirmOpen(true)}
               className="text-xs text-red-500 hover:text-red-700 transition-colors font-semibold"
             >
               Hapus semua
@@ -349,6 +364,32 @@ export default function CartPage() {
           </p>
         </div>
       </motion.div>
+
+      {/* Shadcn UI AlertDialog Konfirmasi Kosongkan Keranjang */}
+      <AlertDialog open={isClearConfirmOpen} onOpenChange={setIsClearConfirmOpen}>
+        <AlertDialogContent className="rounded-2xl bg-white border border-[#E5E7EB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#111827] font-bold flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Kosongkan Keranjang Foto?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-[#4B5563] pt-1">
+              Apakah Anda yakin ingin menghapus <strong>{itemCount} foto</strong> dari keranjang pesanan Anda?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl text-xs font-bold border-[#E5E7EB]">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearCart}
+              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+            >
+              Ya, Hapus Semua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

@@ -1,9 +1,9 @@
 const sharp = require('sharp');
 
 /**
- * Membuat watermark otomatis "sepot.project" di atas foto
+ * Membuat watermark otomatis berulang (tiled grid) "sepoto.project" secara diagonal di atas foto
  * @param {Buffer} inputBuffer - Buffer gambar asli resolusi tinggi
- * @returns {Promise<Buffer>} Buffer gambar yang sudah diberi watermark
+ * @returns {Promise<Buffer>} Buffer gambar yang sudah diberi watermark diagonal
  */
 async function generateWatermark(inputBuffer) {
   try {
@@ -11,28 +11,52 @@ async function generateWatermark(inputBuffer) {
     const width = metadata.width || 1200;
     const height = metadata.height || 1600;
 
-    // SVG Watermark Overlay dengan sepot.project brand styling
+    // Ukuran font & jarak grid proporsional sesuai dimensi gambar
+    const fontSize = Math.max(16, Math.round(Math.min(width, height) * 0.038));
+    const stepX = Math.round(width * 0.28);
+    const stepY = Math.round(height * 0.14);
+
+    let textNodes = [];
+
+    // Loop grid berulang dari luar batas gambar agar area ter-cover penuh saat diputar -35 derajat
+    const startX = -Math.round(width * 0.5);
+    const endX = Math.round(width * 1.5);
+    const startY = -Math.round(height * 0.5);
+    const endY = Math.round(height * 1.5);
+
+    let rowIndex = 0;
+    for (let y = startY; y <= endY; y += stepY) {
+      const offsetX = (rowIndex % 2 === 0) ? 0 : stepX / 2;
+      for (let x = startX; x <= endX; x += stepX) {
+        const posX = Math.round(x + offsetX);
+        const posY = Math.round(y);
+        textNodes.push(`
+          <g transform="rotate(-35, ${posX}, ${posY})">
+            <text x="${posX}" y="${posY}" text-anchor="middle" dominant-baseline="middle" class="watermark-text">
+              sepoto.project
+            </text>
+          </g>
+        `);
+      }
+      rowIndex++;
+    }
+
+    // SVG Watermark Overlay berulang dengan outline transparan agar terbaca di latar terang maupun gelap
     const svgOverlay = `
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         <style>
           .watermark-text {
-            fill: rgba(255, 255, 255, 0.45);
-            font-family: Arial, sans-serif;
-            font-size: ${Math.round(width * 0.05)}px;
+            fill: rgba(255, 255, 255, 0.42);
+            stroke: rgba(0, 0, 0, 0.35);
+            stroke-width: 1.2px;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: ${fontSize}px;
             font-weight: 900;
-            letter-spacing: 2px;
-          }
-          .watermark-sub {
-            fill: #EA580C;
-            font-size: ${Math.round(width * 0.05)}px;
-            font-weight: 900;
+            letter-spacing: 1.5px;
+            paint-order: stroke fill;
           }
         </style>
-        <g transform="rotate(-30 ${width / 2} ${height / 2})">
-          <text x="${width / 2}" y="${height / 2}" text-anchor="middle" dominant-baseline="middle" className="watermark-text">
-            sepot<tspan fill="#EA580C">.project</tspan> — SAMPLE WATERMARK
-          </text>
-        </g>
+        ${textNodes.join('\n')}
       </svg>
     `;
 
@@ -44,7 +68,7 @@ async function generateWatermark(inputBuffer) {
     return watermarkedBuffer;
   } catch (error) {
     console.error('❌ Watermark Generation Error:', error);
-    return inputBuffer; // Fallback jika gagal
+    return inputBuffer; // Fallback jika terjadi kendala
   }
 }
 

@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, ShoppingCart, X, Check, Camera, Eye } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppShell from '../components/AppShell';
 import ProtectedPhoto from '../components/ProtectedPhoto';
@@ -12,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { api } from '../services/api';
 
-const DUMMY_PHOTOS = [
+const _DUMMY_PHOTOS = [
   { id: 1,  watermarkedUrl: 'https://picsum.photos/seed/sepoto1/600/400',  orientation: 'landscape', price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
   { id: 2,  watermarkedUrl: 'https://picsum.photos/seed/sepoto2/400/500',  orientation: 'portrait',  price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
   { id: 3,  watermarkedUrl: 'https://picsum.photos/seed/sepoto3/600/400',  orientation: 'landscape', price: 0,     bibTags: '102',  photographerName: 'Reza Foto' },
@@ -296,8 +297,7 @@ export default function GalleryPage() {
   }, [searchBib]);
 
   const pricedPhotos = useMemo(() => {
-    const photosToUse = realPhotos.length > 0 ? realPhotos : DUMMY_PHOTOS;
-    return photosToUse.filter((p) => p.price != null && Number(p.price) > 0);
+    return realPhotos.filter((p) => p.price != null && Number(p.price) > 0);
   }, [realPhotos]);
 
   const filteredPhotos = useMemo(() => {
@@ -431,6 +431,16 @@ export default function GalleryPage() {
         {/* Grid Foto dengan Skeleton State & Incremental Batching */}
         {isLoading ? (
           <GallerySkeletonGrid count={10} />
+        ) : displayedPhotos.length === 0 ? (
+          <Card className="p-12 text-center bg-white border border-[#E5E7EB] rounded-3xl shadow-xs my-6">
+            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-[#111827]">Belum Ada Foto Galeri</h3>
+            <p className="text-xs text-[#4B5563] mt-1 max-w-md mx-auto leading-relaxed">
+              {searchBib
+                ? `Tidak ditemukan foto untuk Nomor BIB #${searchBib}. Pastikan nomor BIB sesuai.`
+                : 'Belum ada foto yang diunggah oleh fotografer untuk event ini.'}
+            </p>
+          </Card>
         ) : (
           <>
             <motion.div
