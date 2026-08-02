@@ -89,15 +89,21 @@ function OrderCard({ order }) {
   const cfg = STATUS_MAP[order.status];
   const StatusIcon = cfg.icon;
 
-  const handleDownload = async (photoId) => {
+  const handleDownload = async (photoId, photoFilename) => {
     setDownloading(photoId);
     setDownloadSuccess(null);
     try {
       const res = await api.getDownloadUrl(order.id, photoId);
       if (res.success && res.downloadUrl) {
-        // Buka presigned URL R2 di tab baru atau langsung download
-        window.open(res.downloadUrl, '_blank', 'noopener,noreferrer');
-        setDownloadSuccess({ photoId, fileName: `SEPOTO-HD-4K-${photoId}.jpg` });
+        const targetName = photoFilename || `IMG_${photoId}.jpg`;
+        const link = document.createElement('a');
+        link.href = res.downloadUrl;
+        link.download = targetName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setDownloadSuccess({ photoId, fileName: targetName });
       } else {
         alert(res.message || 'Gagal mengunduh foto.');
       }
@@ -112,11 +118,30 @@ function OrderCard({ order }) {
   const handleDownloadAll = async () => {
     setDownloading('all');
     try {
-      for (const photo of order.photos) {
-        await handleDownload(photo.id);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/transactions/${order.id}/download-zip`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('Gagal mengunduh file ZIP.');
       }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${order.orderNumber || `SEPOTO-${order.id}`}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setDownloadSuccess({ photoId: 'all', fileName: `${order.orderNumber || `SEPOTO-${order.id}`}.zip` });
     } catch (err) {
-      console.error('Download all error:', err);
+      console.error('Download all zip error:', err);
+      alert('Gagal mengunduh berkas ZIP transaksi.');
     } finally {
       setDownloading(null);
     }
@@ -181,7 +206,7 @@ function OrderCard({ order }) {
                 <Attachment key={photo.id} size="default" orientation="horizontal" className="w-full bg-[#F9FAFB] border-[#E5E7EB] rounded-xl p-2">
                   <AttachmentMedia variant="image" className="w-12 h-14 rounded-lg overflow-hidden shrink-0">
                     <ProtectedPhoto
-                      src={photo.watermarkedUrl}
+                      src={order.status === 'approved' && photo.originalUrl ? photo.originalUrl : photo.watermarkedUrl}
                       alt={`Foto #${photo.id}`}
                       className="w-full h-full"
                       imgClassName="w-full h-full object-cover"
@@ -199,9 +224,9 @@ function OrderCard({ order }) {
                     </div>
                     <AttachmentDescription className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bib mt-0.5">
                       <Paperclip className="w-3 h-3 text-brand shrink-0" />
-                      <span className="truncate">SEPOTO-HD-4K-{photo.id}.jpg</span>
+                      <span className="truncate">{photo.originalFilename || `IMG_${photo.id}.jpg`}</span>
                       <span>·</span>
-                      <span className="text-gray-400 font-medium">8.4 MB</span>
+                      <span className="text-gray-400 font-medium">Original HD</span>
                     </AttachmentDescription>
                   </AttachmentContent>
 
@@ -210,7 +235,7 @@ function OrderCard({ order }) {
                       <motion.div whileTap={{ scale: 0.9 }}>
                         <Button
                           id={`download-photo-${photo.id}`}
-                          onClick={() => handleDownload(photo.id)}
+                          onClick={() => handleDownload(photo.id, photo.originalFilename)}
                           disabled={downloading !== null}
                           variant="ghost"
                           size="sm"
@@ -252,8 +277,8 @@ function OrderCard({ order }) {
                 className="w-full h-11 bg-[#191C21] hover:bg-[#22262E] text-white text-xs font-bold rounded-xl shadow-md"
               >
                 {downloading === 'all'
-                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /><span>Menyiapkan unduhan...</span></>
-                  : <><Download className="w-4 h-4 mr-2" /><span>Unduh Semua Foto ({order.photos.length} foto HD)</span></>
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /><span>Mengompres & menyiapkan file .ZIP...</span></>
+                  : <><Download className="w-4 h-4 mr-2" /><span>Unduh Paket .ZIP ({order.photos.length} Foto HD)</span></>
                 }
               </Button>
             </motion.div>

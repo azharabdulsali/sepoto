@@ -52,11 +52,12 @@ async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
  * @param {number} expiresInSeconds - Waktu kadaluarsa URL dalam detik (default: 300 = 5 menit)
  * @returns {Promise<string>} Presigned URL sementara untuk download
  */
-async function getPresignedDownloadUrl(key, expiresInSeconds = 300) {
+async function getPresignedDownloadUrl(key, expiresInSeconds = 300, filename = 'SEPOTO-HD-photo.jpg') {
   try {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
+      ResponseContentDisposition: `attachment; filename="${filename}"`,
     });
 
     const presignedUrl = await getSignedUrl(r2Client, command, {

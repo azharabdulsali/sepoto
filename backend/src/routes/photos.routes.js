@@ -19,6 +19,9 @@ router.post('/upload', verifyToken, requireRole('photographer'), bulkUploadPhoto
 // PATCH /api/photos/:id/price (Fotografer: Update harga foto milik sendiri)
 router.patch('/:id/price', verifyToken, requireRole('photographer'), photoController.updatePhotoPrice);
 
+// PATCH /api/photos/:id (Fotografer: Update harga & bib_tags foto milik sendiri ke PostgreSQL DB)
+router.patch('/:id', verifyToken, requireRole('photographer'), photoController.updatePhoto);
+
 // DELETE /api/photos/:id (Fotografer: Hapus foto milik sendiri)
 router.delete('/:id', verifyToken, requireRole('photographer'), photoController.deletePhoto);
 

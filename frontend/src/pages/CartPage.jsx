@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -33,14 +33,7 @@ const formatRupiah = (amount) =>
     minimumFractionDigits: 0,
   }).format(amount);
 
-const generateOrderNumber = () => {
-  const now   = new Date();
-  const year  = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day   = String(now.getDate()).padStart(2, '0');
-  const rand  = String(Math.floor(1000 + Math.random() * 9000));
-  return `SEPOTO-${year}${month}${day}-${rand}`;
-};
+
 
 const buildWhatsAppUrl = ({ orderNumber, userName, bibNumber, items, total }) => {
   const photoList = items
@@ -119,11 +112,21 @@ const QrPlaceholder = () => (
   </div>
 );
 
+const generateOrderNumberFallback = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `SEPOTO-${year}${month}${day}-0001`;
+};
+
 export default function CartPage() {
   const { items, removeItem, clearCart, totalPrice, formattedTotal, itemCount } = useCart();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [orderNumber, setOrderNumber] = useState(generateOrderNumberFallback());
   const [isClearConfirmOpen, setIsClearConfirmOpen] = React.useState(false);
 
   const handleClearCart = () => {
@@ -132,16 +135,24 @@ export default function CartPage() {
   };
 
   React.useEffect(() => {
-    async function loadEvent() {
-      const res = await api.getActiveEvent();
-      if (res.success && res.event) {
-        setActiveEvent(res.event);
+    let isMounted = true;
+    async function loadInitialData() {
+      try {
+        const [eventRes, orderRes] = await Promise.all([
+          api.getActiveEvent(),
+          api.getNextOrderNumber(),
+        ]);
+        if (isMounted) {
+          if (eventRes.success && eventRes.event) setActiveEvent(eventRes.event);
+          if (orderRes.success && orderRes.orderNumber) setOrderNumber(orderRes.orderNumber);
+        }
+      } catch (err) {
+        console.error('Failed to load cart initial data:', err);
       }
     }
-    loadEvent();
+    loadInitialData();
+    return () => { isMounted = false; };
   }, []);
-
-  const orderNumber = useMemo(() => generateOrderNumber(), []);
 
   const whatsappUrl = useMemo(
     () =>
@@ -157,17 +168,29 @@ export default function CartPage() {
 
   const handleConfirmWhatsApp = async (e) => {
     e.preventDefault();
+    let finalNo = orderNumber;
     try {
       const photoIds = items.map((i) => i.id);
-      await api.createTransaction({
+      const res = await api.createTransaction({
         orderNumber,
         totalAmount: totalPrice,
         photoIds,
       });
+
+      if (res.success && res.transaction?.order_number) {
+        finalNo = res.transaction.order_number;
+      }
     } catch (err) {
       console.error('Failed to create transaction record:', err);
     } finally {
-      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      const finalWaUrl = buildWhatsAppUrl({
+        orderNumber: finalNo,
+        userName:  currentUser?.name ?? 'Peserta',
+        bibNumber: currentUser?.bibNumber ?? null,
+        items,
+        total:     totalPrice,
+      });
+      window.open(finalWaUrl, '_blank', 'noopener,noreferrer');
     }
   };
 

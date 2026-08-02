@@ -115,6 +115,12 @@ export const api = {
       body: JSON.stringify({ price }),
     }),
 
+  updatePhoto: (photoId, data) =>
+    fetchApi(`/photos/${photoId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   deletePhoto: (photoId) =>
     fetchApi(`/photos/${photoId}`, {
       method: 'DELETE',
@@ -136,6 +142,8 @@ export const api = {
     }),
 
   // ─── Transactions API ──────────────────────────────────────────────────
+  getNextOrderNumber: () => fetchApi('/transactions/next-order-number'),
+
   createTransaction: (data) =>
     fetchApi('/transactions', {
       method: 'POST',

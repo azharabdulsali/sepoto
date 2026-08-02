@@ -29,6 +29,7 @@ const getPhotos = async (req, res) => {
       id: row.id,
       watermarkedUrl: row.watermarked_url,
       originalUrl: row.original_url,
+      originalFilename: row.original_filename || `IMG_${row.id}.jpg`,
       price: Number(row.price),
       bibTags: row.bib_tags,
       orientation: row.orientation || 'portrait',
@@ -65,6 +66,7 @@ const uploadPhotos = async (req, res) => {
 
     for (const file of files) {
       const timeId = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const originalName = file.originalname || `IMG_${timeId}.jpg`;
       const originalKey = `original/RAW-${timeId}.jpg`;
       const watermarkedKey = `watermarked/WM-${timeId}.jpg`;
 
@@ -77,9 +79,9 @@ const uploadPhotos = async (req, res) => {
 
       // 3. Simpan metadata ke PostgreSQL
       const dbRes = await query(
-        `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [eventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation]
+        `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [eventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation, originalName]
       );
 
       uploadedRecords.push(dbRes.rows[0]);
@@ -113,6 +115,7 @@ const getMyPhotos = async (req, res) => {
       id: row.id,
       watermarkedUrl: row.watermarked_url,
       originalUrl: row.original_url,
+      originalFilename: row.original_filename || `IMG_${row.id}.jpg`,
       price: Number(row.price),
       bibTags: row.bib_tags,
       orientation: row.orientation || 'portrait',
@@ -170,6 +173,62 @@ const updatePhotoPrice = async (req, res) => {
 };
 
 /**
+ * PATCH /api/photos/:id
+ * Update harga dan/atau BIB tag foto ke PostgreSQL DB (hanya pemilik foto)
+ */
+const updatePhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { price, bibTags } = req.body;
+    const photographerId = req.user.id;
+
+    // Validasi kepemilikan foto
+    const photoCheck = await query(
+      'SELECT id FROM photos WHERE id = $1 AND photographer_id = $2',
+      [id, photographerId]
+    );
+
+    if (photoCheck.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Anda tidak memiliki hak untuk mengedit foto ini.',
+      });
+    }
+
+    const priceVal = price !== undefined && price !== null ? Number(price) : null;
+    const bibVal = bibTags !== undefined && bibTags !== null ? String(bibTags).trim() : null;
+
+    const result = await query(
+      `UPDATE photos 
+       SET price = COALESCE($1, price), 
+           bib_tags = COALESCE($2, bib_tags) 
+       WHERE id = $3 AND photographer_id = $4 
+       RETURNING *`,
+      [priceVal, bibVal, id, photographerId]
+    );
+
+    const updated = result.rows[0];
+
+    return res.json({
+      success: true,
+      message: 'Detail foto berhasil disimpan ke database.',
+      photo: {
+        id: updated.id,
+        watermarkedUrl: updated.watermarked_url,
+        originalUrl: updated.original_url,
+        price: Number(updated.price),
+        bibTags: updated.bib_tags,
+        orientation: updated.orientation || 'portrait',
+        createdAt: updated.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Update Photo Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui data foto di database.' });
+  }
+};
+
+/**
  * DELETE /api/photos/:id
  * Hapus foto (validasi kepemilikan: hanya pemilik foto yang bisa hapus)
  */
@@ -221,6 +280,12 @@ const proxyR2Image = async (req, res) => {
     const response = await r2Client.send(command);
     res.setHeader('Content-Type', response.ContentType || 'image/jpeg');
     res.setHeader('Cache-Control', 'public, max-age=31536000');
+
+    if (req.query.download === '1' || req.query.download === 'true') {
+      const downloadName = req.params.filename ? `SEPOTO-HD-${req.params.filename}` : 'SEPOTO-HD-PHOTO.jpg';
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    }
+
     response.Body.pipe(res);
   } catch (error) {
     console.error('Proxy R2 Image Error:', error);
@@ -233,6 +298,7 @@ module.exports = {
   uploadPhotos,
   getMyPhotos,
   updatePhotoPrice,
+  updatePhoto,
   deletePhoto,
   proxyR2Image,
 };

@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CloudUpload, Image as ImageIcon, Check, Trash2, X,
-  Camera, Search, Loader2, CheckSquare, Square, Tag, CheckCircle2, Eye
+  Camera, Search, Loader2, CheckSquare, Square, Tag, CheckCircle2, Eye, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -333,11 +333,11 @@ function UploadTab() {
                     id="bulk-price-input"
                     type="number"
                     min="0"
-                    step="1000"
+                    inputMode="numeric"
                     value={bulkPrice}
                     onChange={(e) => setBulkPrice(e.target.value)}
                     placeholder="Contoh: 25000"
-                    className="pl-8 h-10 border-[#E5E7EB] bg-white text-xs font-semibold"
+                    className="pl-8 h-10 border-[#E5E7EB] bg-white text-xs font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
                 <Button
@@ -361,6 +361,7 @@ function UploadTab() {
                   <Input
                     id="bulk-bib-input"
                     type="text"
+                    inputMode="numeric"
                     value={bulkBib}
                     onChange={(e) => setBulkBib(e.target.value)}
                     placeholder="Contoh: 105"
@@ -435,20 +436,22 @@ function UploadTab() {
                     <Input
                       type="number"
                       min="0"
-                      value={p.price}
+                      inputMode="numeric"
+                      value={p.price === 0 || p.price === '0' || p.price == null || p.price === '' ? '' : p.price}
                       onChange={(e) =>
                         setPreviews((prev) =>
                           prev.map((x) => x.id === p.id ? { ...x, price: e.target.value } : x)
                         )
                       }
                       placeholder="Harga"
-                      className="pl-7 h-8 text-xs border-[#E5E7EB]"
+                      className="pl-7 h-8 text-xs border-[#E5E7EB] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <div className="relative">
                     <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
                     <Input
                       type="text"
+                      inputMode="numeric"
                       value={p.bib}
                       onChange={(e) =>
                         setPreviews((prev) =>
@@ -519,6 +522,9 @@ function ManageTab() {
     !search || p.bibTags?.includes(search) || String(p.id).includes(search)
   );
 
+  // State id foto yang sedang proses simpan ke DB
+  const [savingId, setSavingId]           = useState(null);
+
   const toggleSelect = (id) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -539,12 +545,13 @@ function ManageTab() {
     }
   };
 
+  // Simpan detail harga & BIB massal ke Database PostgreSQL
   const applyBulkPrice = async () => {
     if (!bulkEditPrice || selected.size === 0) return;
     const newPrice = Number(bulkEditPrice);
     for (const id of Array.from(selected)) {
       try {
-        await api.updatePhotoPrice(id, newPrice);
+        await api.updatePhoto(id, { price: newPrice });
       } catch (err) {
         console.error('Failed to update price for photo', id, err);
       }
@@ -552,26 +559,73 @@ function ManageTab() {
     setPhotos((prev) =>
       prev.map((p) => selected.has(p.id) ? { ...p, price: newPrice } : p)
     );
+    const count = selected.size;
     setBulkEditPrice('');
     setActionAlert({
       type: 'success',
-      title: 'Harga Diperbarui!',
-      message: `Harga untuk ${selected.size} foto berhasil diset ke Rp ${newPrice.toLocaleString('id-ID')}.`,
+      title: 'Tersimpan ke Database!',
+      message: `Harga untuk ${count} foto berhasil diperbarui di database ke Rp ${newPrice.toLocaleString('id-ID')}.`,
     });
   };
 
-  const applyBulkBib = () => {
+  const applyBulkBib = async () => {
     if (!bulkEditBib.trim() || selected.size === 0) return;
+    const newBib = bulkEditBib.trim();
+    for (const id of Array.from(selected)) {
+      try {
+        await api.updatePhoto(id, { bibTags: newBib });
+      } catch (err) {
+        console.error('Failed to update bib for photo', id, err);
+      }
+    }
     setPhotos((prev) =>
-      prev.map((p) => selected.has(p.id) ? { ...p, bibTags: bulkEditBib.trim() } : p)
+      prev.map((p) => selected.has(p.id) ? { ...p, bibTags: newBib } : p)
     );
     const count = selected.size;
     setBulkEditBib('');
     setActionAlert({
       type: 'success',
-      title: 'Tag BIB Diperbarui!',
-      message: `Nomor BIB #${bulkEditBib.trim()} berhasil diterapkan ke ${count} foto.`,
+      title: 'Tersimpan ke Database!',
+      message: `Nomor BIB #${newBib} berhasil diperbarui di database untuk ${count} foto.`,
     });
+  };
+
+  // Simpan detail foto individual ke Database PostgreSQL
+  const handleSaveSinglePhoto = async (photoId) => {
+    const photo = photos.find((p) => p.id === photoId);
+    if (!photo) return;
+
+    setSavingId(photoId);
+    try {
+      const finalPrice = photo.price === '' || photo.price == null ? 0 : Number(photo.price);
+      const res = await api.updatePhoto(photoId, {
+        price: finalPrice,
+        bibTags: photo.bibTags,
+      });
+
+      if (res.success) {
+        setActionAlert({
+          type: 'success',
+          title: 'Berhasil Disimpan ke Database!',
+          message: `Detail foto #${photoId} (Harga: ${finalPrice > 0 ? `Rp ${finalPrice.toLocaleString('id-ID')}` : 'Belum Diberi Harga'}, BIB: #${photo.bibTags || '-'}) tersimpan permanen di database.`,
+        });
+      } else {
+        setActionAlert({
+          type: 'error',
+          title: 'Gagal Menyimpan',
+          message: res.message || 'Terjadi kesalahan saat menyimpan ke database.',
+        });
+      }
+    } catch (err) {
+      console.error('Save photo error:', err);
+      setActionAlert({
+        type: 'error',
+        title: 'Gagal Menyimpan',
+        message: 'Terjadi kesalahan koneksi saat menyimpan ke database.',
+      });
+    } finally {
+      setSavingId(null);
+    }
   };
 
   // Memicu Modal Konfirmasi Hapus Single
@@ -641,7 +695,7 @@ function ManageTab() {
   };
 
   const updatePrice = (id, price) => {
-    setPhotos((prev) => prev.map((p) => p.id === id ? { ...p, price: Number(price) } : p));
+    setPhotos((prev) => prev.map((p) => p.id === id ? { ...p, price } : p));
   };
 
   const updateBib = (id, bib) => {
@@ -728,10 +782,11 @@ function ManageTab() {
                       id="multi-price-input"
                       type="number"
                       min="0"
+                      inputMode="numeric"
                       value={bulkEditPrice}
                       onChange={(e) => setBulkEditPrice(e.target.value)}
                       placeholder="Harga baru"
-                      className="pl-7 h-9 bg-white/10 border-white/20 text-white text-xs rounded-xl"
+                      className="pl-7 h-9 bg-white/10 border-white/20 text-white text-xs rounded-xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <Button
@@ -751,6 +806,7 @@ function ManageTab() {
                     <Input
                       id="multi-bib-input"
                       type="text"
+                      inputMode="numeric"
                       value={bulkEditBib}
                       onChange={(e) => setBulkEditBib(e.target.value)}
                       placeholder="Nomor BIB baru"
@@ -804,7 +860,7 @@ function ManageTab() {
             const isSelected = selected.has(photo.id);
             const imgUrl = photo.watermarkedUrl || photo.watermarked_url || '';
             const bibVal = photo.bibTags ?? photo.bib_tags ?? '';
-            const priceVal = photo.price ?? 0;
+            const priceVal = photo.price === 0 || photo.price === '0' || photo.price == null || photo.price === '' ? '' : photo.price;
             const dateStr = photo.uploadedAt || (photo.createdAt ? new Date(photo.createdAt).toLocaleString('id-ID') : '');
 
             return (
@@ -874,10 +930,11 @@ function ManageTab() {
                       <Input
                         type="number"
                         min="0"
+                        inputMode="numeric"
                         value={priceVal}
                         onChange={(e) => updatePrice(photo.id, e.target.value)}
                         placeholder="Harga"
-                        className="pl-7 h-8 text-xs font-bold border-[#E5E7EB]"
+                        className="pl-7 h-8 text-xs font-bold border-[#E5E7EB] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
 
@@ -885,6 +942,7 @@ function ManageTab() {
                       <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
                       <Input
                         type="text"
+                        inputMode="numeric"
                         value={bibVal}
                         onChange={(e) => updateBib(photo.id, e.target.value)}
                         placeholder="Tag BIB"
@@ -892,7 +950,22 @@ function ManageTab() {
                       />
                     </div>
 
-                    {dateStr && <p className="text-[10px] text-[#9CA3AF] text-right font-medium">{dateStr}</p>}
+                    <Button
+                      id={`save-photo-${photo.id}`}
+                      onClick={() => handleSaveSinglePhoto(photo.id)}
+                      disabled={savingId === photo.id}
+                      size="sm"
+                      className="w-full bg-brand hover:bg-[#C2410C] text-white font-bold text-xs h-8.5 rounded-xl shadow-sm mt-1 flex items-center justify-center gap-1.5"
+                    >
+                      {savingId === photo.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Save className="w-3.5 h-3.5" />
+                      )}
+                      <span>{savingId === photo.id ? 'Menyimpan...' : 'Simpan Foto'}</span>
+                    </Button>
+
+                    {dateStr && <p className="text-[10px] text-[#9CA3AF] text-right font-medium pt-0.5">{dateStr}</p>}
                   </div>
                 </Card>
               </motion.div>
