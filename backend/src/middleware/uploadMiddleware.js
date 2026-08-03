@@ -3,7 +3,7 @@ const multer = require('multer');
 /**
  * Konfigurasi Multer untuk upload foto
  * - Menggunakan memoryStorage (buffer) agar bisa langsung diproses Sharp
- * - Limit: 20MB per file, maksimal 20 file sekaligus
+ * - Limit: 20MB per file, maksimal 50 file sekaligus per batch upload
  */
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -20,8 +20,8 @@ const upload = multer({
   },
 });
 
-// Bulk upload: maksimal 20 foto sekaligus
-const bulkUploadPhotos = upload.array('photos', 20);
+// Bulk upload: maksimal 50 foto sekaligus per batch
+const bulkUploadPhotos = upload.array('photos', 50);
 
 module.exports = {
   upload,

@@ -2,9 +2,15 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sepoto_jwt_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'sepoto_jwt_secret_key_2026_CHANGE_THIS';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12; // Ditingkatkan dari 10 ke 12 untuk keamanan lebih baik
+
+// Dummy hash digunakan untuk mencegah timing attack saat user tidak ditemukan
+// Tanpa ini, penyerang bisa membedakan "user tidak ada" vs "password salah"
+// berdasarkan perbedaan waktu respons.
+const DUMMY_HASH = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpfQN6AkTmSBm2';
+
 
 /**
  * Generate JWT token dari user data
@@ -65,6 +71,7 @@ const loginUser = async (req, res) => {
 /**
  * POST /api/auth/login-admin
  * Login Super Admin via username + password (bcrypt verification)
+ * Menggunakan dummy hash untuk mencegah timing attack
  */
 const loginAdmin = async (req, res) => {
   try {
@@ -78,15 +85,15 @@ const loginAdmin = async (req, res) => {
       [username.trim()]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Username atau Password Admin salah.' });
-    }
+    const user = result.rows[0] || null;
+    // Selalu jalankan bcrypt.compare untuk mencegah timing attack
+    // Jika user tidak ditemukan, bandingkan dengan dummy hash
+    const hashToCompare = user ? user.password_hash : DUMMY_HASH;
+    const isMatch = await bcrypt.compare(password, hashToCompare);
 
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Username atau Password Admin salah.' });
+    if (!user || !isMatch) {
+      // Pesan error yang sama untuk kedua kasus (user tidak ada / password salah)
+      return res.status(401).json({ success: false, message: 'Username atau Password tidak valid.' });
     }
 
     const token = generateToken(user);
@@ -109,6 +116,7 @@ const loginAdmin = async (req, res) => {
 /**
  * POST /api/auth/login-photographer
  * Login Fotografer via username + password (bcrypt verification)
+ * Menggunakan dummy hash untuk mencegah timing attack
  */
 const loginPhotographer = async (req, res) => {
   try {
@@ -122,15 +130,13 @@ const loginPhotographer = async (req, res) => {
       [username.trim()]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Username atau Password Fotografer salah.' });
-    }
+    const user = result.rows[0] || null;
+    // Selalu jalankan bcrypt.compare untuk mencegah timing attack
+    const hashToCompare = user ? user.password_hash : DUMMY_HASH;
+    const isMatch = await bcrypt.compare(password, hashToCompare);
 
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Username atau Password Fotografer salah.' });
+    if (!user || !isMatch) {
+      return res.status(401).json({ success: false, message: 'Username atau Password tidak valid.' });
     }
 
     const token = generateToken(user);
@@ -150,6 +156,7 @@ const loginPhotographer = async (req, res) => {
     res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
   }
 };
+
 
 /**
  * GET /api/auth/me
