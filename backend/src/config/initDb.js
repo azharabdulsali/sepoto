@@ -162,36 +162,31 @@ async function initDb() {
       console.log('🌱 Default event and initial users seeded (admin/password, fotografer/foto123)!');
     }
 
-    // Pastikan Super Admin selalu punya username & password_hash valid (backward-compat untuk DB lama)
+    // Pastikan Super Admin default (username: admin) selalu punya password_hash valid
     const adminCheck = await query(
-      `SELECT id, username, password_hash FROM users WHERE role = 'super_admin' LIMIT 1`
+      `SELECT id, username, password_hash FROM users WHERE username = 'admin' LIMIT 1`
     );
     if (adminCheck.rows.length > 0) {
       const admin = adminCheck.rows[0];
       const isValid = admin.password_hash ? await bcrypt.compare('password', admin.password_hash) : false;
-      if (!admin.username || !isValid) {
+      if (!isValid) {
         const hash = await bcrypt.hash('password', SALT_ROUNDS);
-        await query(
-          'UPDATE users SET username = $1, password_hash = $2 WHERE id = $3',
-          ['admin', hash, admin.id]
-        );
-        console.log('🔐 Admin username/password_hash updated successfully.');
+        await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, admin.id]);
+        console.log('🔐 Default Admin password_hash updated successfully.');
       }
     }
 
+    // Pastikan Default Fotografer (username: fotografer) selalu punya password_hash valid
     const photoCheck = await query(
-      `SELECT id, username, password_hash FROM users WHERE role = 'photographer' LIMIT 1`
+      `SELECT id, username, password_hash FROM users WHERE username = 'fotografer' LIMIT 1`
     );
     if (photoCheck.rows.length > 0) {
       const photographer = photoCheck.rows[0];
       const isValid = photographer.password_hash ? await bcrypt.compare('foto123', photographer.password_hash) : false;
-      if (!photographer.username || !isValid) {
+      if (!isValid) {
         const hash = await bcrypt.hash('foto123', SALT_ROUNDS);
-        await query(
-          'UPDATE users SET username = $1, password_hash = $2 WHERE id = $3',
-          ['fotografer', hash, photographer.id]
-        );
-        console.log('🔐 Photographer username/password_hash updated successfully.');
+        await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, photographer.id]);
+        console.log('🔐 Default Photographer password_hash updated successfully.');
       }
     }
 

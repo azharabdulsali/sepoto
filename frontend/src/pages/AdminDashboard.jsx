@@ -113,7 +113,9 @@ function OverviewTab({ transactions }) {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-brand font-bib">{formatRupiah(t.total)}</p>
-                  <p className="text-[11px] text-[#4B5563]">{t.items} foto</p>
+                  <p className="text-[11px] text-[#4B5563]">
+                    {Array.isArray(t.items) ? t.items.length : (t.items || 0)} foto
+                  </p>
                 </div>
               </Card>
             ))}
