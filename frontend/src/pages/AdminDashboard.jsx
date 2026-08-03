@@ -195,55 +195,94 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
         {filtered.length === 0 && (
           <p className="text-sm text-[#4B5563] py-12 text-center">Tidak ada data transaksi yang cocok</p>
         )}
-        {filtered.map((t) => (
-          <Card key={t.id} className="bg-white border-[#E5E7EB] rounded-2xl p-4.5 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <p className="text-sm font-bold text-[#111827]">{t.userName}</p>
-                  <Badge variant="secondary" className="font-bib text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full">
-                    BIB #{t.bibNumber}
-                  </Badge>
-                  <StatusBadge status={t.status} />
-                </div>
-                <p className="font-bib text-xs text-[#4B5563] mb-1">{t.orderNumber}</p>
-                <p className="text-[11px] text-[#9CA3AF]">{t.items} foto · {t.createdAt}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-bold text-brand font-bib text-base">{formatRupiah(t.total)}</p>
-              </div>
-            </div>
+        {filtered.map((t) => {
+          const photoItems = Array.isArray(t.items) ? t.items.filter((it) => it?.watermarkedUrl) : [];
 
-            {t.status === 'pending' && (
-              <div className="flex gap-2 sm:gap-2.5 mt-3.5 pt-3.5 border-t border-[#F3F4F6]">
-                <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
-                  <Button
-                    id={`approve-${t.id}`}
-                    onClick={() => setActionConfirm({ type: 'approve', item: t })}
-                    disabled={loadingId === t.id}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm px-2 sm:px-4"
-                  >
-                    {loadingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
-                    <span className="hidden sm:inline">Approve Pembayaran</span>
-                    <span className="sm:hidden">Approve</span>
-                  </Button>
-                </motion.div>
-                <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
-                  <Button
-                    id={`reject-${t.id}`}
-                    onClick={() => setActionConfirm({ type: 'reject', item: t })}
-                    disabled={loadingId === t.id}
-                    variant="outline"
-                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl px-2 sm:px-4"
-                  >
-                    <X className="w-3.5 h-3.5 mr-1" />
-                    Tolak
-                  </Button>
-                </motion.div>
+          return (
+            <Card key={t.id} className="bg-white border-[#E5E7EB] rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+              {/* Header info transaksi */}
+              <div className="p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="text-sm font-bold text-[#111827]">{t.userName}</p>
+                      <Badge variant="secondary" className="font-bib text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full">
+                        BIB #{t.bibNumber}
+                      </Badge>
+                      <StatusBadge status={t.status} />
+                    </div>
+                    <p className="font-bib text-xs text-[#4B5563] mb-1">{t.orderNumber}</p>
+                    <p className="text-[11px] text-[#9CA3AF]">{photoItems.length || t.items?.length || 0} foto · {t.createdAt}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-brand font-bib text-base">{formatRupiah(t.total)}</p>
+                  </div>
+                </div>
+
+                {/* Foto Preview Strip */}
+                {photoItems.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[#F9FAFB]">
+                    <p className="text-[10px] font-bib uppercase tracking-widest text-[#9CA3AF] font-bold mb-2">
+                      Preview Foto yang Dipesan
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {photoItems.map((item, idx) => (
+                        <div
+                          key={item.photoId || idx}
+                          className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] shadow-sm relative group"
+                        >
+                          <img
+                            src={item.watermarkedUrl}
+                            alt={item.originalFilename || `Foto ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] font-bold text-center py-0.5 truncate px-1">
+                            {item.originalFilename ? item.originalFilename.split('.')[0] : `Foto ${idx + 1}`}
+                          </div>
+                        </div>
+                      ))}
+                      {photoItems.length < (t.items?.length || 0) && (
+                        <div className="shrink-0 w-20 h-20 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center text-[10px] text-[#9CA3AF] font-bold">
+                          +{(t.items?.length || 0) - photoItems.length}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {t.status === 'pending' && (
+                  <div className="flex gap-2 sm:gap-2.5 mt-3.5 pt-3.5 border-t border-[#F3F4F6]">
+                    <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
+                      <Button
+                        id={`approve-${t.id}`}
+                        onClick={() => setActionConfirm({ type: 'approve', item: t })}
+                        disabled={loadingId === t.id}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm px-2 sm:px-4"
+                      >
+                        {loadingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+                        <span className="hidden sm:inline">Approve Pembayaran</span>
+                        <span className="sm:hidden">Approve</span>
+                      </Button>
+                    </motion.div>
+                    <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
+                      <Button
+                        id={`reject-${t.id}`}
+                        onClick={() => setActionConfirm({ type: 'reject', item: t })}
+                        disabled={loadingId === t.id}
+                        variant="outline"
+                        className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl px-2 sm:px-4"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" />
+                        Tolak
+                      </Button>
+                    </motion.div>
+                  </div>
+                )}
               </div>
-            )}
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       <AlertDialog open={Boolean(actionConfirm)} onOpenChange={(open) => !open && setActionConfirm(null)}>
@@ -252,29 +291,57 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
             <AlertDialogTitle className="text-white text-lg font-bold">
               {actionConfirm?.type === 'approve' ? 'Konfirmasi Persetujuan Pembayaran' : 'Konfirmasi Penolakan Pembayaran'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300 text-xs sm:text-sm leading-relaxed mt-2">
-              {actionConfirm?.type === 'approve' ? (
-                <>
-                  Apakah Anda yakin ingin menyetujui transaksi{' '}
-                  <strong className="text-white font-bib">{actionConfirm?.item?.orderNumber}</strong> milik{' '}
-                  <strong className="text-white">{actionConfirm?.item?.userName}</strong> (BIB #{actionConfirm?.item?.bibNumber}) sebesar{' '}
-                  <strong className="text-brand font-bib">{formatRupiah(actionConfirm?.item?.total)}</strong>?
-                  <br />
-                  <span className="text-green-400 text-xs mt-2 block">
-                    ✓ Akses unduhan foto HD tanpa watermark akan langsung diberikan kepada peserta.
-                  </span>
-                </>
-              ) : (
-                <>
-                  Apakah Anda yakin ingin menolak transaksi{' '}
-                  <strong className="text-white font-bib">{actionConfirm?.item?.orderNumber}</strong> milik{' '}
-                  <strong className="text-white">{actionConfirm?.item?.userName}</strong> (BIB #{actionConfirm?.item?.bibNumber})?
-                  <br />
-                  <span className="text-red-400 text-xs mt-2 block">
-                    ✕ Peserta tidak dapat mengakses unduhan foto HD untuk transaksi ini.
-                  </span>
-                </>
-              )}
+            <AlertDialogDescription className="text-gray-300 text-xs sm:text-sm leading-relaxed mt-2" asChild>
+              <div>
+                {actionConfirm?.type === 'approve' ? (
+                  <>
+                    Apakah Anda yakin ingin menyetujui transaksi{' '}
+                    <strong className="text-white font-bib">{actionConfirm?.item?.orderNumber}</strong> milik{' '}
+                    <strong className="text-white">{actionConfirm?.item?.userName}</strong> (BIB #{actionConfirm?.item?.bibNumber}) sebesar{' '}
+                    <strong className="text-brand font-bib">{formatRupiah(actionConfirm?.item?.total)}</strong>?
+                    <span className="text-green-400 text-xs mt-2 block">
+                      ✓ Akses unduhan foto HD tanpa watermark akan langsung diberikan kepada peserta.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Apakah Anda yakin ingin menolak transaksi{' '}
+                    <strong className="text-white font-bib">{actionConfirm?.item?.orderNumber}</strong> milik{' '}
+                    <strong className="text-white">{actionConfirm?.item?.userName}</strong> (BIB #{actionConfirm?.item?.bibNumber})?
+                    <span className="text-red-400 text-xs mt-2 block">
+                      ✕ Peserta tidak dapat mengakses unduhan foto HD untuk transaksi ini.
+                    </span>
+                  </>
+                )}
+
+                {/* Mini preview di dalam dialog */}
+                {(() => {
+                  const dlgItems = Array.isArray(actionConfirm?.item?.items)
+                    ? actionConfirm.item.items.filter((it) => it?.watermarkedUrl)
+                    : [];
+                  return dlgItems.length > 0 ? (
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bib mb-2">Foto yang dipesan</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {dlgItems.slice(0, 6).map((item, idx) => (
+                          <div key={idx} className="w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-white/5 shrink-0">
+                            <img
+                              src={item.watermarkedUrl}
+                              alt={`foto ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                        {dlgItems.length > 6 && (
+                          <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            +{dlgItems.length - 6}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2 flex-col-reverse sm:flex-row">
@@ -887,21 +954,80 @@ function ParticipantsTab() {
 }
 
 function EventSettingsTab() {
+  const [eventId, setEventId] = useState(1);
   const [form, setForm] = useState({
-    title:    'Marathon Boyolali 2026',
-    date:     '2026-08-01',
-    isActive: true,
+    title:     'Marathon Boyolali 2026',
+    date:      '2026-08-01',
+    qrCodeUrl: '',
+    isActive:  true,
   });
-  const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved]       = useState(false);
+  const [isSaving, setIsSaving]     = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [saved, setSaved]           = useState(false);
+  const qrInputRef = useRef(null);
+
+  const fetchActiveEvent = useCallback(async () => {
+    try {
+      const res = await api.getActiveEvent();
+      if (res.success && res.event) {
+        const ev = res.event;
+        setEventId(ev.id);
+        const formattedDate = ev.eventDate ? new Date(ev.eventDate).toISOString().split('T')[0] : '2026-08-01';
+        setForm({
+          title:     ev.title || '',
+          date:      formattedDate,
+          qrCodeUrl: ev.qrCodeUrl || '',
+          isActive:  ev.isActive ?? true,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load event data:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActiveEvent();
+  }, [fetchActiveEvent]);
+
+  const handleQrisUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const res = await api.uploadQrisImage(eventId, file);
+      if (res.success && res.qrCodeUrl) {
+        setForm((f) => ({ ...f, qrCodeUrl: res.qrCodeUrl }));
+        alert('Gambar QR Code QRIS berhasil diunggah!');
+      } else {
+        alert(res.message || 'Gagal mengunggah QRIS.');
+      }
+    } catch (err) {
+      console.error('Upload QRIS error:', err);
+      alert('Terjadi kesalahan saat unggah QRIS.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setIsSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      await api.updateEvent(eventId, {
+        title: form.title,
+        eventDate: form.date,
+        qrCodeUrl: form.qrCodeUrl,
+      });
+      await api.toggleEventActive(eventId, form.isActive);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Save event error:', err);
+      alert('Gagal menyimpan pengaturan event.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -914,7 +1040,7 @@ function EventSettingsTab() {
                 <Check className="w-5 h-5 text-green-600 shrink-0" />
                 <div>
                   <AlertTitle className="text-xs font-bold">Pengaturan Berhasil Disimpan!</AlertTitle>
-                  <AlertDescription className="text-xs mt-0.5 opacity-90">Perubahan konfigurasi event telah disimpan.</AlertDescription>
+                  <AlertDescription className="text-xs mt-0.5 opacity-90">Konfigurasi event & QRIS telah diperbarui.</AlertDescription>
                 </div>
               </div>
             </Alert>
@@ -951,12 +1077,57 @@ function EventSettingsTab() {
           <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
             QR Code Pembayaran QRIS Statis
           </label>
-          <div className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-6 text-center hover:border-brand/40 transition-colors cursor-pointer bg-[#F9FAFB]">
-            <QrCode className="w-9 h-9 text-[#D1D5DB] mx-auto mb-2" />
-            <p className="text-sm font-semibold text-[#111827]">Upload gambar QR Code QRIS</p>
-            <p className="text-[11px] text-[#9CA3AF] mt-1">PNG atau JPG · Maks. 2MB</p>
-            <input type="file" accept="image/*" className="sr-only" id="qr-upload-input" />
-          </div>
+
+          <input
+            type="file"
+            accept="image/*"
+            ref={qrInputRef}
+            onChange={handleQrisUpload}
+            className="hidden"
+            id="qr-upload-input"
+          />
+
+          {form.qrCodeUrl ? (
+            <div className="bg-white border-2 border-dashed border-brand/30 rounded-2xl p-4 text-center shadow-sm relative">
+              <div className="w-48 h-48 mx-auto bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2 mb-3">
+                <img
+                  src={form.qrCodeUrl}
+                  alt="Gambar QRIS Event"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => qrInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="text-xs font-bold border-gray-300 rounded-xl h-9"
+                >
+                  {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Upload className="w-3.5 h-3.5 mr-1.5 text-brand" />}
+                  {isUploading ? 'Mengunggah...' : 'Ganti Gambar QRIS'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              onClick={() => qrInputRef.current?.click()}
+              className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-6 text-center hover:border-brand/40 transition-colors cursor-pointer bg-[#F9FAFB]"
+            >
+              {isUploading ? (
+                <div className="py-2">
+                  <Loader2 className="w-8 h-8 text-brand animate-spin mx-auto mb-2" />
+                  <p className="text-xs font-bold text-gray-600">Mengunggah Gambar QRIS...</p>
+                </div>
+              ) : (
+                <>
+                  <QrCode className="w-9 h-9 text-[#D1D5DB] mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-[#111827]">Upload gambar QR Code QRIS</p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1">PNG, JPG, atau JPEG · Maks. 5MB</p>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">

@@ -92,9 +92,24 @@ const createTransaction = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     const result = await query(`
-      SELECT t.*, u.name as user_name, u.bib_number
+      SELECT
+        t.id, t.order_number, t.status, t.total_amount, t.created_at,
+        u.name as user_name, u.bib_number,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'photoId',        p.id,
+              'watermarkedUrl', p.watermarked_url,
+              'originalFilename', p.original_filename
+            ) ORDER BY ti.id
+          ) FILTER (WHERE p.id IS NOT NULL),
+          '[]'
+        ) as items
       FROM transactions t
       LEFT JOIN users u ON t.user_id = u.id
+      LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
+      LEFT JOIN photos p ON p.id = ti.photo_id
+      GROUP BY t.id, u.name, u.bib_number
       ORDER BY t.id DESC
     `);
 
@@ -106,6 +121,7 @@ const getTransactions = async (req, res) => {
       total: Number(t.total_amount),
       status: t.status,
       createdAt: new Date(t.created_at).toLocaleString('id-ID'),
+      items: Array.isArray(t.items) ? t.items : [],
     }));
 
     return res.json({ success: true, transactions });
@@ -301,18 +317,31 @@ const downloadTransactionZip = async (req, res) => {
     const archiver = require('archiver');
     const { r2Client } = require('../services/r2Service');
     const { GetObjectCommand } = require('@aws-sdk/client-s3');
+    const { Readable } = require('stream');
 
     const zipName = `${tx.order_number || `SEPOTO-TX-${transactionId}`}.zip`;
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    // Gunakan level kompresi rendah (0 = store) supaya ZIP lebih cepat dan stabil
+    const archive = archiver('zip', { zlib: { level: 0 } });
+
+    // Jika archiver error, tutup response agar tidak hang
+    archive.on('error', (err) => {
+      console.error('Archiver error:', err);
+      if (!res.headersSent) res.status(500).send('Gagal membuat ZIP.');
+    });
+
     archive.pipe(res);
 
+    // Kumpulkan semua foto dari R2 TERLEBIH DAHULU agar archive tidak finalize sebelum selesai
+    const photoBuffers = [];
     for (let i = 0; i < itemsRes.rows.length; i++) {
       const item = itemsRes.rows[i];
       const match = (item.original_url || '').match(/(original\/[^?#]+)/);
-      const key = match ? match[1] : (item.original_url || '').replace(/^https?:\/\/[^\/]+\/(api\/photos\/file\/)?/, '');
+      const key = match
+        ? match[1]
+        : (item.original_url || '').replace(/^https?:\/\/[^\/]+\/(api\/photos\/file\/)?/, '');
       const filename = item.original_filename || `IMG_${item.id}.jpg`;
 
       try {
@@ -321,10 +350,44 @@ const downloadTransactionZip = async (req, res) => {
           Key: key,
         });
         const r2Response = await r2Client.send(getCmd);
-        archive.append(r2Response.Body, { name: filename });
+
+        // Konversi Web ReadableStream / AWS SDK body ke Buffer
+        // agar archiver mendapatkan data yang sudah lengkap
+        const chunks = [];
+        const webStream = r2Response.Body;
+
+        // AWS SDK v3 Body bisa berupa ReadableStream (Web) atau Node Readable
+        if (typeof webStream.getReader === 'function') {
+          // Web ReadableStream → baca chunk per chunk
+          const reader = webStream.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(Buffer.isBuffer(value) ? value : Buffer.from(value));
+          }
+        } else {
+          // Node.js Readable stream
+          for await (const chunk of webStream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+        }
+
+        const buffer = Buffer.concat(chunks);
+        photoBuffers.push({ buffer, filename });
       } catch (err) {
-        console.error(`Failed to fetch photo ${item.id} for zip:`, err);
+        console.error(`Gagal mengambil foto ${item.id} untuk ZIP:`, err);
+        // Lewati foto yang gagal, lanjutkan sisanya
       }
+    }
+
+    if (photoBuffers.length === 0) {
+      archive.abort();
+      return res.status(500).send('Gagal mengambil semua foto dari penyimpanan.');
+    }
+
+    // Tambahkan buffer ke archive
+    for (const { buffer, filename } of photoBuffers) {
+      archive.append(Readable.from(buffer), { name: filename });
     }
 
     await archive.finalize();

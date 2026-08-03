@@ -135,6 +135,27 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  uploadQrisImage: (eventId, file) => {
+    const formData = new FormData();
+    formData.append('qrisImage', file);
+
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return fetch(`${API_BASE_URL}/events/${eventId}/qris`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal unggah QRIS.');
+      return data;
+    });
+  },
+
   toggleEventActive: (id, isActive) =>
     fetchApi(`/events/${id}/active`, {
       method: 'PATCH',

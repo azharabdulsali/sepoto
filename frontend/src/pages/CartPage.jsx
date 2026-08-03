@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart, Trash2, ArrowLeft,
   QrCode, Package, Camera, ChevronRight, AlertCircle, Sparkles
@@ -128,6 +128,7 @@ export default function CartPage() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [orderNumber, setOrderNumber] = useState(generateOrderNumberFallback());
   const [isClearConfirmOpen, setIsClearConfirmOpen] = React.useState(false);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const handleClearCart = () => {
     clearCart();
@@ -337,19 +338,39 @@ export default function CartPage() {
           </div>
 
           <div className="px-5 pb-6">
-            <div className="bg-white rounded-2xl p-5 text-center shadow-lg">
-              <p className="text-[10px] font-bib text-[#4B5563] uppercase tracking-widest font-bold mb-3">
-                QRIS Statis Pembayaran
-              </p>
+            <div className="bg-white rounded-2xl p-5 text-center shadow-lg relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+                <span className="text-[10px] font-bib text-[#4B5563] uppercase tracking-widest font-bold">
+                  QRIS Statis Pembayaran
+                </span>
+                <Badge variant="outline" className="text-[9px] font-bib bg-red-50 text-red-600 border-red-200">
+                  Semua E-Wallet & M-Banking
+                </Badge>
+              </div>
+
               {activeEvent?.qrCodeUrl ? (
-                <div className="w-52 h-52 bg-white rounded-xl p-2 border border-[#E5E7EB] mx-auto overflow-hidden shadow-sm">
-                  <img src={activeEvent.qrCodeUrl} alt="QRIS Pembayaran" className="w-full h-full object-contain" />
+                <div
+                  onClick={() => setIsZoomOpen(true)}
+                  className="w-56 h-56 bg-white rounded-2xl p-2.5 border-2 border-dashed border-brand/30 mx-auto overflow-hidden shadow-sm hover:border-brand transition-all cursor-pointer group relative"
+                >
+                  <img
+                    src={activeEvent.qrCodeUrl}
+                    alt="QRIS Pembayaran Resmi"
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+                    <span className="text-white text-xs font-bold bg-brand px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                      <QrCode className="w-3.5 h-3.5" />
+                      Perbesar QR Code
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <QrPlaceholder />
               )}
-              <p className="text-[11px] text-[#9CA3AF] mt-3 leading-relaxed">
-                Scan dengan aplikasi m-banking atau e-wallet apapun di Indonesia
+
+              <p className="text-[11px] text-[#4B5563] mt-3.5 leading-relaxed font-medium">
+                Scan menggunakan BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, atau ShopeePay
               </p>
             </div>
           </div>
@@ -413,6 +434,48 @@ export default function CartPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* QRIS Image Lightbox Zoom Modal */}
+      <AnimatePresence>
+        {isZoomOpen && activeEvent?.qrCodeUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-center"
+            >
+              <button
+                onClick={() => setIsZoomOpen(false)}
+                className="absolute top-4 right-4 w-9 h-9 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+              >
+                ✕
+              </button>
+
+              <Badge className="bg-brand text-white font-bib uppercase text-[10px] px-3 py-1 mb-3">
+                QRIS Pembayaran Resmi
+              </Badge>
+              <h3 className="text-base font-bold text-[#111827]">Scan untuk Membayar</h3>
+              <p className="text-xs text-gray-500 mt-1 mb-4">Total: <strong className="text-brand font-bib">{formattedTotal}</strong></p>
+
+              <div className="w-64 h-64 mx-auto bg-white border-2 border-dashed border-brand/40 rounded-2xl p-3 shadow-inner flex items-center justify-center mb-4">
+                <img
+                  src={activeEvent.qrCodeUrl}
+                  alt="QRIS Pembayaran Full"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              <Button
+                onClick={() => setIsZoomOpen(false)}
+                className="w-full bg-[#111827] hover:bg-black text-white text-xs font-bold h-10 rounded-xl"
+              >
+                Tutup Pratinjau
+              </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }

@@ -115,8 +115,48 @@ const toggleEventActive = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/events/:id/qris
+ * Upload gambar QR Code QRIS oleh Super Admin
+ */
+const uploadQris = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'Tidak ada file gambar QRIS yang diunggah.' });
+    }
+
+    const { uploadToR2 } = require('../services/r2Service');
+    const timeId = Date.now();
+    const key = `qris/QRIS-${id}-${timeId}.jpg`;
+    const qrCodeUrl = await uploadToR2(file.buffer, key, file.mimetype);
+
+    const result = await query(
+      'UPDATE events SET qr_code_url = $1 WHERE id = $2 RETURNING *',
+      [qrCodeUrl, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Event tidak ditemukan.' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Gambar QRIS berhasil diunggah dan diperbarui!',
+      qrCodeUrl,
+      event: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Upload QRIS Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengunggah gambar QRIS.' });
+  }
+};
+
 module.exports = {
   getActiveEvent,
   updateEvent,
   toggleEventActive,
+  uploadQris,
 };
