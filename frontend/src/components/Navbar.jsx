@@ -4,7 +4,6 @@ import {
   ShoppingCart, LogOut, Menu, X, User,
   ClipboardList, Home, LayoutDashboard, Aperture, ArrowRight
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -62,48 +61,45 @@ export default function Navbar() {
 
             {/* ─── Non-Authenticated (Public Nav Links) ──────────── */}
             {!isAuthenticated && (
-              <div className="hidden md:flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className={`text-xs font-medium h-9 rounded-xl ${
-                    location.pathname === '/login' ? 'bg-brand/10 text-brand' : 'text-[#4B5563] hover:text-[#111827]'
+              <div className="hidden md:flex items-center gap-1.5">
+                <Link
+                  to="/login"
+                  id="nav-public-user-login"
+                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-semibold transition-all ${
+                    location.pathname === '/login'
+                      ? 'bg-brand/10 text-brand'
+                      : 'text-[#4B5563] hover:text-[#111827] hover:bg-[#F3F4F6]'
                   }`}
                 >
-                  <Link to="/login" id="nav-public-user-login">
-                    <User className="w-3.5 h-3.5 mr-1.5" />
-                    <span>Peserta Login</span>
-                  </Link>
-                </Button>
+                  <User className="w-4 h-4 shrink-0 text-brand" />
+                  <span className="whitespace-nowrap">Peserta Login</span>
+                </Link>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className={`text-xs font-medium h-9 rounded-xl ${
-                    location.pathname === '/photographer/login' ? 'bg-blue-50 text-blue-600' : 'text-[#4B5563] hover:text-blue-600'
+                <Link
+                  to="/photographer/login"
+                  id="nav-public-photographer-login"
+                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-semibold transition-all ${
+                    location.pathname === '/photographer/login'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-[#4B5563] hover:text-blue-600 hover:bg-blue-50/60'
                   }`}
                 >
-                  <Link to="/photographer/login" id="nav-public-photographer-login">
-                    <Aperture className="w-3.5 h-3.5 mr-1.5" />
-                    <span>Fotografer</span>
-                  </Link>
-                </Button>
+                  <Aperture className="w-4 h-4 shrink-0 text-blue-600" />
+                  <span className="whitespace-nowrap">Fotografer</span>
+                </Link>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className={`text-xs font-medium h-9 rounded-xl ${
-                    location.pathname === '/admin/login' ? 'bg-red-50 text-red-600' : 'text-[#4B5563] hover:text-red-600'
+                <Link
+                  to="/admin/login"
+                  id="nav-public-admin-login"
+                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-semibold transition-all ${
+                    location.pathname === '/admin/login'
+                      ? 'bg-red-50 text-red-600'
+                      : 'text-[#4B5563] hover:text-red-600 hover:bg-red-50/60'
                   }`}
                 >
-                  <Link to="/admin/login" id="nav-public-admin-login">
-                    <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" />
-                    <span>Admin</span>
-                  </Link>
-                </Button>
+                  <LayoutDashboard className="w-4 h-4 shrink-0 text-red-600" />
+                  <span className="whitespace-nowrap">Admin</span>
+                </Link>
               </div>
             )}
 
