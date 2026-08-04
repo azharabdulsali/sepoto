@@ -8,7 +8,7 @@ const { generateWatermark } = require('../utils/watermark');
  */
 const getPhotos = async (req, res) => {
   try {
-    const { bib } = req.query;
+    const { bib, eventId } = req.query;
     let sql = `
       SELECT p.*, u.name as photographer_name 
       FROM photos p
@@ -17,8 +17,13 @@ const getPhotos = async (req, res) => {
     `;
     const params = [];
 
+    if (eventId && eventId !== 'all') {
+      sql += ` AND (p.event_id = $${params.length + 1} OR u.event_id = $${params.length + 1})`;
+      params.push(eventId);
+    }
+
     if (bib) {
-      sql += ` AND p.bib_tags LIKE $1`;
+      sql += ` AND p.bib_tags LIKE $${params.length + 1}`;
       params.push(`%${bib}%`);
     }
 
@@ -58,9 +63,16 @@ const uploadPhotos = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Tidak ada file foto yang diunggah.' });
     }
 
-    // Ambil event aktif
-    const eventRes = await query('SELECT id FROM events WHERE is_active = TRUE ORDER BY id DESC LIMIT 1');
-    const eventId = eventRes.rows.length > 0 ? eventRes.rows[0].id : 1;
+    // Ambil event_id fotografer (dari token atau tabel users)
+    let photoEventId = req.user?.eventId;
+    if (!photoEventId) {
+      const uRes = await query('SELECT event_id FROM users WHERE id = $1', [photographerId]);
+      photoEventId = uRes.rows[0]?.event_id;
+    }
+    if (!photoEventId) {
+      const eventRes = await query('SELECT id FROM events WHERE is_active = TRUE ORDER BY id DESC LIMIT 1');
+      photoEventId = eventRes.rows.length > 0 ? eventRes.rows[0].id : 1;
+    }
 
     const uploadedRecords = [];
 
@@ -81,7 +93,7 @@ const uploadPhotos = async (req, res) => {
       const dbRes = await query(
         `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [eventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation, originalName]
+        [photoEventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation, originalName]
       );
 
       uploadedRecords.push(dbRes.rows[0]);

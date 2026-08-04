@@ -9,14 +9,14 @@ router.get('/next-order-number', verifyToken, transactionController.getNextOrder
 // POST /api/transactions (User: Checkout cart → buat transaksi)
 router.post('/', verifyToken, transactionController.createTransaction);
 
-// GET /api/transactions (Admin: List semua transaksi)
-router.get('/', verifyToken, requireRole('super_admin'), transactionController.getTransactions);
+// GET /api/transactions (Super Admin & Admin: List semua transaksi)
+router.get('/', verifyToken, requireRole('super_admin', 'admin'), transactionController.getTransactions);
 
 // GET /api/transactions/my (User: List transaksi milik sendiri)
 router.get('/my', verifyToken, transactionController.getUserTransactions);
 
-// PATCH /api/transactions/:id/status (Admin: Approve / Reject)
-router.patch('/:id/status', verifyToken, requireRole('super_admin'), transactionController.updateTransactionStatus);
+// PATCH /api/transactions/:id/status (Super Admin & Admin: Approve / Reject)
+router.patch('/:id/status', verifyToken, requireRole('super_admin', 'admin'), transactionController.updateTransactionStatus);
 
 // GET /api/transactions/:transactionId/download-zip (User: Unduh seluruh foto asli dalam 1 file .ZIP)
 router.get('/:transactionId/download-zip', verifyToken, transactionController.downloadTransactionZip);

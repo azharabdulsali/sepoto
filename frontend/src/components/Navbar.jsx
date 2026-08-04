@@ -32,9 +32,14 @@ export default function Navbar() {
     setShowLogoutDialog(true);
   };
 
-  const roleLabel = isAdmin ? 'Super Admin' : isPhotographer ? 'Fotografer' : null;
-  const roleColor = isAdmin
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isEventAdmin = currentUser?.role === 'admin';
+
+  const roleLabel = isSuperAdmin ? 'Super Admin' : isEventAdmin ? 'Event Admin' : isPhotographer ? 'Fotografer' : null;
+  const roleColor = isSuperAdmin
     ? 'bg-red-500/20 text-red-400 border-red-500/30'
+    : isEventAdmin
+    ? 'bg-amber-500/20 text-amber-500 border-amber-500/30'
     : isPhotographer
     ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
     : '';

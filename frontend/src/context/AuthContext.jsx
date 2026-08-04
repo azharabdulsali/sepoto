@@ -39,7 +39,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const isAuthenticated = Boolean(currentUser);
-  const isAdmin        = currentUser?.role === 'super_admin';
+  const isAdmin        = currentUser?.role === 'super_admin' || currentUser?.role === 'admin';
+  const isSuperAdmin   = currentUser?.role === 'super_admin';
+  const isEventAdmin   = currentUser?.role === 'admin';
   const isPhotographer = currentUser?.role === 'photographer';
   const isUser         = currentUser?.role === 'user';
 
@@ -50,6 +52,8 @@ export const AuthProvider = ({ children }) => {
       logout,
       isAuthenticated,
       isAdmin,
+      isSuperAdmin,
+      isEventAdmin,
       isPhotographer,
       isUser,
     }}>

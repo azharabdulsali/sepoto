@@ -36,7 +36,7 @@ import { api } from '../services/api';
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v ?? 0);
 
-const DUMMY_TRANSACTIONS = [
+const _DUMMY_TRANSACTIONS = [
   { id: 1, orderNumber: 'SEPOTO-20260801-4821', userName: 'Budi Santoso',    bibNumber: '101', items: 3, total: 75000,  status: 'pending',  createdAt: '2026-08-01 10:23' },
   { id: 2, orderNumber: 'SEPOTO-20260801-3312', userName: 'Sari Dewi',       bibNumber: '205', items: 1, total: 25000,  status: 'pending',  createdAt: '2026-08-01 10:45' },
   { id: 3, orderNumber: 'SEPOTO-20260801-7890', userName: 'Riko Pratama',    bibNumber: '043', items: 5, total: 125000, status: 'approved', createdAt: '2026-08-01 09:12' },
@@ -373,10 +373,12 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
   );
 }
 
-function ParticipantsTab() {
-  const csvRef = useRef(null);
+function ParticipantsTab({ events = [], selectedEventFilter = 'all', onEventFilterChange }) {
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   const [users, setUsers]                 = useState([]);
   const [isImporting, setIsImporting]     = useState(false);
+  const csvRef                            = useRef(null);
   const [importSuccess, setImportSuccess] = useState('');
 
   // Shadcn Alert State untuk Feedback Pengguna
@@ -385,7 +387,8 @@ function ParticipantsTab() {
   // Dialog State untuk Tambah / Edit Pengguna
   const [isModalOpen, setIsModalOpen]       = useState(false);
   const [editingUser, setEditingUser]       = useState(null); // null jika Tambah, object jika Edit
-  const [addRole, setAddRole]               = useState('user'); // 'user' | 'photographer'
+  const [addRole, setAddRole]               = useState('user'); // 'user' | 'photographer' | 'admin'
+  const [formEventId, setFormEventId]       = useState('');
   const [formName, setFormName]             = useState('');
   const [formBib, setFormBib]               = useState('');
   const [formUsername, setFormUsername]     = useState('');
@@ -399,14 +402,14 @@ function ParticipantsTab() {
 
   const loadUsers = useCallback(async () => {
     try {
-      const res = await api.getAllUsers();
+      const res = await api.getAllUsers(selectedEventFilter);
       if (res.success && res.users) {
         setUsers(res.users);
       }
     } catch (err) {
       console.error('Fetch users error:', err);
     }
-  }, []);
+  }, [selectedEventFilter]);
 
   useEffect(() => {
     loadUsers();
@@ -426,6 +429,7 @@ function ParticipantsTab() {
   const openAddModal = () => {
     setEditingUser(null);
     setAddRole('user');
+    setFormEventId(isSuperAdmin ? (selectedEventFilter !== 'all' ? selectedEventFilter : String(events[0]?.id || 1)) : String(currentUser?.eventId || 1));
     setFormName('');
     setFormBib('');
     setFormUsername('');
@@ -436,7 +440,8 @@ function ParticipantsTab() {
 
   const openEditModal = (u) => {
     setEditingUser(u);
-    setAddRole(u.role === 'photographer' ? 'photographer' : 'user');
+    setAddRole(u.role === 'admin' ? 'admin' : u.role === 'photographer' ? 'photographer' : 'user');
+    setFormEventId(String(u.eventId || events[0]?.id || 1));
     setFormName(u.name || '');
     setFormBib(u.bibNumber !== '-' ? u.bibNumber : '');
     setFormUsername(u.username !== '-' ? u.username : '');
@@ -459,8 +464,8 @@ function ParticipantsTab() {
       return;
     }
 
-    if (addRole === 'photographer' && !editingUser && (!formUsername.trim() || !formPassword)) {
-      setFormError('Username dan Password wajib diisi untuk fotografer baru.');
+    if ((addRole === 'photographer' || addRole === 'admin') && !editingUser && (!formUsername.trim() || !formPassword)) {
+      setFormError(`Username dan Password wajib diisi untuk ${addRole === 'admin' ? 'Event Admin' : 'fotografer'} baru.`);
       return;
     }
 
@@ -472,6 +477,7 @@ function ParticipantsTab() {
         bibNumber: formBib.trim(),
         username: formUsername.trim(),
         password: formPassword,
+        eventId: formEventId ? Number(formEventId) : undefined,
       };
 
       let res;
@@ -487,7 +493,7 @@ function ParticipantsTab() {
         setActionAlert({
           type: 'success',
           title: editingUser ? 'Pengguna Diperbarui!' : 'Pengguna Ditambahkan!',
-          message: res.message || `Data ${formName.trim()} telah tersimpan di database PostgreSQL.`,
+          message: res.message || `Data ${formName.trim()} telah tersimpan.`,
         });
       } else {
         setFormError(res.message || 'Gagal menyimpan data pengguna.');
@@ -511,7 +517,7 @@ function ParticipantsTab() {
         setActionAlert({
           type: 'success',
           title: 'Pengguna Dihapus!',
-          message: `Data ${targetName} berhasil dihapus dari database PostgreSQL.`,
+          message: `Data ${targetName} berhasil dihapus.`,
         });
       } else {
         setActionAlert({
@@ -541,12 +547,9 @@ function ParticipantsTab() {
             actionAlert.type === 'success' ? 'bg-green-50 border border-green-200 text-green-900' : 'bg-red-50 border border-red-200 text-red-900'
           }`}>
             <div className="flex items-center gap-3">
-              {actionAlert.type === 'success'
-                ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                : <XCircle className="w-5 h-5 text-red-600 shrink-0" />
-              }
+              {actionAlert.type === 'success' ? <Check className="w-5 h-5 text-green-600 shrink-0" /> : <X className="w-5 h-5 text-red-600 shrink-0" />}
               <div>
-                <AlertTitle className="text-xs font-bold tracking-tight">{actionAlert.title}</AlertTitle>
+                <AlertTitle className="text-xs font-bold">{actionAlert.title}</AlertTitle>
                 <AlertDescription className="text-xs mt-0.5 opacity-90">{actionAlert.message}</AlertDescription>
               </div>
             </div>
@@ -614,18 +617,40 @@ function ParticipantsTab() {
       </Card>
 
       <div>
-        <div className="flex items-center justify-between mb-3 gap-3">
-          <h3 className="text-sm font-bold text-[#111827]">Daftar Pengguna / Peserta ({users.length})</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2.5">
+          <h3 className="text-sm font-bold text-[#111827]">Daftar Pengguna ({users.length})</h3>
           
-          <Button
-            id="open-add-user-modal"
-            onClick={openAddModal}
-            size="sm"
-            className="bg-[#191C21] hover:bg-[#272B33] text-white text-xs font-bold h-9 px-3.5 rounded-xl shadow-sm"
-          >
-            <UserPlus className="w-4 h-4 mr-1.5" />
-            Tambah Pengguna
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isSuperAdmin && events.length > 0 && (
+              <Select value={String(selectedEventFilter)} onValueChange={(val) => onEventFilterChange(val)}>
+                <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[180px] sm:w-[210px] shrink-0 shadow-xs">
+                  <SelectValue placeholder="Pilih Event...">
+                    {selectedEventFilter === 'all'
+                      ? 'Semua Event'
+                      : events.find((e) => String(e.id) === String(selectedEventFilter))?.title || 'Pilih Event...'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                  <SelectItem value="all">Semua Event ({events.length})</SelectItem>
+                  {events.map((ev) => (
+                    <SelectItem key={ev.id} value={String(ev.id)}>
+                      {ev.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button
+              id="open-add-user-modal"
+              onClick={openAddModal}
+              size="sm"
+              className="bg-[#191C21] hover:bg-[#272B33] text-white text-xs font-bold h-9 px-3.5 rounded-xl shadow-sm shrink-0"
+            >
+              <UserPlus className="w-4 h-4 mr-1.5" />
+              Tambah Pengguna
+            </Button>
+          </div>
         </div>
 
         {/* Mobile View */}
@@ -638,12 +663,12 @@ function ParticipantsTab() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-[#111827] truncate">{u.name}</p>
                 <p className="text-[11px] font-mono text-[#9CA3AF] truncate">
-                  {u.role === 'user' ? 'Peserta' : (u.username !== '-' ? `@${u.username}` : '')}
+                  {u.eventTitle || 'Semua Event'} · {u.role === 'user' ? 'Peserta' : (u.username !== '-' ? `@${u.username}` : '')}
                 </p>
               </div>
               <div className="text-right shrink-0 flex items-center gap-2">
                 <div className="flex flex-col items-end justify-center">
-                  {u.bibNumber && u.bibNumber !== '-' ? (
+                  {u.role === 'user' ? (
                     <>
                       <Badge variant="outline" className="font-bib text-xs font-bold text-brand border-brand/20 bg-brand/10 px-2 py-0.5 mb-0.5">
                         #{u.bibNumber}
@@ -656,26 +681,30 @@ function ParticipantsTab() {
                       className={`font-semibold text-[10px] px-2 py-0.5 rounded-full ${
                         u.role === 'super_admin'
                           ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : u.role === 'admin'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
                           : 'bg-blue-50 text-blue-700 border-blue-200'
                       }`}
                     >
-                      {u.role === 'super_admin' ? 'Super Admin' : 'Fotografer'}
+                      {u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Event Admin' : 'Fotografer'}
                     </Badge>
                   )}
                 </div>
                 
                 {/* Action Icons (Mobile) */}
                 <div className="flex items-center gap-0.5 ml-1">
-                  <Button
-                    onClick={() => openEditModal(u)}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg shrink-0"
-                    title="Edit Pengguna"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  {u.role !== 'super_admin' && (
+                  {(isSuperAdmin || u.id === currentUser?.id || (u.role !== 'admin' && u.role !== 'super_admin')) && (
+                    <Button
+                      onClick={() => openEditModal(u)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg shrink-0"
+                      title="Edit Pengguna"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {u.id !== currentUser?.id && (isSuperAdmin || (u.role !== 'admin' && u.role !== 'super_admin')) && (
                     <Button
                       onClick={() => setDeleteConfirm(u)}
                       variant="ghost"
@@ -698,8 +727,8 @@ function ParticipantsTab() {
             <thead>
               <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
                 <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Nama Lengkap</th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Nomor BIB</th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Username</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Event</th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">BIB / Username</th>
                 <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Role</th>
                 <th className="text-right px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">Action</th>
               </tr>
@@ -708,36 +737,42 @@ function ParticipantsTab() {
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors">
                   <td className="px-5 py-3.5 font-bold text-[#111827]">{u.name}</td>
-                  <td className="px-5 py-3.5 font-bib text-brand font-bold text-sm">
-                    {u.bibNumber !== '-' ? `#${u.bibNumber}` : '-'}
+                  <td className="px-5 py-3.5 text-xs text-[#4B5563]">{u.eventTitle || 'Semua Event'}</td>
+                  <td className="px-5 py-3.5 font-mono text-xs text-gray-600">
+                    {u.role === 'user' ? (
+                      <span className="font-bib text-brand font-bold text-sm">#{u.bibNumber}</span>
+                    ) : (
+                      `@${u.username}`
+                    )}
                   </td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-gray-600">{u.username}</td>
                   <td className="px-5 py-3.5 text-xs">
                     <Badge
                       variant="outline"
                       className={`font-semibold capitalize px-2.5 py-0.5 rounded-full ${
                         u.role === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                        u.role === 'admin' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                         u.role === 'photographer' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         'bg-emerald-50 text-emerald-700 border-emerald-200'
                       }`}
                     >
-                      {u.role === 'super_admin' ? 'Super Admin' : u.role === 'photographer' ? 'Fotografer' : 'Peserta'}
+                      {u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Event Admin' : u.role === 'photographer' ? 'Fotografer' : 'Peserta'}
                     </Badge>
                   </td>
                   <td className="px-5 py-3.5 text-right">
-                    {/* Action Icon Buttons Only */}
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        id={`edit-user-${u.id}`}
-                        onClick={() => openEditModal(u)}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-xl"
-                        title="Edit Pengguna"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      {u.role !== 'super_admin' ? (
+                      {(isSuperAdmin || u.id === currentUser?.id || (u.role !== 'admin' && u.role !== 'super_admin')) && (
+                        <Button
+                          id={`edit-user-${u.id}`}
+                          onClick={() => openEditModal(u)}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-xl"
+                          title="Edit Pengguna"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {u.id !== currentUser?.id && (isSuperAdmin || (u.role !== 'admin' && u.role !== 'super_admin')) && (
                         <Button
                           id={`delete-user-${u.id}`}
                           onClick={() => setDeleteConfirm(u)}
@@ -748,8 +783,6 @@ function ParticipantsTab() {
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
-                      ) : (
-                        <span className="text-[11px] text-gray-400 italic ml-1">Utama</span>
                       )}
                     </div>
                   </td>
@@ -787,34 +820,51 @@ function ParticipantsTab() {
                 </Button>
               </div>
 
-              {/* Selector Pilihan Role (Peserta atau Fotografer) - Disabled jika mode Edit */}
-              <div className="grid grid-cols-2 gap-2 bg-[#F3F4F6] p-1.5 rounded-xl">
+              {/* Selector Pilihan Role (Peserta, Fotografer, atau Event Admin - Super Admin Only) */}
+              <div className={`grid ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 bg-[#F3F4F6] p-1.5 rounded-xl`}>
                 <button
                   type="button"
                   disabled={!!editingUser}
                   onClick={() => setAddRole('user')}
-                  className={`flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
                     addRole === 'user'
                       ? 'bg-white text-brand shadow-sm font-extrabold'
                       : 'text-gray-500 hover:text-gray-700'
                   } ${editingUser ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  <User className="w-4 h-4" />
+                  <User className="w-3.5 h-3.5" />
                   <span>Peserta</span>
                 </button>
+
                 <button
                   type="button"
                   disabled={!!editingUser}
                   onClick={() => setAddRole('photographer')}
-                  className={`flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
                     addRole === 'photographer'
-                      ? 'bg-white text-brand shadow-sm font-extrabold'
+                      ? 'bg-white text-blue-600 shadow-sm font-extrabold'
                       : 'text-gray-500 hover:text-gray-700'
                   } ${editingUser ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                   <span>Fotografer</span>
                 </button>
+
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    disabled={!!editingUser}
+                    onClick={() => setAddRole('admin')}
+                    className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
+                      addRole === 'admin'
+                        ? 'bg-white text-amber-600 shadow-sm font-extrabold'
+                        : 'text-gray-500 hover:text-gray-700'
+                    } ${editingUser ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Admin</span>
+                  </button>
+                )}
               </div>
 
               {formError && (
@@ -824,6 +874,43 @@ function ParticipantsTab() {
               )}
 
               <form onSubmit={handleFormSubmit} className="space-y-3.5 pt-1">
+                {/* Event Selection Dropdown / Locked Display */}
+                {isSuperAdmin ? (
+                  events.length > 0 && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                        Event Tempat Ditempatkan
+                      </label>
+                      <Select value={String(formEventId)} onValueChange={(val) => setFormEventId(val)}>
+                        <SelectTrigger className="!h-10 w-full border-[#E5E7EB] rounded-xl text-xs bg-white font-medium">
+                          <SelectValue placeholder="Pilih Event...">
+                            {events.find((e) => String(e.id) === String(formEventId))?.title || 'Pilih Event...'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                          {events.map((ev) => (
+                            <SelectItem key={ev.id} value={String(ev.id)}>
+                              {ev.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                      Event Tempat Ditempatkan (Terkunci)
+                    </label>
+                    <div className="h-10 w-full border border-[#E5E7EB] bg-[#F9FAFB] rounded-xl text-xs font-bold text-brand px-3.5 flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-brand shrink-0" />
+                      <span className="truncate">
+                        {events.find((e) => String(e.id) === String(currentUser?.eventId))?.title || `Event #${currentUser?.eventId || 1}`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Form Field: Nama Lengkap (Selalu Ada) */}
                 <div className="space-y-1">
                   <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
@@ -836,7 +923,7 @@ function ParticipantsTab() {
                       required
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      placeholder={addRole === 'user' ? 'Contoh: Budi Santoso' : 'Contoh: Reza Fotografer'}
+                      placeholder={addRole === 'user' ? 'Contoh: Budi Santoso' : addRole === 'admin' ? 'Contoh: Admin Marathon' : 'Contoh: Reza Fotografer'}
                       className="pl-9 h-10 text-xs border-[#E5E7EB] rounded-xl"
                     />
                   </div>
@@ -862,8 +949,8 @@ function ParticipantsTab() {
                   </div>
                 )}
 
-                {/* Form Fields Khusus Fotografer */}
-                {addRole === 'photographer' && (
+                {/* Form Fields Khusus Fotografer & Admin */}
+                {(addRole === 'photographer' || addRole === 'admin') && (
                   <>
                     <div className="space-y-1">
                       <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
@@ -876,7 +963,7 @@ function ParticipantsTab() {
                           required
                           value={formUsername}
                           onChange={(e) => setFormUsername(e.target.value)}
-                          placeholder="Contoh: fotografer_pro"
+                          placeholder={addRole === 'admin' ? 'Contoh: admin_event' : 'Contoh: fotografer_pro'}
                           className="pl-9 h-10 text-xs font-mono border-[#E5E7EB] rounded-xl"
                         />
                       </div>
@@ -884,7 +971,7 @@ function ParticipantsTab() {
 
                     <div className="space-y-1">
                       <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
-                        {editingUser ? 'Password Baru (Opsional)' : 'Password (Bcrypt Hash)'}
+                        {editingUser ? 'Password Baru (Opsional)' : 'Password'}
                       </label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -893,7 +980,7 @@ function ParticipantsTab() {
                           required={!editingUser}
                           value={formPassword}
                           onChange={(e) => setFormPassword(e.target.value)}
-                          placeholder={editingUser ? 'Kosongkan jika tidak ingin diubah' : 'Kata sandi fotografer...'}
+                          placeholder={editingUser ? 'Kosongkan jika tidak ingin diubah' : 'Kata sandi akun...'}
                           className="pl-9 h-10 text-xs border-[#E5E7EB] rounded-xl"
                         />
                       </div>
@@ -901,22 +988,21 @@ function ParticipantsTab() {
                   </>
                 )}
 
-                <div className="flex gap-2 pt-3 border-t border-[#F3F4F6]">
+                <div className="flex gap-2.5 pt-2">
                   <Button
                     type="button"
+                    variant="outline"
                     onClick={() => setIsModalOpen(false)}
-                    variant="ghost"
-                    className="flex-1 h-10 text-xs font-bold rounded-xl"
+                    className="flex-1 h-10 text-xs font-bold border-[#E5E7EB] rounded-xl"
                   >
                     Batal
                   </Button>
                   <Button
                     type="submit"
                     disabled={formLoading}
-                    className="flex-1 bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-10 rounded-xl shadow-md"
+                    className="flex-1 h-10 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl shadow-md shadow-orange-600/20"
                   >
-                    {formLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                    {formLoading ? 'Menyimpan...' : (editingUser ? 'Simpan Perubahan' : 'Simpan Pengguna')}
+                    {formLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : editingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
                   </Button>
                 </div>
               </form>
@@ -925,28 +1011,27 @@ function ParticipantsTab() {
         )}
       </AnimatePresence>
 
-      {/* Confirmation Dialog Hapus User */}
+      {/* Dialog Konfirmasi Hapus User */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <AlertDialogContent className="rounded-2xl bg-white border border-[#E5E7EB]">
+        <AlertDialogContent className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-2xl max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[#111827] font-bold flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-red-600" />
-              Konfirmasi Hapus Pengguna
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Hapus Pengguna {deleteConfirm?.name}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-[#4B5563] pt-1">
-              Apakah Anda yakin ingin menghapus <strong>{deleteConfirm?.name}</strong> ({deleteConfirm?.role}) dari database?
+            <AlertDialogDescription className="text-xs text-[#4B5563] leading-relaxed mt-1">
+              Tindakan ini tidak dapat dibatalkan. Pengguna {deleteConfirm?.name} akan dihapus secara permanen dari database.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl text-xs font-bold border-[#E5E7EB]">
+          <AlertDialogFooter className="flex items-center justify-end gap-2.5 mt-4">
+            <AlertDialogCancel className="h-9 text-xs font-bold border-[#E5E7EB] rounded-xl m-0">
               Batal
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteConfirm && handleDeleteUser(deleteConfirm.id)}
-              disabled={deletingId !== null}
-              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20"
+              onClick={() => handleDeleteUser(deleteConfirm?.id)}
+              disabled={deletingId === deleteConfirm?.id}
+              className="h-9 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm m-0"
             >
-              {deletingId !== null ? 'Menghapus...' : 'Ya, Hapus Pengguna'}
+              {deletingId === deleteConfirm?.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Ya, Hapus'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -955,32 +1040,44 @@ function ParticipantsTab() {
   );
 }
 
-function EventSettingsTab() {
-  const [eventId, setEventId] = useState(1);
+function EventSettingsTab({ events = [], onRefreshEvents }) {
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  
+  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || 1);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newTitle, setNewTitle]                   = useState('');
+  const [newDate, setNewDate]                     = useState('');
+  const [newQr, setNewQr]                         = useState('');
+  const [createLoading, setCreateLoading]         = useState(false);
+  const [createError, setCreateError]             = useState('');
+
   const [form, setForm] = useState({
-    title:     'Marathon Boyolali 2026',
-    date:      '2026-08-01',
+    title: '',
+    date: '',
     qrCodeUrl: '',
-    isActive:  true,
+    isActive: true,
   });
   const [isSaving, setIsSaving]     = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [saved, setSaved]           = useState(false);
-  const qrInputRef = useRef(null);
+  const qrInputRef                  = useRef(null);
 
-  const fetchActiveEvent = useCallback(async () => {
+  const fetchEventData = useCallback(async (evId) => {
     try {
-      const res = await api.getActiveEvent();
-      if (res.success && res.event) {
-        const ev = res.event;
-        setEventId(ev.id);
-        const formattedDate = ev.eventDate ? new Date(ev.eventDate).toISOString().split('T')[0] : '2026-08-01';
-        setForm({
-          title:     ev.title || '',
-          date:      formattedDate,
-          qrCodeUrl: ev.qrCodeUrl || '',
-          isActive:  ev.isActive ?? true,
-        });
+      const res = await api.getAllEvents();
+      if (res.success && res.events) {
+        const ev = res.events.find((e) => Number(e.id) === Number(evId)) || res.events[0];
+        if (ev) {
+          const formattedDate = ev.eventDate ? new Date(ev.eventDate).toISOString().split('T')[0] : '';
+          setSelectedEventId(ev.id);
+          setForm({
+            title: ev.title || '',
+            date: formattedDate,
+            qrCodeUrl: ev.qrCodeUrl || '',
+            isActive: ev.isActive ?? true,
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to load event data:', err);
@@ -988,8 +1085,43 @@ function EventSettingsTab() {
   }, []);
 
   useEffect(() => {
-    fetchActiveEvent();
-  }, [fetchActiveEvent]);
+    if (events.length > 0) {
+      fetchEventData(selectedEventId);
+    }
+  }, [events, selectedEventId, fetchEventData]);
+
+  const handleCreateEvent = async (e) => {
+    e.preventDefault();
+    setCreateError('');
+    if (!newTitle.trim() || !newDate) {
+      setCreateError('Nama Event dan Tanggal Event wajib diisi.');
+      return;
+    }
+
+    setCreateLoading(true);
+    try {
+      const res = await api.createEvent({
+        title: newTitle.trim(),
+        eventDate: newDate,
+        qrCodeUrl: newQr.trim(),
+      });
+      if (res.success) {
+        setIsCreateModalOpen(false);
+        setNewTitle('');
+        setNewDate('');
+        setNewQr('');
+        if (onRefreshEvents) onRefreshEvents();
+        alert(`Event "${newTitle.trim()}" berhasil dibuat!`);
+      } else {
+        setCreateError(res.message || 'Gagal membuat event.');
+      }
+    } catch (err) {
+      console.error('Create event error:', err);
+      setCreateError('Terjadi kesalahan server saat membuat event.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
   const handleQrisUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -997,7 +1129,7 @@ function EventSettingsTab() {
 
     setIsUploading(true);
     try {
-      const res = await api.uploadQrisImage(eventId, file);
+      const res = await api.uploadQrisImage(selectedEventId, file);
       if (res.success && res.qrCodeUrl) {
         setForm((f) => ({ ...f, qrCodeUrl: res.qrCodeUrl }));
         alert('Gambar QR Code QRIS berhasil diunggah!');
@@ -1016,12 +1148,13 @@ function EventSettingsTab() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      await api.updateEvent(eventId, {
+      await api.updateEvent(selectedEventId, {
         title: form.title,
         eventDate: form.date,
         qrCodeUrl: form.qrCodeUrl,
       });
-      await api.toggleEventActive(eventId, form.isActive);
+      await api.toggleEventActive(selectedEventId, form.isActive);
+      if (onRefreshEvents) onRefreshEvents();
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -1034,6 +1167,136 @@ function EventSettingsTab() {
 
   return (
     <div className="max-w-lg space-y-5">
+      {/* Super Admin: Event Switcher & Add New Event Button */}
+      {isSuperAdmin && (
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-bold text-[#111827]">Pilih Event untuk Dikelola:</span>
+            <Button
+              id="open-create-event-modal"
+              onClick={() => setIsCreateModalOpen(true)}
+              size="sm"
+              className="bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-9 px-3.5 rounded-xl shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+              Tambah Event Baru
+            </Button>
+          </div>
+
+          {events.length > 0 && (
+            <Select value={String(selectedEventId)} onValueChange={(val) => setSelectedEventId(val)}>
+              <SelectTrigger className="!h-11 w-full border-[#E5E7EB] rounded-xl text-xs bg-white font-medium">
+                <SelectValue placeholder="Pilih Event...">
+                  {events.find((e) => String(e.id) === String(selectedEventId))?.title || 'Pilih Event...'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                {events.map((ev) => (
+                  <SelectItem key={ev.id} value={String(ev.id)}>
+                    {ev.title} {ev.isActive ? '(Aktif)' : '(Non-Aktif)'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+
+      {/* Modal Tambah Event Baru */}
+      <AnimatePresence>
+        {isCreateModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-[#E5E7EB] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-brand" />
+                  <h3 className="text-base font-bold text-[#111827]">Tambah Event Baru</h3>
+                </div>
+                <Button
+                  onClick={() => setIsCreateModalOpen(false)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-400 hover:text-gray-600 rounded-full"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {createError && (
+                <div className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-3.5 py-2.5 rounded-xl">
+                  {createError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateEvent} className="space-y-3.5 pt-1">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    Nama Event
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Contoh: Marathon Bandung 2026"
+                    className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    Tanggal Event
+                  </label>
+                  <Input
+                    type="date"
+                    required
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    URL QRIS (Opsional)
+                  </label>
+                  <Input
+                    type="text"
+                    value={newQr}
+                    onChange={(e) => setNewQr(e.target.value)}
+                    placeholder="Contoh: https://... (opsional)"
+                    className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+                  />
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="flex-1 h-10 text-xs font-bold border-[#E5E7EB] rounded-xl"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createLoading}
+                    className="flex-1 h-10 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl shadow-md shadow-orange-600/20"
+                  >
+                    {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buat Event'}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <form id="event-settings-form" onSubmit={handleSave} className="space-y-4.5">
         {saved && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
@@ -1171,24 +1434,44 @@ function EventSettingsTab() {
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   const [activeTab, setActiveTab]       = useState('overview');
   const [transactions, setTransactions] = useState([]);
+  const [events, setEvents]             = useState([]);
+  const [selectedEventFilter, setSelectedEventFilter] = useState(
+    currentUser?.role === 'admin' && currentUser?.eventId ? String(currentUser.eventId) : 'all'
+  );
 
-  const fetchTransactions = React.useCallback(async () => {
+  const fetchEvents = useCallback(async () => {
     try {
-      const res = await api.getTransactions();
-      if (res.success && res.transactions) {
-        setTransactions(res.transactions);
-      } else {
-        setTransactions(DUMMY_TRANSACTIONS);
+      const res = await api.getAllEvents();
+      if (res.success && res.events) {
+        setEvents(res.events);
       }
     } catch (err) {
-      console.error('Fetch transactions error:', err);
-      setTransactions(DUMMY_TRANSACTIONS);
+      console.error('Fetch events error:', err);
     }
   }, []);
 
-  React.useEffect(() => {
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const res = await api.getTransactions(selectedEventFilter);
+      if (res.success && Array.isArray(res.transactions)) {
+        setTransactions(res.transactions);
+      } else {
+        setTransactions([]);
+      }
+    } catch (err) {
+      console.error('Fetch transactions error:', err);
+      setTransactions([]);
+    }
+  }, [selectedEventFilter]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
 
@@ -1199,27 +1482,69 @@ export default function AdminDashboard() {
   };
 
   const tabs = [
-    { id: 'overview',  label: 'Overview',     icon: LayoutDashboard },
-    { id: 'payments',  label: 'Pembayaran',   icon: CheckCircle2 },
-    { id: 'participants', label: 'Peserta',   icon: Users },
-    { id: 'settings',  label: 'Event',        icon: Settings },
+    { id: 'overview',     label: 'Overview',   icon: LayoutDashboard },
+    { id: 'payments',     label: 'Pembayaran', icon: CheckCircle2 },
+    { id: 'participants', label: 'Pengguna',   icon: Users },
+    { id: 'settings',     label: 'Event',      icon: Settings },
   ];
 
   const pendingCount = transactions.filter((t) => t.status === 'pending').length;
+
+  const currentEventTitle = events.find((e) => String(e.id) === String(selectedEventFilter))?.title;
 
   return (
     <AppShell>
       <div className="max-w-screen-lg mx-auto px-4 pb-12">
 
-        <div className="py-6 md:py-8 border-b border-[#E5E7EB]">
-          <Badge variant="outline" className="inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest text-red-600 bg-red-50 border-red-200 px-3 py-1 rounded-full mb-2">
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            Super Admin
-          </Badge>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">Admin Dashboard</h1>
-          <p className="text-sm text-[#4B5563] mt-1">
-            Selamat datang, <span className="font-semibold text-[#111827]">{currentUser?.name}</span>
-          </p>
+        <div className="py-6 md:py-8 border-b border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <Badge
+              variant="outline"
+              className={`inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest px-3 py-1 rounded-full mb-2 ${
+                isSuperAdmin
+                  ? 'text-purple-700 bg-purple-50 border-purple-200'
+                  : 'text-amber-700 bg-amber-50 border-amber-200'
+              }`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              {isSuperAdmin ? 'Super Admin' : 'Event Admin'}
+            </Badge>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">Admin Dashboard</h1>
+            <p className="text-sm text-[#4B5563] mt-1">
+              Selamat datang, <span className="font-semibold text-[#111827]">{currentUser?.name}</span>
+            </p>
+          </div>
+
+          {/* Global Event Scoping Filter (Super Admin & Event Admin) */}
+          <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-3 flex items-center gap-3">
+            <Settings className="w-4 h-4 text-brand shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bib uppercase tracking-wider text-gray-500 font-bold">Event Terpilih:</span>
+              {isSuperAdmin ? (
+                <Select value={String(selectedEventFilter)} onValueChange={(val) => setSelectedEventFilter(val)}>
+                  <SelectTrigger className="!h-8 border-0 bg-transparent p-0 text-xs font-bold text-[#111827] shadow-none focus:ring-0">
+                    <SelectValue placeholder="Pilih Event...">
+                      {selectedEventFilter === 'all'
+                        ? 'Semua Event'
+                        : events.find((e) => String(e.id) === String(selectedEventFilter))?.title || 'Pilih Event...'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                    <SelectItem value="all">Semua Event ({events.length})</SelectItem>
+                    {events.map((ev) => (
+                      <SelectItem key={ev.id} value={String(ev.id)}>
+                        {ev.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className="text-xs font-bold text-brand truncate max-w-[200px]">
+                  {currentEventTitle || `Event #${currentUser?.eventId || 1}`}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 mb-6">
@@ -1264,8 +1589,19 @@ export default function AdminDashboard() {
                 onUpdateStatus={handleUpdateStatus}
               />
             )}
-            {activeTab === 'participants'  && <ParticipantsTab />}
-            {activeTab === 'settings'      && <EventSettingsTab />}
+            {activeTab === 'participants'  && (
+              <ParticipantsTab
+                events={events}
+                selectedEventFilter={selectedEventFilter}
+                onEventFilterChange={(val) => setSelectedEventFilter(val)}
+              />
+            )}
+            {activeTab === 'settings'      && (
+              <EventSettingsTab
+                events={events}
+                onRefreshEvents={fetchEvents}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

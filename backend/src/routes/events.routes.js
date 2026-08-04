@@ -12,13 +12,19 @@ const upload = multer({
 // GET /api/events/active (Publik: Ambil event aktif saat ini)
 router.get('/active', eventController.getActiveEvent);
 
-// PATCH /api/events/:id (Admin: Update detail event)
-router.patch('/:id', verifyToken, requireRole('super_admin'), eventController.updateEvent);
+// GET /api/events (Super Admin & Admin: Ambil semua daftar event)
+router.get('/', verifyToken, requireRole('super_admin', 'admin'), eventController.getAllEvents);
 
-// POST /api/events/:id/qris (Admin: Upload QR Code QRIS)
-router.post('/:id/qris', verifyToken, requireRole('super_admin'), upload.single('qrisImage'), eventController.uploadQris);
+// POST /api/events (Super Admin: Buat event baru)
+router.post('/', verifyToken, requireRole('super_admin'), eventController.createEvent);
 
-// PATCH /api/events/:id/active (Admin: Toggle status ON/OFF event)
+// PATCH /api/events/:id (Super Admin & Admin: Update detail event)
+router.patch('/:id', verifyToken, requireRole('super_admin', 'admin'), eventController.updateEvent);
+
+// POST /api/events/:id/qris (Super Admin & Admin: Upload QR Code QRIS)
+router.post('/:id/qris', verifyToken, requireRole('super_admin', 'admin'), upload.single('qrisImage'), eventController.uploadQris);
+
+// PATCH /api/events/:id/active (Super Admin: Toggle status ON/OFF event)
 router.patch('/:id/active', verifyToken, requireRole('super_admin'), eventController.toggleEventActive);
 
 module.exports = router;

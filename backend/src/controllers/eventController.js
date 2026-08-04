@@ -154,8 +154,68 @@ const uploadQris = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/events
+ * Ambil seluruh daftar event (Super Admin & Admin)
+ */
+const getAllEvents = async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM events ORDER BY id DESC');
+
+    const events = result.rows.map((event) => ({
+      id: event.id,
+      title: event.title,
+      eventDate: event.event_date,
+      logoUrl: event.logo_url,
+      qrCodeUrl: event.qr_code_url,
+      isActive: event.is_active,
+      createdAt: event.created_at,
+    }));
+
+    return res.json({ success: true, events });
+  } catch (error) {
+    console.error('Fetch All Events Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengambil daftar event.' });
+  }
+};
+
+/**
+ * POST /api/events
+ * Tambah event baru (Super Admin only)
+ */
+const createEvent = async (req, res) => {
+  try {
+    const { title, eventDate, qrCodeUrl } = req.body;
+
+    if (!title || !title.trim() || !eventDate) {
+      return res.status(400).json({ success: false, message: 'Nama Event dan Tanggal Event wajib diisi.' });
+    }
+
+    const defaultQr = qrCodeUrl && qrCodeUrl.trim()
+      ? qrCodeUrl.trim()
+      : 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SEPOTO_QRIS_DEFAULT';
+
+    const result = await query(
+      `INSERT INTO events (title, event_date, qr_code_url, is_active)
+       VALUES ($1, $2, $3, TRUE) RETURNING *`,
+      [title.trim(), eventDate, defaultQr]
+    );
+
+    return res.json({
+      success: true,
+      message: `Event "${title.trim()}" berhasil dibuat!`,
+      event: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Create Event Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal membuat event baru.' });
+  }
+};
+
 module.exports = {
   getActiveEvent,
+  getAllEvents,
+  createEvent,
   updateEvent,
   toggleEventActive,
   uploadQris,

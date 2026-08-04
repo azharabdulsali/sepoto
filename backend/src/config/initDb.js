@@ -80,10 +80,12 @@ async function initDb() {
       $$;
     `);
 
-    // Partial Unique Index untuk Nomor BIB Peserta
+    // Drop indeks lama (global) & buat Partial Unique Index per Event untuk Nomor BIB Peserta
+    await query(`DROP INDEX IF EXISTS public.idx_users_unique_bib CASCADE;`);
+    await query(`DROP INDEX IF EXISTS idx_users_unique_bib CASCADE;`);
     await query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_bib 
-      ON users (bib_number) 
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_event_bib 
+      ON users (event_id, bib_number) 
       WHERE bib_number IS NOT NULL AND role = 'user';
     `);
 
@@ -162,32 +164,24 @@ async function initDb() {
       console.log('🌱 Default event and initial users seeded (admin/password, fotografer/foto123)!');
     }
 
-    // Pastikan Super Admin default (username: admin) selalu punya password_hash valid
+    // Pastikan Super Admin default (username: admin) punya password_hash jika belum ada
     const adminCheck = await query(
       `SELECT id, username, password_hash FROM users WHERE username = 'admin' LIMIT 1`
     );
-    if (adminCheck.rows.length > 0) {
-      const admin = adminCheck.rows[0];
-      const isValid = admin.password_hash ? await bcrypt.compare('password', admin.password_hash) : false;
-      if (!isValid) {
-        const hash = await bcrypt.hash('password', SALT_ROUNDS);
-        await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, admin.id]);
-        console.log('🔐 Default Admin password_hash updated successfully.');
-      }
+    if (adminCheck.rows.length > 0 && !adminCheck.rows[0].password_hash) {
+      const hash = await bcrypt.hash('password', SALT_ROUNDS);
+      await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, adminCheck.rows[0].id]);
+      console.log('🔐 Default Admin password_hash initialized.');
     }
 
-    // Pastikan Default Fotografer (username: fotografer) selalu punya password_hash valid
+    // Pastikan Default Fotografer (username: fotografer) punya password_hash jika belum ada
     const photoCheck = await query(
       `SELECT id, username, password_hash FROM users WHERE username = 'fotografer' LIMIT 1`
     );
-    if (photoCheck.rows.length > 0) {
-      const photographer = photoCheck.rows[0];
-      const isValid = photographer.password_hash ? await bcrypt.compare('foto123', photographer.password_hash) : false;
-      if (!isValid) {
-        const hash = await bcrypt.hash('foto123', SALT_ROUNDS);
-        await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, photographer.id]);
-        console.log('🔐 Default Photographer password_hash updated successfully.');
-      }
+    if (photoCheck.rows.length > 0 && !photoCheck.rows[0].password_hash) {
+      const hash = await bcrypt.hash('foto123', SALT_ROUNDS);
+      await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, photoCheck.rows[0].id]);
+      console.log('🔐 Default Photographer password_hash initialized.');
     }
 
   } catch (error) {

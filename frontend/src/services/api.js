@@ -79,7 +79,7 @@ export const api = {
 
   getMe: () => fetchApi('/auth/me'),
 
-  getAllUsers: () => fetchApi('/auth/users'),
+  getAllUsers: (eventId = '') => fetchApi(`/auth/users${eventId ? `?eventId=${eventId}` : ''}`),
 
   createUser: (data) =>
     fetchApi('/auth/users', {
@@ -99,7 +99,13 @@ export const api = {
     }),
 
   // ─── Photos API ────────────────────────────────────────────────────────
-  getPhotos: (bib = '') => fetchApi(`/photos${bib ? `?bib=${encodeURIComponent(bib)}` : ''}`),
+  getPhotos: (bib = '', eventId = '') => {
+    const params = new URLSearchParams();
+    if (bib) params.append('bib', bib);
+    if (eventId) params.append('eventId', eventId);
+    const queryString = params.toString();
+    return fetchApi(`/photos${queryString ? `?${queryString}` : ''}`);
+  },
 
   getMyPhotos: () => fetchApi('/photos/my'),
 
@@ -129,6 +135,14 @@ export const api = {
   // ─── Events API ────────────────────────────────────────────────────────
   getActiveEvent: () => fetchApi('/events/active'),
 
+  getAllEvents: () => fetchApi('/events'),
+
+  createEvent: (data) =>
+    fetchApi('/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   updateEvent: (id, data) =>
     fetchApi(`/events/${id}`, {
       method: 'PATCH',
@@ -139,7 +153,7 @@ export const api = {
     const formData = new FormData();
     formData.append('qrisImage', file);
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('sepoto_token');
     const headers = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -171,7 +185,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getTransactions: () => fetchApi('/transactions'),
+  getTransactions: (eventId = '') => fetchApi(`/transactions${eventId ? `?eventId=${eventId}` : ''}`),
 
   getMyTransactions: () => fetchApi('/transactions/my'),
 

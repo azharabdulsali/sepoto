@@ -24,6 +24,7 @@ const verifyToken = (req, res, next) => {
       id: decoded.id,
       role: decoded.role,
       name: decoded.name,
+      eventId: decoded.eventId,
     };
 
     next();

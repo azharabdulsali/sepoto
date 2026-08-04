@@ -87,14 +87,16 @@ const createTransaction = async (req, res) => {
 
 /**
  * GET /api/transactions
- * List semua transaksi (admin only)
+ * List semua transaksi (Super Admin & Admin)
+ * Mendukung filter eventId
  */
 const getTransactions = async (req, res) => {
   try {
-    const result = await query(`
+    const { eventId } = req.query;
+    let sql = `
       SELECT
         t.id, t.order_number, t.status, t.total_amount, t.created_at,
-        u.name as user_name, u.bib_number,
+        u.name as user_name, u.bib_number, u.event_id,
         COALESCE(
           json_agg(
             json_build_object(
@@ -109,9 +111,28 @@ const getTransactions = async (req, res) => {
       LEFT JOIN users u ON t.user_id = u.id
       LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
       LEFT JOIN photos p ON p.id = ti.photo_id
-      GROUP BY t.id, u.name, u.bib_number
+    `;
+    const params = [];
+
+    if (req.user && req.user.role === 'admin') {
+      let adminEventId = req.user.eventId;
+      if (!adminEventId) {
+        const uRes = await query('SELECT event_id FROM users WHERE id = $1', [req.user.id]);
+        adminEventId = uRes.rows[0]?.event_id;
+      }
+      sql += ` WHERE u.event_id = $1 OR p.event_id = $1`;
+      params.push(adminEventId || 1);
+    } else if (eventId && eventId !== 'all') {
+      sql += ` WHERE u.event_id = $1 OR p.event_id = $1`;
+      params.push(eventId);
+    }
+
+    sql += `
+      GROUP BY t.id, u.name, u.bib_number, u.event_id
       ORDER BY t.id DESC
-    `);
+    `;
+
+    const result = await query(sql, params);
 
     const transactions = result.rows.map((t) => ({
       id: t.id,

@@ -15,16 +15,16 @@ router.post('/login-photographer', authController.loginPhotographer);
 // GET /api/auth/me (Validasi token & ambil data user terbaru)
 router.get('/me', verifyToken, authController.getMe);
 
-// GET /api/auth/users (Super Admin: Ambil seluruh daftar user/peserta dari database)
-router.get('/users', verifyToken, requireRole('super_admin'), authController.getAllUsers);
+// GET /api/auth/users (Super Admin & Admin: Ambil daftar user/peserta dari database)
+router.get('/users', verifyToken, requireRole('super_admin', 'admin'), authController.getAllUsers);
 
-// POST /api/auth/users (Super Admin: Tambah user/peserta atau fotografer secara manual)
-router.post('/users', verifyToken, requireRole('super_admin'), authController.createUserManual);
+// POST /api/auth/users (Super Admin & Admin: Tambah user/peserta/fotografer/admin secara manual)
+router.post('/users', verifyToken, requireRole('super_admin', 'admin'), authController.createUserManual);
 
-// PATCH /api/auth/users/:id (Super Admin: Edit data user/fotografer)
-router.patch('/users/:id', verifyToken, requireRole('super_admin'), authController.updateUser);
+// PATCH /api/auth/users/:id (Super Admin & Admin: Edit data user/fotografer)
+router.patch('/users/:id', verifyToken, requireRole('super_admin', 'admin'), authController.updateUser);
 
-// DELETE /api/auth/users/:id (Super Admin: Hapus user/fotografer)
-router.delete('/users/:id', verifyToken, requireRole('super_admin'), authController.deleteUser);
+// DELETE /api/auth/users/:id (Super Admin & Admin: Hapus user/fotografer)
+router.delete('/users/:id', verifyToken, requireRole('super_admin', 'admin'), authController.deleteUser);
 
 module.exports = router;

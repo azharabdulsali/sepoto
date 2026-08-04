@@ -26,8 +26,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!isAuthenticated) return <Navigate to="/" replace />;
 
   if (allowedRoles && !allowedRoles.includes(currentUser?.role)) {
-    if (currentUser?.role === 'user')         return <Navigate to="/gallery" replace />;
-    if (currentUser?.role === 'super_admin')  return <Navigate to="/admin/dashboard" replace />;
+    if (currentUser?.role === 'user') return <Navigate to="/gallery" replace />;
+    if (currentUser?.role === 'super_admin' || currentUser?.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
     if (currentUser?.role === 'photographer') return <Navigate to="/photographer/dashboard" replace />;
   }
 
@@ -40,8 +40,8 @@ export default function App() {
 
   // Helper redirect jika sudah login
   const getAuthenticatedRedirect = () => {
-    if (currentUser?.role === 'user')         return <Navigate to="/gallery" replace />;
-    if (currentUser?.role === 'super_admin')  return <Navigate to="/admin/dashboard" replace />;
+    if (currentUser?.role === 'user') return <Navigate to="/gallery" replace />;
+    if (currentUser?.role === 'super_admin' || currentUser?.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
     if (currentUser?.role === 'photographer') return <Navigate to="/photographer/dashboard" replace />;
     return <Navigate to="/" replace />;
   };
@@ -116,7 +116,7 @@ export default function App() {
       <Route
         path="/admin/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['super_admin']}>
+          <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
             <AdminDashboard />
           </ProtectedRoute>
         }

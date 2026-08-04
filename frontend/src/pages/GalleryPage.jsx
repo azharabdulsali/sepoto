@@ -267,16 +267,17 @@ export default function GalleryPage() {
   const [realPhotos, setRealPhotos]         = useState([]);
   const [activeEvent, setActiveEvent]       = useState(null);
 
-  // Ambil event aktif & foto galeri dari backend API
+  // Ambil event aktif & foto galeri dari backend API (disesuaikan dengan event peserta)
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
       setIsLoading(true);
       setVisibleLimit(PAGE_SIZE);
       try {
+        const userEventId = currentUser?.eventId || '';
         const [eventRes, photoRes] = await Promise.all([
           api.getActiveEvent(),
-          api.getPhotos(searchBib),
+          api.getPhotos(searchBib, userEventId),
         ]);
         if (isMounted) {
           if (eventRes.success && eventRes.event) setActiveEvent(eventRes.event);
@@ -294,7 +295,7 @@ export default function GalleryPage() {
     }
     loadData();
     return () => { isMounted = false; };
-  }, [searchBib]);
+  }, [searchBib, currentUser?.eventId]);
 
   const pricedPhotos = useMemo(() => {
     return realPhotos.filter((p) => p.price != null && Number(p.price) > 0);
