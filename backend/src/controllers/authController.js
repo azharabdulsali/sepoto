@@ -4,24 +4,20 @@ const { query } = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sepoto_jwt_secret_key_2026_CHANGE_THIS';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const SALT_ROUNDS = 12; // Ditingkatkan dari 10 ke 12 untuk keamanan lebih baik
+const SALT_ROUNDS = 12;
 
-// Dummy hash digunakan untuk mencegah timing attack saat user tidak ditemukan
-// Tanpa ini, penyerang bisa membedakan "user tidak ada" vs "password salah"
-// berdasarkan perbedaan waktu respons.
+// Pre-computed hash used in constant-time comparison to prevent username-enumeration
+// timing attacks (prevents distinguishing "user not found" from "wrong password").
 const DUMMY_HASH = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpfQN6AkTmSBm2';
 
-
-/**
- * Generate JWT token dari user data
- */
-const generateToken = (user) => {
-  return jwt.sign(
+/** Build a signed JWT token from a user record. */
+const buildJwt = (user) =>
+  jwt.sign(
     { id: user.id, role: user.role, name: user.name, eventId: user.event_id },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
-};
+
 
 /**
  * POST /api/auth/login-user
@@ -49,7 +45,7 @@ const loginUser = async (req, res) => {
 
     user = result.rows[0];
 
-    const token = generateToken(user);
+    const token = buildJwt(user);
 
     return res.json({
       success: true,
@@ -70,8 +66,7 @@ const loginUser = async (req, res) => {
 
 /**
  * POST /api/auth/login-admin
- * Login Super Admin atau Event Admin via username + password (bcrypt verification)
- * Menggunakan dummy hash untuk mencegah timing attack
+ * Login Super Admin or Event Admin via username + password.
  */
 const loginAdmin = async (req, res) => {
   try {
@@ -86,7 +81,6 @@ const loginAdmin = async (req, res) => {
     );
 
     const user = result.rows[0] || null;
-    // Selalu jalankan bcrypt.compare untuk mencegah timing attack
     const hashToCompare = user ? user.password_hash : DUMMY_HASH;
     const isMatch = await bcrypt.compare(password, hashToCompare);
 
@@ -94,7 +88,7 @@ const loginAdmin = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Username atau Password tidak valid.' });
     }
 
-    const token = generateToken(user);
+    const token = buildJwt(user);
 
     return res.json({
       success: true,
@@ -115,8 +109,7 @@ const loginAdmin = async (req, res) => {
 
 /**
  * POST /api/auth/login-photographer
- * Login Fotografer via username + password (bcrypt verification)
- * Menggunakan dummy hash untuk mencegah timing attack
+ * Login Photographer via username + password.
  */
 const loginPhotographer = async (req, res) => {
   try {
@@ -131,7 +124,6 @@ const loginPhotographer = async (req, res) => {
     );
 
     const user = result.rows[0] || null;
-    // Selalu jalankan bcrypt.compare untuk mencegah timing attack
     const hashToCompare = user ? user.password_hash : DUMMY_HASH;
     const isMatch = await bcrypt.compare(password, hashToCompare);
 
@@ -139,7 +131,7 @@ const loginPhotographer = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Username atau Password tidak valid.' });
     }
 
-    const token = generateToken(user);
+    const token = buildJwt(user);
 
     return res.json({
       success: true,
@@ -242,7 +234,7 @@ const getAllUsers = async (req, res) => {
 
 /**
  * POST /api/auth/users
- * Super Admin / Admin: Tambah user/peserta/fotografer/admin secara manual
+ * Create a participant, photographer, or admin account manually.
  */
 const createUserManual = async (req, res) => {
   try {
@@ -254,7 +246,6 @@ const createUserManual = async (req, res) => {
 
     let finalEventId = targetEventId;
 
-    // Jika pembuat adalah Event Admin:
     if (req.user && req.user.role === 'admin') {
       if (role === 'admin' || role === 'super_admin') {
         return res.status(403).json({
@@ -263,12 +254,9 @@ const createUserManual = async (req, res) => {
         });
       }
 
-      // Kunci eventId ke event milik Event Admin
-      let adminEventId = req.user.eventId;
-      if (!adminEventId) {
-        const uRes = await query('SELECT event_id FROM users WHERE id = $1', [req.user.id]);
-        adminEventId = uRes.rows[0]?.event_id;
-      }
+      // Scope created users to the admin's own event only
+      const adminEventId = req.user.eventId
+        || (await query('SELECT event_id FROM users WHERE id = $1', [req.user.id])).rows[0]?.event_id;
       finalEventId = adminEventId || 1;
     } else if (!finalEventId || finalEventId === 'all') {
       const eventRes = await query('SELECT id FROM events WHERE is_active = TRUE ORDER BY id DESC LIMIT 1');
@@ -276,12 +264,10 @@ const createUserManual = async (req, res) => {
     }
 
     if (role === 'user') {
-      // Pilihan 1: Peserta -> Nama Lengkap + Nomor BIB + eventId
       if (!bibNumber || !bibNumber.trim()) {
         return res.status(400).json({ success: false, message: 'Nomor BIB wajib diisi untuk peserta.' });
       }
 
-      // Cek duplikasi Nomor BIB (case-insensitive) untuk event yang sama
       const checkBib = await query(
         `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND role = 'user' AND event_id = $2`,
         [bibNumber.trim(), finalEventId]
@@ -302,7 +288,6 @@ const createUserManual = async (req, res) => {
       });
 
     } else if (role === 'photographer' || role === 'admin') {
-      // Pilihan 2: Fotografer atau Event Admin -> Nama Lengkap + Username + Password + eventId
       if (!username || !username.trim() || !password) {
         return res.status(400).json({
           success: false,
@@ -310,13 +295,11 @@ const createUserManual = async (req, res) => {
         });
       }
 
-      // Cek duplikasi username (case insensitive)
       const checkUsername = await query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [username.trim()]);
       if (checkUsername.rows.length > 0) {
         return res.status(400).json({ success: false, message: `Username "${username.trim()}" sudah digunakan.` });
       }
 
-      // Enkripsi password menggunakan bcrypt
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
       const newUser = await query(
@@ -342,13 +325,13 @@ const createUserManual = async (req, res) => {
 
 /**
  * DELETE /api/auth/users/:id
- * Super Admin: Hapus user/fotografer dari database
+ * Super Admin: Delete a user account.
  */
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Tidak boleh menghapus akun sendiri
+    // Self-deletion is always forbidden
     if (req.user && Number(id) === Number(req.user.id)) {
       return res.status(403).json({ success: false, message: 'Anda tidak dapat menghapus akun Anda sendiri.' });
     }
@@ -363,13 +346,9 @@ const deleteUser = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Akun Super Admin utama tidak dapat dihapus.' });
     }
 
-    // Jika penghapus adalah Event Admin:
     if (req.user && req.user.role === 'admin') {
-      let adminEventId = req.user.eventId;
-      if (!adminEventId) {
-        const uRes = await query('SELECT event_id FROM users WHERE id = $1', [req.user.id]);
-        adminEventId = uRes.rows[0]?.event_id;
-      }
+      const adminEventId = req.user.eventId
+        || (await query('SELECT event_id FROM users WHERE id = $1', [req.user.id])).rows[0]?.event_id;
 
       if (targetUser.role === 'admin' || targetUser.role === 'super_admin') {
         return res.status(403).json({ success: false, message: 'Event Admin tidak diizinkan menghapus akun Admin.' });

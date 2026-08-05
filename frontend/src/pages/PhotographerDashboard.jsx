@@ -1,14 +1,21 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CloudUpload, Image as ImageIcon, Check, Trash2, X,
-  Camera, Search, Loader2, CheckSquare, Square, Tag, CheckCircle2, Eye, Save
+  CloudUpload, Image as ImageIcon, Trash2, X,
+  Camera, Search, Loader2, Tag, CheckCircle2, Eye, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupButton,
+} from '@/components/ui/input-group';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,13 +41,24 @@ import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
-const DUMMY_UPLOADED = Array.from({ length: 12 }, (_, i) => ({
-  id:              i + 1,
-  watermarkedUrl:  `https://picsum.photos/seed/photo${i + 1}/400/500`,
-  price:           i % 3 === 0 ? 25000 : i % 3 === 1 ? 35000 : 0,
-  bibTags:         i % 4 === 0 ? String(100 + i) : '',
-  uploadedAt:      new Date(Date.now() - i * 3600000).toLocaleString('id-ID'),
-}));
+const formatRupiah = (v) =>
+  new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(v ?? 0);
+
+const formatRupiahInput = (val) => {
+  if (val === null || val === undefined || val === '') return '';
+  const cleanStr = String(val).replace(/\D/g, '');
+  if (!cleanStr) return '';
+  return new Intl.NumberFormat('id-ID').format(Number(cleanStr));
+};
+
+const parseRupiahInput = (val) => {
+  if (!val) return '';
+  return String(val).replace(/\D/g, '');
+};
 
 // ─── Lightbox Modal Preview Foto untuk Fotografer ────────────────────────
 function PhotoPreviewModal({ photo, onClose }) {
@@ -129,7 +147,7 @@ function PhotoPreviewModal({ photo, onClose }) {
   );
 }
 
-function UploadTab() {
+function UploadTab({ onUploadSuccess }) {
   const fileInputRef           = useRef(null);
   const [previews, setPreviews] = useState([]);
   const [isDragging, setIsDragging]   = useState(false);
@@ -205,6 +223,7 @@ function UploadTab() {
         setUploadDone(true);
         setUploadError(null);
         setPreviews([]);
+        onUploadSuccess?.();
       } else {
         setUploadError(res.message || 'Gagal mengunggah foto.');
       }
@@ -487,7 +506,7 @@ function UploadTab() {
   );
 }
 
-function ManageTab() {
+function ManageTab({ onPhotosChange }) {
   const [photos, setPhotos]               = useState([]);
   const [selected, setSelected]           = useState(new Set());
   const [bulkEditPrice, setBulkEditPrice] = useState('');
@@ -499,20 +518,31 @@ function ManageTab() {
   const [actionAlert, setActionAlert]     = useState(null);
   const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); // { type: 'single' | 'bulk', photoId?: number, count: number }
   const [isDeleting, setIsDeleting]       = useState(false);
+  const [isBulkOpen, setIsBulkOpen]       = useState(false);
+  const [isSavingBulk, setIsSavingBulk]   = useState(false);
+
+  // Single Photo Edit Modal State
+  const [editPhoto, setEditPhoto]         = useState(null);
+  const [editPrice, setEditPrice]         = useState('');
+  const [editBib, setEditBib]             = useState('');
+  const [isSavingSingle, setIsSavingSingle] = useState(false);
 
   const loadPhotos = useCallback(async () => {
     try {
       const res = await api.getMyPhotos();
       if (res.success && res.photos) {
         setPhotos(res.photos);
+        onPhotosChange?.(res.photos.length);
       } else {
         setPhotos([]);
+        onPhotosChange?.(0);
       }
     } catch (err) {
       console.error('Fetch my photos error:', err);
       setPhotos([]);
+      onPhotosChange?.(0);
     }
-  }, []);
+  }, [onPhotosChange]);
 
   useEffect(() => {
     loadPhotos();
@@ -522,8 +552,7 @@ function ManageTab() {
     !search || p.bibTags?.includes(search) || String(p.id).includes(search)
   );
 
-  // State id foto yang sedang proses simpan ke DB
-  const [savingId, setSavingId]           = useState(null);
+
 
   const toggleSelect = (id) => {
     setSelected((prev) => {
@@ -545,69 +574,98 @@ function ManageTab() {
     }
   };
 
-  // Simpan detail harga & BIB massal ke Database PostgreSQL
-  const applyBulkPrice = async () => {
-    if (!bulkEditPrice || selected.size === 0) return;
-    const newPrice = Number(bulkEditPrice);
-    for (const id of Array.from(selected)) {
-      try {
-        await api.updatePhoto(id, { price: newPrice });
-      } catch (err) {
-        console.error('Failed to update price for photo', id, err);
-      }
+  // Simpan detail harga & BIB massal ke Database PostgreSQL via Modal Dialog
+  const handleSaveBulk = async (e) => {
+    e.preventDefault();
+    if (selected.size === 0) return;
+    if (!bulkEditPrice && !bulkEditBib.trim()) {
+      setActionAlert({
+        type: 'error',
+        title: 'Tidak Ada Perubahan',
+        message: 'Masukkan set harga baru atau BIB tag baru terlebih dahulu.',
+      });
+      return;
     }
-    setPhotos((prev) =>
-      prev.map((p) => selected.has(p.id) ? { ...p, price: newPrice } : p)
-    );
-    const count = selected.size;
-    setBulkEditPrice('');
-    setActionAlert({
-      type: 'success',
-      title: 'Tersimpan ke Database!',
-      message: `Harga untuk ${count} foto berhasil diperbarui di database ke Rp ${newPrice.toLocaleString('id-ID')}.`,
-    });
-  };
 
-  const applyBulkBib = async () => {
-    if (!bulkEditBib.trim() || selected.size === 0) return;
-    const newBib = bulkEditBib.trim();
-    for (const id of Array.from(selected)) {
-      try {
-        await api.updatePhoto(id, { bibTags: newBib });
-      } catch (err) {
-        console.error('Failed to update bib for photo', id, err);
-      }
-    }
-    setPhotos((prev) =>
-      prev.map((p) => selected.has(p.id) ? { ...p, bibTags: newBib } : p)
-    );
-    const count = selected.size;
-    setBulkEditBib('');
-    setActionAlert({
-      type: 'success',
-      title: 'Tersimpan ke Database!',
-      message: `Nomor BIB #${newBib} berhasil diperbarui di database untuk ${count} foto.`,
-    });
-  };
-
-  // Simpan detail foto individual ke Database PostgreSQL
-  const handleSaveSinglePhoto = async (photoId) => {
-    const photo = photos.find((p) => p.id === photoId);
-    if (!photo) return;
-
-    setSavingId(photoId);
+    setIsSavingBulk(true);
     try {
-      const finalPrice = photo.price === '' || photo.price == null ? 0 : Number(photo.price);
-      const res = await api.updatePhoto(photoId, {
+      const newPrice = bulkEditPrice !== '' ? Number(bulkEditPrice) : undefined;
+      const newBib = bulkEditBib.trim() !== '' ? bulkEditBib.trim() : undefined;
+
+      let successCount = 0;
+      for (const id of Array.from(selected)) {
+        const updatePayload = {};
+        if (newPrice !== undefined) updatePayload.price = newPrice;
+        if (newBib !== undefined) updatePayload.bibTags = newBib;
+
+        try {
+          const res = await api.updatePhoto(id, updatePayload);
+          if (res.success) successCount++;
+        } catch (err) {
+          console.error('Failed to update photo', id, err);
+        }
+      }
+
+      setPhotos((prev) =>
+        prev.map((p) => {
+          if (!selected.has(p.id)) return p;
+          return {
+            ...p,
+            ...(newPrice !== undefined ? { price: newPrice } : {}),
+            ...(newBib !== undefined ? { bibTags: newBib } : {}),
+          };
+        })
+      );
+
+      const count = selected.size;
+      setIsBulkOpen(false);
+      setBulkEditPrice('');
+      setBulkEditBib('');
+      setSelected(new Set());
+
+      setActionAlert({
+        type: 'success',
+        title: 'Tersimpan ke Database!',
+        message: `Berhasil memperbarui ${count} foto di database.`,
+      });
+    } catch (err) {
+      console.error('Save bulk error:', err);
+      setActionAlert({
+        type: 'error',
+        title: 'Gagal Menyimpan',
+        message: 'Terjadi kesalahan saat memperbarui foto secara massal.',
+      });
+    } finally {
+      setIsSavingBulk(false);
+    }
+  };
+
+  // Simpan detail foto individual ke Database PostgreSQL via Modal Dialog
+  const handleSaveSinglePhoto = async (e) => {
+    e.preventDefault();
+    if (!editPhoto) return;
+
+    setIsSavingSingle(true);
+    try {
+      const finalPrice = editPrice !== '' ? Number(editPrice) : 0;
+      const res = await api.updatePhoto(editPhoto.id, {
         price: finalPrice,
-        bibTags: photo.bibTags,
+        bibTags: editBib,
       });
 
       if (res.success) {
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === editPhoto.id
+              ? { ...p, price: finalPrice, bibTags: editBib }
+              : p
+          )
+        );
+        setEditPhoto(null);
         setActionAlert({
           type: 'success',
-          title: 'Berhasil Disimpan ke Database!',
-          message: `Detail foto #${photoId} (Harga: ${finalPrice > 0 ? `Rp ${finalPrice.toLocaleString('id-ID')}` : 'Belum Diberi Harga'}, BIB: #${photo.bibTags || '-'}) tersimpan permanen di database.`,
+          title: 'Berhasil Disimpan!',
+          message: `Detail foto #${editPhoto.id} tersimpan di database.`,
         });
       } else {
         setActionAlert({
@@ -624,7 +682,7 @@ function ManageTab() {
         message: 'Terjadi kesalahan koneksi saat menyimpan ke database.',
       });
     } finally {
-      setSavingId(null);
+      setIsSavingSingle(false);
     }
   };
 
@@ -682,6 +740,7 @@ function ManageTab() {
         title: 'Foto Berhasil Dihapus!',
         message: `${count} foto telah berhasil dihapus secara permanen dari galeri & server.`,
       });
+      onPhotosChange?.(photos.length - count);
     } catch (err) {
       console.error('Delete photo error:', err);
       setActionAlert({
@@ -691,16 +750,11 @@ function ManageTab() {
       });
     } finally {
       setIsDeleting(false);
+      setDeleteConfirmModal(null);
     }
   };
 
-  const updatePrice = (id, price) => {
-    setPhotos((prev) => prev.map((p) => p.id === id ? { ...p, price } : p));
-  };
 
-  const updateBib = (id, bib) => {
-    setPhotos((prev) => prev.map((p) => p.id === id ? { ...p, bibTags: bib } : p));
-  };
 
   return (
     <div className="space-y-4">
@@ -734,17 +788,26 @@ function ManageTab() {
 
       {/* Search & Stats */}
       <div className="flex flex-col sm:flex-row gap-2.5">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563] pointer-events-none z-10" />
-          <Input
+        <InputGroup className="h-11 border-[#E5E7EB] rounded-xl bg-white flex-1">
+          <InputGroupAddon align="inline-start">
+            <Search className="w-4 h-4 text-[#4B5563]" />
+          </InputGroupAddon>
+          <InputGroupInput
             id="manage-search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari BIB atau ID foto..."
-            className="pl-10 h-11 border-[#E5E7EB] rounded-xl text-sm font-bib"
+            placeholder="Cari berdasarkan BIB atau ID foto..."
+            className="text-xs sm:text-sm font-bib text-[#111827]"
           />
-        </div>
+          {search && (
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton onClick={() => setSearch('')} title="Bersihkan pencarian">
+                <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+              </InputGroupButton>
+            </InputGroupAddon>
+          )}
+        </InputGroup>
         <p className="text-sm font-medium text-[#4B5563] self-center shrink-0">
           {photos.length} foto · <span className="font-bold text-[#111827]">{selected.size} dipilih</span>
         </p>
@@ -757,93 +820,71 @@ function ManageTab() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="sticky top-16 z-30 my-2"
+            className="sticky top-16 z-30 bg-[#191C21]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl text-white my-2"
           >
-            <Card className="bg-[#191C21]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-4 flex flex-col gap-3.5 shadow-2xl text-white">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-brand">{selected.size} foto dipilih</span>
-                <Button
-                  id="delete-selected-btn"
-                  onClick={requestDeleteBulk}
-                  variant="destructive"
-                  size="sm"
-                  className="h-8 text-xs font-bold rounded-xl px-3"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  Hapus Terpilih
-                </Button>
-              </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-brand text-white font-bold font-bib text-xs px-2.5 py-0.5">
+                {selected.size} Foto Terpilih
+              </Badge>
+              <span className="text-xs text-gray-300 hidden md:inline">
+                Siap untuk diubah harga atau tag BIB secara bersamaan
+              </span>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-white/10">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-bold">Rp</span>
-                    <Input
-                      id="multi-price-input"
-                      type="number"
-                      min="0"
-                      inputMode="numeric"
-                      value={bulkEditPrice}
-                      onChange={(e) => setBulkEditPrice(e.target.value)}
-                      placeholder="Harga baru"
-                      className="pl-7 h-9 bg-white/10 border-white/20 text-white text-xs rounded-xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                  </div>
-                  <Button
-                    id="apply-multi-price"
-                    onClick={applyBulkPrice}
-                    disabled={!bulkEditPrice}
-                    size="sm"
-                    className="h-9 bg-brand hover:bg-[#C2410C] text-white text-xs font-bold shrink-0 rounded-xl"
-                  >
-                    Set Harga
-                  </Button>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                    <Input
-                      id="multi-bib-input"
-                      type="text"
-                      inputMode="numeric"
-                      value={bulkEditBib}
-                      onChange={(e) => setBulkEditBib(e.target.value)}
-                      placeholder="Nomor BIB baru"
-                      className="pl-8 h-9 bg-white/10 border-white/20 text-white text-xs font-bib rounded-xl"
-                    />
-                  </div>
-                  <Button
-                    id="apply-multi-bib"
-                    onClick={applyBulkBib}
-                    disabled={!bulkEditBib.trim()}
-                    size="sm"
-                    className="h-9 bg-brand hover:bg-[#C2410C] text-white text-xs font-bold shrink-0 rounded-xl"
-                  >
-                    Set BIB
-                  </Button>
-                </div>
-              </div>
-            </Card>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelected(new Set())}
+                className="h-9 text-xs font-bold border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl"
+              >
+                Batalkan Pilihan
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setIsBulkOpen(true)}
+                className="h-9 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl gap-1.5 shadow-sm"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span>Edit ({selected.size})</span>
+              </Button>
+              <Button
+                id="delete-selected-btn"
+                onClick={requestDeleteBulk}
+                variant="destructive"
+                size="sm"
+                className="h-9 text-xs font-bold rounded-xl px-3 gap-1.5 shadow-sm"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus ({selected.size})</span>
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-2">
-        <Button
-          id="select-all-btn"
-          variant="ghost"
-          size="sm"
-          onClick={toggleAll}
-          className="text-sm font-semibold text-[#4B5563] hover:text-[#111827] px-0 h-auto"
-        >
-          {selected.size === filtered.length && filtered.length > 0
-            ? <CheckSquare className="w-4 h-4 text-brand mr-1.5" />
-            : <Square className="w-4 h-4 mr-1.5" />
-          }
-          <span>{selected.size === filtered.length && filtered.length > 0 ? 'Batalkan semua' : 'Pilih semua'}</span>
-        </Button>
-      </div>
+      {(() => {
+        const allChecked = filtered.length > 0 && selected.size === filtered.length;
+        const isIndeterminate = selected.size > 0 && selected.size < filtered.length;
+        return (
+          <div className="flex items-center gap-2.5 px-4 h-11 bg-white border border-[#E5E7EB] rounded-xl shadow-xs w-fit">
+            <Checkbox
+              id="photographer-select-all"
+              checked={allChecked}
+              indeterminate={isIndeterminate}
+              onCheckedChange={toggleAll}
+            />
+            <label
+              htmlFor="photographer-select-all"
+              className="text-xs font-bold text-[#111827] cursor-pointer select-none"
+            >
+              {selected.size > 0
+                ? `Pilih Semua (${selected.size}/${filtered.length})`
+                : `Pilih Semua (${filtered.length})`}
+            </label>
+          </div>
+        );
+      })()}
 
       {/* Grid Foto */}
       {filtered.length === 0 ? (
@@ -859,54 +900,28 @@ function ManageTab() {
           {filtered.map((photo) => {
             const isSelected = selected.has(photo.id);
             const imgUrl = photo.watermarkedUrl || photo.watermarked_url || '';
-            const bibVal = photo.bibTags ?? photo.bib_tags ?? '';
-            const priceVal = photo.price === 0 || photo.price === '0' || photo.price == null || photo.price === '' ? '' : photo.price;
-            const dateStr = photo.uploadedAt || (photo.createdAt ? new Date(photo.createdAt).toLocaleString('id-ID') : '');
 
             return (
               <motion.div key={photo.id} whileHover={{ y: -2 }}>
                 <Card
-                  className={`relative rounded-2xl overflow-hidden border-2 transition-all p-0 shadow-sm ${
-                    isSelected ? 'border-brand shadow-md shadow-orange-500/20' : 'border-transparent'
+                  className={`group relative overflow-hidden bg-white border rounded-2xl transition-all shadow-xs hover:shadow-md ${
+                    isSelected ? 'border-brand ring-2 ring-brand/20' : 'border-[#E5E7EB]'
                   }`}
                 >
-                  {/* Select Checkbox */}
-                  <button
-                    id={`select-photo-${photo.id}`}
-                    onClick={() => toggleSelect(photo.id)}
-                    className="absolute top-2.5 left-2.5 z-10 w-5 h-5 rounded-md border-2 border-white/80 bg-black/30 flex items-center justify-center transition-colors shadow-md"
-                    style={{ background: isSelected ? '#EA580C' : 'rgba(0,0,0,0.3)', borderColor: isSelected ? '#EA580C' : 'rgba(255,255,255,0.8)' }}
-                    aria-label={`Pilih foto ${photo.id}`}
+                  {/* Shadcn UI Select Checkbox */}
+                  <div
+                    className="absolute top-2.5 left-2.5 z-20"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                  </button>
+                    <Checkbox
+                      id={`select-photo-${photo.id}`}
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelect(photo.id)}
+                      className="bg-white/90 shadow-md backdrop-blur-xs border-white/80 data-checked:bg-brand data-checked:border-brand"
+                    />
+                  </div>
 
-                  {/* Tombol Pratinjau Foto Individual */}
-                  <button
-                    id={`preview-photo-${photo.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewPhoto(photo);
-                    }}
-                    className="absolute top-2.5 right-11 z-10 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-all shadow-md"
-                    title="Pratinjau Foto"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Tombol Hapus Foto Individual (Per Foto) */}
-                  <button
-                    id={`delete-single-photo-${photo.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      requestDeleteSingle(photo.id);
-                    }}
-                    className="absolute top-2.5 right-2.5 z-10 w-7 h-7 bg-red-600/90 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition-all shadow-md"
-                    title="Hapus foto ini"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-
+                  {/* Image & Price Overlay */}
                   <div
                     onClick={() => setPreviewPhoto(photo)}
                     className="aspect-[4/5] overflow-hidden bg-[#F3F4F6] cursor-pointer group/img relative"
@@ -922,50 +937,70 @@ function ManageTab() {
                         <Eye className="w-4 h-4" />
                       </div>
                     </div>
+
+                    {/* Price Tag Overlay (Rp 10.000 or Rp 0) */}
+                    <div className="absolute bottom-2 right-2 z-10">
+                      <Badge className="bg-black/70 backdrop-blur-md text-white font-bib text-[11px] font-bold border-0 px-2 py-0.5">
+                        {formatRupiah(photo.price || 0)}
+                      </Badge>
+                    </div>
                   </div>
 
-                  <div className="bg-white px-2.5 py-2.5 space-y-1.5">
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#9CA3AF] font-bold">Rp</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        inputMode="numeric"
-                        value={priceVal}
-                        onChange={(e) => updatePrice(photo.id, e.target.value)}
-                        placeholder="Harga"
-                        className="pl-7 h-8 text-xs font-bold border-[#E5E7EB] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
+                  {/* Details, BIB Tag, and Action Buttons (Pencil & Trash2) */}
+                  <div className="p-3 space-y-1.5 bg-white">
+                    <div className="flex items-center justify-between gap-1 text-xs">
+                      <span
+                        className="font-semibold text-[#111827] truncate"
+                        title={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
+                      >
+                        {photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
+                      </span>
                     </div>
 
-                    <div className="relative">
-                      <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={bibVal}
-                        onChange={(e) => updateBib(photo.id, e.target.value)}
-                        placeholder="Tag BIB"
-                        className="pl-8 h-8 text-xs font-bib border-[#E5E7EB]"
-                      />
+                    <div className="flex items-center justify-between gap-1 pt-0.5">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {photo.bibTags ? (
+                          <Badge
+                            variant="outline"
+                            className="font-bib text-[10px] bg-brand/10 text-brand border-brand/20 px-1.5 py-0"
+                          >
+                            BIB #{photo.bibTags}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="font-bib text-[10px] bg-gray-100 text-gray-500 border-gray-200 px-1.5 py-0"
+                          >
+                            Tanpa BIB
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          id={`edit-single-photo-${photo.id}`}
+                          onClick={() => {
+                            setEditPhoto(photo);
+                            setEditPrice(photo.price || '');
+                            setEditBib(photo.bibTags || '');
+                          }}
+                          className="p-1.5 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg transition-colors"
+                          title="Edit Harga & BIB"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          id={`delete-single-photo-${photo.id}`}
+                          onClick={() => requestDeleteSingle(photo.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus foto ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-
-                    <Button
-                      id={`save-photo-${photo.id}`}
-                      onClick={() => handleSaveSinglePhoto(photo.id)}
-                      disabled={savingId === photo.id}
-                      size="sm"
-                      className="w-full bg-brand hover:bg-[#C2410C] text-white font-bold text-xs h-8.5 rounded-xl shadow-sm mt-1 flex items-center justify-center gap-1.5"
-                    >
-                      {savingId === photo.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Save className="w-3.5 h-3.5" />
-                      )}
-                      <span>{savingId === photo.id ? 'Menyimpan...' : 'Simpan Foto'}</span>
-                    </Button>
-
-                    {dateStr && <p className="text-[10px] text-[#9CA3AF] text-right font-medium pt-0.5">{dateStr}</p>}
                   </div>
                 </Card>
               </motion.div>
@@ -1002,6 +1037,137 @@ function ManageTab() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Modal Edit Bulk Photos (Fotografer) */}
+      <AlertDialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Edit ({selected.size} Foto)
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Atur harga atau tag BIB sekaligus untuk {selected.size} foto yang dipilih.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleSaveBulk} className="space-y-3.5 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Set Harga Baru (Rp) (Opsional)
+              </label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={formatRupiahInput(bulkEditPrice)}
+                onChange={(e) => setBulkEditPrice(parseRupiahInput(e.target.value))}
+                placeholder="Biarkan kosong jika tidak diubah (contoh: 50.000)"
+                className="h-10 text-xs border-[#E5E7EB] rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Set BIB Tag Baru (Opsional)
+              </label>
+              <Input
+                type="text"
+                value={bulkEditBib}
+                onChange={(e) => setBulkEditBib(e.target.value)}
+                placeholder="Contoh: 101 atau A101 (kosongkan jika tidak diubah)"
+                className="h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+              />
+            </div>
+
+            <AlertDialogFooter className="pt-2 gap-2">
+              <AlertDialogCancel
+                type="button"
+                disabled={isSavingBulk}
+                className="rounded-xl text-xs h-10"
+              >
+                Batal
+              </AlertDialogCancel>
+              <Button
+                type="submit"
+                disabled={isSavingBulk}
+                className="bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold h-10"
+              >
+                {isSavingBulk ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Terapkan Ke Semua'
+                )}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Edit Single Photo (Fotografer) */}
+      <AlertDialog open={Boolean(editPhoto)} onOpenChange={(open) => !open && setEditPhoto(null)}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Edit Detail Foto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Perbarui harga jual dan nomor BIB untuk berkas <strong>{editPhoto?.originalFilename || editPhoto?.original_filename || `Foto #${editPhoto?.id}`}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleSaveSinglePhoto} className="space-y-3.5 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Harga Foto (Rp)
+              </label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={formatRupiahInput(editPrice)}
+                onChange={(e) => setEditPrice(parseRupiahInput(e.target.value))}
+                placeholder="Contoh: 50.000"
+                className="h-10 text-xs border-[#E5E7EB] rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Nomor BIB Tag
+              </label>
+              <Input
+                type="text"
+                value={editBib}
+                onChange={(e) => setEditBib(e.target.value)}
+                placeholder="Contoh: 101, A101, atau A-101"
+                className="h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Gunakan koma jika terdapat lebih dari 1 peserta (misal: 101, 102).
+              </p>
+            </div>
+
+            <AlertDialogFooter className="pt-2 gap-2">
+              <AlertDialogCancel
+                type="button"
+                disabled={isSavingSingle}
+                className="rounded-xl text-xs h-10"
+              >
+                Batal
+              </AlertDialogCancel>
+              <Button
+                type="submit"
+                disabled={isSavingSingle}
+                className="bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold h-10"
+              >
+                {isSavingSingle ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Simpan Perubahan'
+                )}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Lightbox Modal Preview Foto untuk Fotografer */}
       <AnimatePresence>
         {previewPhoto && (
@@ -1018,6 +1184,25 @@ function ManageTab() {
 export default function PhotographerDashboard() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
+  const [uploadedCount, setUploadedCount] = useState(0);
+
+  const fetchUploadedCount = useCallback(async () => {
+    try {
+      const res = await api.getMyPhotos();
+      if (res.success && res.photos) {
+        setUploadedCount(res.photos.length);
+      } else {
+        setUploadedCount(0);
+      }
+    } catch (err) {
+      console.error('Fetch uploaded count error:', err);
+      setUploadedCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUploadedCount();
+  }, [fetchUploadedCount]);
 
   const tabs = [
     { id: 'upload', label: 'Upload Foto', icon: CloudUpload },
@@ -1043,7 +1228,7 @@ export default function PhotographerDashboard() {
               </p>
             </div>
             <div className="text-right shrink-0 bg-white border border-[#E5E7EB] rounded-2xl px-3.5 py-1.5 shadow-sm">
-              <p className="text-xl font-bold text-[#111827] font-bib">{DUMMY_UPLOADED.length}</p>
+              <p className="text-xl font-bold text-[#111827] font-bib">{uploadedCount}</p>
               <p className="text-[10px] text-[#4B5563]">foto diupload</p>
             </div>
           </div>
@@ -1076,7 +1261,17 @@ export default function PhotographerDashboard() {
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
           >
-            {activeTab === 'upload' ? <UploadTab /> : <ManageTab />}
+            {activeTab === 'upload' ? (
+              <UploadTab onUploadSuccess={fetchUploadedCount} />
+            ) : (
+              <ManageTab onPhotosChange={(count) => {
+                if (typeof count === 'number') {
+                  setUploadedCount(count);
+                } else {
+                  fetchUploadedCount();
+                }
+              }} />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

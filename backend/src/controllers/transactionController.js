@@ -1,41 +1,50 @@
 const { query } = require('../config/db');
 const { getPresignedDownloadUrl } = require('../services/r2Service');
 
-/**
- * Generates sequential order number: SEPOTO-E{eventId}-YYYYMMDD-XXXX (e.g. SEPOTO-E1-20260804-0001)
- */
-async function generateSequentialOrderNumber(targetEventId = null) {
+/** Build today's date string in YYYYMMDD format */
+function buildDateString() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
 
-  const eventTag = targetEventId ? `E${targetEventId}` : 'E1';
-  const datePrefix = `SEPOTO-${eventTag}-${year}${month}${day}`;
+/**
+ * Fetch a user's event_id from the database.
+ * Falls back to null when the user has no assigned event.
+ */
+async function resolveUserEventId(userId) {
+  const result = await query('SELECT event_id FROM users WHERE id = $1', [userId]);
+  return result.rows[0]?.event_id ?? null;
+}
 
-  // Hitung jumlah transaksi pada tanggal & event ini di database
+/**
+ * Return the next sequential order number scoped to an event and today's date.
+ * Format: SEPOTO-E{eventId}-YYYYMMDD-XXXX
+ */
+async function generateSequentialOrderNumber(eventId = null) {
+  const eventTag = eventId ? `E${eventId}` : 'E1';
+  const prefix = `SEPOTO-${eventTag}-${buildDateString()}`;
+
   const result = await query(
     `SELECT COUNT(*) as count FROM transactions WHERE order_number LIKE $1`,
-    [`${datePrefix}-%`]
+    [`${prefix}-%`]
   );
 
-  const count = parseInt(result.rows[0].count, 10) + 1;
-  const sequenceStr = String(count).padStart(4, '0');
-
-  return `${datePrefix}-${sequenceStr}`;
+  const sequence = parseInt(result.rows[0].count, 10) + 1;
+  return `${prefix}-${String(sequence).padStart(4, '0')}`;
 }
 
 /**
  * GET /api/transactions/next-order-number
- * Ambil nomor order sekuensial berikutnya untuk tanggal & event terkait (User & Admin)
+ * Returns the next available order number for the requesting user's event.
  */
 const getNextOrderNumber = async (req, res) => {
   try {
-    let eventId = req.query.eventId || req.user?.eventId;
-    if (!eventId && req.user?.id) {
-      const uRes = await query('SELECT event_id FROM users WHERE id = $1', [req.user.id]);
-      eventId = uRes.rows[0]?.event_id;
-    }
+    const eventId = req.query.eventId
+      || req.user?.eventId
+      || (req.user?.id ? await resolveUserEventId(req.user.id) : null);
 
     const orderNumber = await generateSequentialOrderNumber(eventId);
     return res.json({ success: true, orderNumber });
@@ -45,38 +54,44 @@ const getNextOrderNumber = async (req, res) => {
   }
 };
 
+async function isOrderNumberTaken(orderNumber) {
+  const result = await query(
+    'SELECT id FROM transactions WHERE order_number = $1',
+    [orderNumber]
+  );
+  return result.rows.length > 0;
+}
+
+async function insertTransactionItems(transactionId, photoIds) {
+  for (const photoId of photoIds) {
+    await query(
+      `INSERT INTO transaction_items (transaction_id, photo_id, price_at_purchase)
+       SELECT $1, id, price FROM photos WHERE id = $2`,
+      [transactionId, photoId]
+    );
+  }
+}
+
 /**
  * POST /api/transactions
- * Buat transaksi / checkout cart
+ * Create a new transaction (checkout).
  */
 const createTransaction = async (req, res) => {
   try {
-    const userId = req.user.id; // Dari JWT token
+    const userId = req.user.id;
     const { orderNumber, totalAmount, photoIds = [] } = req.body;
 
     if (!totalAmount || photoIds.length === 0) {
       return res.status(400).json({ success: false, message: 'Data transaksi tidak lengkap.' });
     }
 
-    // Ambil eventId milik user
-    let userEventId = req.user?.eventId;
-    if (!userEventId) {
-      const uRes = await query('SELECT event_id FROM users WHERE id = $1', [userId]);
-      userEventId = uRes.rows[0]?.event_id;
-    }
+    const userEventId = req.user?.eventId || await resolveUserEventId(userId);
 
-    let finalOrderNumber = orderNumber;
-    if (!finalOrderNumber) {
-      finalOrderNumber = await generateSequentialOrderNumber(userEventId);
-    } else {
-      // Cek apakah orderNumber sudah ada di DB untuk mencegah duplikasi/race condition
-      const checkResult = await query('SELECT id FROM transactions WHERE order_number = $1', [finalOrderNumber]);
-      if (checkResult.rows.length > 0) {
-        finalOrderNumber = await generateSequentialOrderNumber(userEventId);
-      }
-    }
+    const isDuplicateOrderNumber = orderNumber && await isOrderNumberTaken(orderNumber);
+    const finalOrderNumber = (!orderNumber || isDuplicateOrderNumber)
+      ? await generateSequentialOrderNumber(userEventId)
+      : orderNumber;
 
-    // 1. Insert ke tabel transactions
     const txResult = await query(
       `INSERT INTO transactions (order_number, user_id, total_amount, status)
        VALUES ($1, $2, $3, 'pending') RETURNING *`,
@@ -84,14 +99,7 @@ const createTransaction = async (req, res) => {
     );
     const transaction = txResult.rows[0];
 
-    // 2. Insert ke transaction_items
-    for (const photoId of photoIds) {
-      await query(
-        `INSERT INTO transaction_items (transaction_id, photo_id, price_at_purchase)
-         SELECT $1, id, price FROM photos WHERE id = $2`,
-        [transaction.id, photoId]
-      );
-    }
+    await insertTransactionItems(transaction.id, photoIds);
 
     return res.json({ success: true, message: 'Transaksi berhasil dibuat!', transaction });
   } catch (error) {
@@ -100,71 +108,72 @@ const createTransaction = async (req, res) => {
   }
 };
 
+function buildTransactionEventFilter(role, requestEventId, adminEventId) {
+  if (role === 'admin') {
+    return { clause: ' WHERE u.event_id = $1 OR p.event_id = $1', params: [adminEventId || 1] };
+  }
+  if (requestEventId && requestEventId !== 'all') {
+    return { clause: ' WHERE u.event_id = $1 OR p.event_id = $1', params: [requestEventId] };
+  }
+  return { clause: '', params: [] };
+}
+
+function mapTransactionRow(row) {
+  return {
+    id: row.id,
+    orderNumber: row.order_number,
+    userName: row.user_name || 'Peserta',
+    bibNumber: row.bib_number || 'Umum',
+    total: Number(row.total_amount),
+    status: row.status,
+    approvedByName: row.approved_by_name || null,
+    approvedByRole: row.approved_by_role || null,
+    createdAt: new Date(row.created_at).toLocaleString('id-ID'),
+    items: Array.isArray(row.items) ? row.items : [],
+  };
+}
+
+const TRANSACTION_SELECT_SQL = `
+  SELECT
+    t.id, t.order_number, t.status, t.total_amount, t.created_at,
+    u.name as user_name, u.bib_number, u.event_id,
+    ab.name as approved_by_name, ab.role as approved_by_role,
+    COALESCE(
+      json_agg(
+        json_build_object(
+          'photoId',        p.id,
+          'watermarkedUrl', p.watermarked_url,
+          'originalFilename', p.original_filename
+        ) ORDER BY ti.id
+      ) FILTER (WHERE p.id IS NOT NULL),
+      '[]'
+    ) as items
+  FROM transactions t
+  LEFT JOIN users u ON t.user_id = u.id
+  LEFT JOIN users ab ON t.approved_by_id = ab.id
+  LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
+  LEFT JOIN photos p ON p.id = ti.photo_id
+`;
+
 /**
  * GET /api/transactions
- * List semua transaksi (Super Admin & Admin)
- * Mendukung filter eventId
+ * List all transactions for admins, with optional event filter.
  */
 const getTransactions = async (req, res) => {
   try {
     const { eventId } = req.query;
-    let sql = `
-      SELECT
-        t.id, t.order_number, t.status, t.total_amount, t.created_at,
-        u.name as user_name, u.bib_number, u.event_id,
-        ab.name as approved_by_name, ab.role as approved_by_role,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'photoId',        p.id,
-              'watermarkedUrl', p.watermarked_url,
-              'originalFilename', p.original_filename
-            ) ORDER BY ti.id
-          ) FILTER (WHERE p.id IS NOT NULL),
-          '[]'
-        ) as items
-      FROM transactions t
-      LEFT JOIN users u ON t.user_id = u.id
-      LEFT JOIN users ab ON t.approved_by_id = ab.id
-      LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
-      LEFT JOIN photos p ON p.id = ti.photo_id
-    `;
-    const params = [];
+    const adminEventId = req.user?.eventId || (req.user?.id ? await resolveUserEventId(req.user.id) : null);
+    const { clause, params } = buildTransactionEventFilter(req.user?.role, eventId, adminEventId);
 
-    if (req.user && req.user.role === 'admin') {
-      let adminEventId = req.user.eventId;
-      if (!adminEventId) {
-        const uRes = await query('SELECT event_id FROM users WHERE id = $1', [req.user.id]);
-        adminEventId = uRes.rows[0]?.event_id;
-      }
-      sql += ` WHERE u.event_id = $1 OR p.event_id = $1`;
-      params.push(adminEventId || 1);
-    } else if (eventId && eventId !== 'all') {
-      sql += ` WHERE u.event_id = $1 OR p.event_id = $1`;
-      params.push(eventId);
-    }
-
-    sql += `
+    const sql = `
+      ${TRANSACTION_SELECT_SQL}
+      ${clause}
       GROUP BY t.id, u.name, u.bib_number, u.event_id, ab.name, ab.role
       ORDER BY t.id DESC
     `;
 
     const result = await query(sql, params);
-
-    const transactions = result.rows.map((t) => ({
-      id: t.id,
-      orderNumber: t.order_number,
-      userName: t.user_name || 'Peserta',
-      bibNumber: t.bib_number || 'Umum',
-      total: Number(t.total_amount),
-      status: t.status,
-      approvedByName: t.approved_by_name || null,
-      approvedByRole: t.approved_by_role || null,
-      createdAt: new Date(t.created_at).toLocaleString('id-ID'),
-      items: Array.isArray(t.items) ? t.items : [],
-    }));
-
-    return res.json({ success: true, transactions });
+    return res.json({ success: true, transactions: result.rows.map(mapTransactionRow) });
   } catch (error) {
     console.error('Fetch Transactions Error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengambil transaksi.' });

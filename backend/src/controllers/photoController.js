@@ -112,16 +112,28 @@ const uploadPhotos = async (req, res) => {
 
 /**
  * GET /api/photos/my
- * Fotografer ambil foto miliknya sendiri (berdasarkan photographer_id dari JWT)
+ * Fotografer ambil foto miliknya sendiri pada event aktif saat ini
  */
 const getMyPhotos = async (req, res) => {
   try {
     const photographerId = req.user.id;
 
-    const result = await query(
-      `SELECT * FROM photos WHERE photographer_id = $1 ORDER BY id DESC`,
-      [photographerId]
-    );
+    let eventId = req.user?.eventId;
+    if (!eventId) {
+      const uRes = await query('SELECT event_id FROM users WHERE id = $1', [photographerId]);
+      eventId = uRes.rows[0]?.event_id;
+    }
+
+    let sql = `SELECT * FROM photos WHERE photographer_id = $1`;
+    const params = [photographerId];
+
+    if (eventId) {
+      sql += ` AND (event_id = $2 OR event_id IS NULL)`;
+      params.push(eventId);
+    }
+
+    sql += ` ORDER BY id DESC`;
+    const result = await query(sql, params);
 
     const photos = result.rows.map((row) => ({
       id: row.id,
@@ -207,16 +219,17 @@ const updatePhoto = async (req, res) => {
       });
     }
 
-    const priceVal = price !== undefined && price !== null ? Number(price) : null;
+    const priceVal = price !== undefined && price !== null ? (String(price).trim() !== '' ? Number(price) : 0) : null;
     const bibVal = bibTags !== undefined && bibTags !== null ? String(bibTags).trim() : null;
 
     const result = await query(
       `UPDATE photos 
        SET price = COALESCE($1, price), 
-           bib_tags = COALESCE($2, bib_tags) 
-       WHERE id = $3 AND photographer_id = $4 
+           bib_tags = COALESCE($2, bib_tags),
+           updated_by_id = $3
+       WHERE id = $4 AND photographer_id = $3 
        RETURNING *`,
-      [priceVal, bibVal, id, photographerId]
+      [priceVal, bibVal, photographerId, id]
     );
 
     const updated = result.rows[0];
@@ -228,7 +241,7 @@ const updatePhoto = async (req, res) => {
         id: updated.id,
         watermarkedUrl: updated.watermarked_url,
         originalUrl: updated.original_url,
-        price: Number(updated.price),
+        price: Number(updated.price || 0),
         bibTags: updated.bib_tags,
         orientation: updated.orientation || 'portrait',
         createdAt: updated.created_at,
@@ -338,14 +351,14 @@ const getAdminPhotos = async (req, res) => {
       watermarkedUrl: row.watermarked_url,
       originalUrl: row.original_url,
       originalFilename: row.original_filename || `IMG_${row.id}.jpg`,
-      price: Number(row.price),
+      price: Number(row.price || 0),
       bibTags: row.bib_tags,
       orientation: row.orientation || 'portrait',
       photographerName: row.photographer_name || 'Fotografer',
       eventId: row.event_id,
       eventTitle: row.event_title || 'Semua Event',
-      updatedByName: row.updated_by_name || null,
-      updatedByRole: row.updated_by_role || null,
+      updatedByName: row.updated_by_name || row.photographer_name || 'Fotografer',
+      updatedByRole: row.updated_by_role || 'fotografer',
       createdAt: row.created_at,
     }));
 
@@ -366,8 +379,8 @@ const updatePhotoAdmin = async (req, res) => {
     const { price, bibTags } = req.body;
     const adminUserId = req.user.id;
 
-    const priceVal = price !== undefined && price !== null && String(price).trim() !== '' ? Number(price) : null;
-    const bibVal = bibTags !== undefined && bibTags !== null ? String(bibTags).trim() : null;
+    const finalPrice = price !== undefined && price !== null ? (String(price).trim() !== '' ? Number(price) : 0) : null;
+    const finalBib = bibTags !== undefined && bibTags !== null ? String(bibTags).trim() : null;
 
     const result = await query(
       `UPDATE photos 
@@ -376,7 +389,7 @@ const updatePhotoAdmin = async (req, res) => {
            updated_by_id = $3
        WHERE id = $4
        RETURNING *`,
-      [priceVal, bibVal, adminUserId, id]
+      [finalPrice, finalBib, adminUserId, id]
     );
 
     if (result.rows.length === 0) {
@@ -385,14 +398,19 @@ const updatePhotoAdmin = async (req, res) => {
 
     const updated = result.rows[0];
 
+    const userRes = await query('SELECT name, role FROM users WHERE id = $1', [adminUserId]);
+    const updater = userRes.rows[0] || {};
+
     return res.json({
       success: true,
       message: 'Detail foto berhasil diperbarui oleh Super Admin.',
       photo: {
         id: updated.id,
-        price: Number(updated.price),
+        price: Number(updated.price || 0),
         bibTags: updated.bib_tags,
         updatedById: adminUserId,
+        updatedByName: updater.name || 'Super Admin',
+        updatedByRole: updater.role || 'super_admin',
       },
     });
   } catch (error) {
@@ -410,16 +428,15 @@ const bulkUpdatePhotosAdmin = async (req, res) => {
     const { photoIds = [], price, bibTags } = req.body;
     const adminUserId = req.user.id;
 
-    if (!Array.isArray(photoIds) || photoIds.length === 0) {
-      return res.status(400).json({ success: false, message: 'Pilih minimal 1 foto untuk diubah.' });
-    }
+    const hasPrice = price !== undefined && price !== null;
+    const hasBib = bibTags !== undefined && bibTags !== null && String(bibTags).trim() !== '';
 
-    const priceVal = price !== undefined && price !== null && String(price).trim() !== '' ? Number(price) : null;
-    const bibVal = bibTags !== undefined && bibTags !== null && String(bibTags).trim() !== '' ? String(bibTags).trim() : null;
-
-    if (priceVal === null && bibVal === null) {
+    if (!hasPrice && !hasBib) {
       return res.status(400).json({ success: false, message: 'Isi harga atau tag BIB yang ingin diubah.' });
     }
+
+    const finalPrice = hasPrice ? (String(price).trim() !== '' ? Number(price) : 0) : null;
+    const finalBib = hasBib ? String(bibTags).trim() : null;
 
     await query(
       `UPDATE photos 
@@ -427,7 +444,7 @@ const bulkUpdatePhotosAdmin = async (req, res) => {
            bib_tags = COALESCE($2, bib_tags),
            updated_by_id = $3
        WHERE id = ANY($4::int[])`,
-      [priceVal, bibVal, adminUserId, photoIds]
+      [finalPrice, finalBib, adminUserId, photoIds]
     );
 
     return res.json({

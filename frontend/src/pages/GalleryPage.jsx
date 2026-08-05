@@ -3,30 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, ShoppingCart, X, Check, Camera, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupButton,
+} from '@/components/ui/input-group';
 import AppShell from '../components/AppShell';
 import ProtectedPhoto from '../components/ProtectedPhoto';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { api } from '../services/api';
-
-const _DUMMY_PHOTOS = [
-  { id: 1,  watermarkedUrl: 'https://picsum.photos/seed/sepoto1/600/400',  orientation: 'landscape', price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
-  { id: 2,  watermarkedUrl: 'https://picsum.photos/seed/sepoto2/400/500',  orientation: 'portrait',  price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
-  { id: 3,  watermarkedUrl: 'https://picsum.photos/seed/sepoto3/600/400',  orientation: 'landscape', price: 0,     bibTags: '102',  photographerName: 'Reza Foto' },
-  { id: 4,  watermarkedUrl: 'https://picsum.photos/seed/sepoto4/400/500',  orientation: 'portrait',  price: 25000, bibTags: '101',  photographerName: 'Dian Lens' },
-  { id: 5,  watermarkedUrl: 'https://picsum.photos/seed/sepoto5/600/400',  orientation: 'landscape', price: 20000, bibTags: '',     photographerName: 'Reza Foto' },
-  { id: 6,  watermarkedUrl: 'https://picsum.photos/seed/sepoto6/400/500',  orientation: 'portrait',  price: 30000, bibTags: '205',  photographerName: 'Dian Lens' },
-  { id: 7,  watermarkedUrl: 'https://picsum.photos/seed/sepoto7/600/400',  orientation: 'landscape', price: 0,     bibTags: null,   photographerName: 'Reza Foto' },
-  { id: 8,  watermarkedUrl: 'https://picsum.photos/seed/sepoto8/400/500',  orientation: 'portrait',  price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
-  { id: 9,  watermarkedUrl: 'https://picsum.photos/seed/sepoto9/600/400',  orientation: 'landscape', price: 35000, bibTags: null,   photographerName: 'Dian Lens' },
-  { id: 10, watermarkedUrl: 'https://picsum.photos/seed/sepoto10/400/500', orientation: 'portrait',  price: 15000, bibTags: '312',  photographerName: 'Reza Foto' },
-  { id: 11, watermarkedUrl: 'https://picsum.photos/seed/sepoto11/600/400', orientation: 'landscape', price: 25000, bibTags: null,   photographerName: 'Dian Lens' },
-  { id: 12, watermarkedUrl: 'https://picsum.photos/seed/sepoto12/400/500', orientation: 'portrait',  price: 25000, bibTags: '101',  photographerName: 'Reza Foto' },
-];
 
 const formatRupiah = (amount) =>
   new Intl.NumberFormat('id-ID', {
@@ -374,26 +364,26 @@ export default function GalleryPage() {
         {/* Search & Filter bar */}
         <div className="sticky top-14 md:top-16 z-40 bg-white/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-[#E5E7EB] mb-6">
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563] pointer-events-none z-10" />
-              <Input
+            <InputGroup className="h-11 bg-white border-[#E5E7EB] rounded-xl flex-1">
+              <InputGroupAddon align="inline-start">
+                <Search className="w-4 h-4 text-[#4B5563]" />
+              </InputGroupAddon>
+              <InputGroupInput
                 id="gallery-search-bib"
                 type="text"
                 value={searchBib}
                 onChange={(e) => setSearchBib(e.target.value)}
                 placeholder="Cari Nomor BIB (misal: 101, A101, A-101)..."
-                className="pl-10 pr-8 h-11 bg-white border-[#E5E7EB] rounded-xl text-sm font-bib text-[#111827] focus-visible:border-brand/50 focus-visible:ring-brand/20"
+                className="text-sm font-bib text-[#111827]"
               />
               {searchBib && (
-                <button
-                  onClick={() => setSearchBib('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4B5563] hover:text-[#111827]"
-                  aria-label="Hapus pencarian"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton onClick={() => setSearchBib('')} title="Bersihkan pencarian">
+                    <X className="w-4 h-4 text-[#4B5563] hover:text-[#111827]" />
+                  </InputGroupButton>
+                </InputGroupAddon>
               )}
-            </div>
+            </InputGroup>
 
             <Button
               id="gallery-filter-btn"

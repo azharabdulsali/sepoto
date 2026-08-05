@@ -25,42 +25,6 @@ import { api } from '../services/api';
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v ?? 0);
 
-const _DUMMY_ORDERS = [
-  {
-    id:          1,
-    orderNumber: 'SEPOTO-20260801-4821',
-    status:      'approved',
-    total:       75000,
-    createdAt:   '1 Agu 2026, 10:23',
-    photos: [
-      { id: 10, watermarkedUrl: 'https://picsum.photos/seed/sepoto10/400/500', bibTags: '101', price: 25000 },
-      { id: 12, watermarkedUrl: 'https://picsum.photos/seed/sepoto12/400/500', bibTags: '101', price: 25000 },
-      { id: 15, watermarkedUrl: 'https://picsum.photos/seed/sepoto15/400/500', bibTags: null,  price: 25000 },
-    ],
-  },
-  {
-    id:          2,
-    orderNumber: 'SEPOTO-20260801-7732',
-    status:      'pending',
-    total:       35000,
-    createdAt:   '1 Agu 2026, 11:45',
-    photos: [
-      { id: 7, watermarkedUrl: 'https://picsum.photos/seed/sepoto7/400/500', bibTags: '101', price: 35000 },
-    ],
-  },
-  {
-    id:          3,
-    orderNumber: 'SEPOTO-20260731-1234',
-    status:      'rejected',
-    total:       60000,
-    createdAt:   '31 Jul 2026, 15:10',
-    photos: [
-      { id: 3, watermarkedUrl: 'https://picsum.photos/seed/sepoto3/400/500', bibTags: null,  price: 35000 },
-      { id: 5, watermarkedUrl: 'https://picsum.photos/seed/sepoto5/400/500', bibTags: '101', price: 25000 },
-    ],
-  },
-];
-
 const STATUS_MAP = {
   pending:  {
     label: 'Menunggu Verifikasi',
