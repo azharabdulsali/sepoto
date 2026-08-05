@@ -1,0 +1,732 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  X,
+  Loader2,
+  Camera,
+  Eye,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupButton,
+} from "@/components/ui/input-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import ProtectedPhoto from "../ProtectedPhoto";
+import { api } from "../../services/api";
+import { formatRupiah, formatRupiahInput, parseRupiahInput } from "./adminUtils.js";
+import PhotoPreviewModal from "./PhotoPreviewModal";
+
+export default function AdminPhotosTab({
+  events = [],
+  selectedEventFilter = "all",
+  onEventFilterChange,
+}) {
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [bulkBib, setBulkBib] = useState("");
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [isSavingBulk, setIsSavingBulk] = useState(false);
+
+  // Edit Single Photo Modal
+  const [editPhoto, setEditPhoto] = useState(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [editBib, setEditBib] = useState("");
+  const [isSavingSingle, setIsSavingSingle] = useState(false);
+
+  // Delete Confirm
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
+  const [deleteBulkConfirm, setDeleteBulkConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchPhotos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.getAdminPhotos(selectedEventFilter);
+      if (res.success && res.photos) {
+        setPhotos(res.photos);
+      }
+    } catch (err) {
+      console.error("Fetch Admin Photos Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedEventFilter]);
+
+  useEffect(() => {
+    fetchPhotos();
+  }, [fetchPhotos]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return photos;
+    return photos.filter(
+      (p) =>
+        (p.bibTags && p.bibTags.toLowerCase().includes(q)) ||
+        (p.originalFilename && p.originalFilename.toLowerCase().includes(q)) ||
+        (p.photographerName && p.photographerName.toLowerCase().includes(q)),
+    );
+  }, [photos, search]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((p) => p.id)));
+    }
+  };
+
+  const toggleSelectOne = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleSaveSingle = async (e) => {
+    e.preventDefault();
+    if (!editPhoto) return;
+    setIsSavingSingle(true);
+    try {
+      const finalPrice = editPrice !== "" ? Number(editPrice) : 0;
+      const res = await api.updatePhotoAdmin(editPhoto.id, {
+        price: finalPrice,
+        bibTags: editBib,
+      });
+      if (res.success) {
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === editPhoto.id
+              ? {
+                  ...p,
+                  price: finalPrice,
+                  bibTags: editBib,
+                  updatedByName: res.photo?.updatedByName || "Super Admin",
+                  updatedByRole: "super_admin",
+                }
+              : p,
+          ),
+        );
+        setEditPhoto(null);
+        fetchPhotos();
+      } else {
+        alert(res.message || "Gagal memperbarui foto.");
+      }
+    } catch (err) {
+      console.error("Save single error:", err);
+      alert("Terjadi kesalahan saat menyimpan.");
+    } finally {
+      setIsSavingSingle(false);
+    }
+  };
+
+  const handleSaveBulk = async (e) => {
+    e.preventDefault();
+    if (selectedIds.size === 0) return;
+    setIsSavingBulk(true);
+    try {
+      const res = await api.bulkUpdatePhotosAdmin({
+        photoIds: Array.from(selectedIds),
+        price: bulkPrice,
+        bibTags: bulkBib,
+      });
+      if (res.success) {
+        setIsBulkOpen(false);
+        setBulkPrice("");
+        setBulkBib("");
+        setSelectedIds(new Set());
+        fetchPhotos();
+      } else {
+        alert(res.message || "Gagal memperbarui foto.");
+      }
+    } catch (err) {
+      console.error("Save bulk error:", err);
+      alert("Terjadi kesalahan saat menyimpan secara.");
+    } finally {
+      setIsSavingBulk(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletePhotoTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await api.deletePhotoAdmin(deletePhotoTarget.id);
+      if (res.success) {
+        setPhotos((prev) => prev.filter((p) => p.id !== deletePhotoTarget.id));
+        setDeletePhotoTarget(null);
+      } else {
+        alert(res.message || "Gagal menghapus foto.");
+      }
+    } catch (err) {
+      console.error("Delete photo error:", err);
+      alert("Terjadi kesalahan saat menghapus foto.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteBulk = async () => {
+    if (selectedIds.size === 0) return;
+    setIsDeleting(true);
+    try {
+      const idsToDelete = Array.from(selectedIds);
+      for (const id of idsToDelete) {
+        try {
+          await api.deletePhotoAdmin(id);
+        } catch (err) {
+          console.error("Failed to delete photo admin", id, err);
+        }
+      }
+      setPhotos((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+      setSelectedIds(new Set());
+      setDeleteBulkConfirm(false);
+    } catch (err) {
+      console.error("Bulk delete admin error:", err);
+      alert("Terjadi kesalahan saat menghapus foto terpilih.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const allChecked =
+    filtered.length > 0 && selectedIds.size === filtered.length;
+  const isIndeterminate =
+    selectedIds.size > 0 && selectedIds.size < filtered.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Top Bar: Search, Event Select Filter & Checkbox All */}
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex items-center gap-2 flex-1">
+          <InputGroup className="h-11 border-[#E5E7EB] rounded-xl bg-white flex-1">
+            <InputGroupAddon align="inline-start">
+              <Search className="w-4 h-4 text-[#4B5563]" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari foto berdasarkan BIB, fotografer, atau berkas..."
+              className="text-xs sm:text-sm font-medium text-[#111827]"
+            />
+            {search && (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  onClick={() => setSearch("")}
+                  title="Bersihkan pencarian"
+                >
+                  <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
+
+          {/* Event Filter Select Dropdown */}
+          {events.length > 0 && (
+            <Select
+              value={String(selectedEventFilter)}
+              onValueChange={(val) =>
+                onEventFilterChange && onEventFilterChange(val)
+              }
+            >
+              <SelectTrigger className="!h-11 w-48 sm:w-56 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
+                <SelectValue placeholder="Pilih Event...">
+                  {selectedEventFilter === "all"
+                    ? "Semua Event"
+                    : events.find(
+                        (e) => String(e.id) === String(selectedEventFilter),
+                      )?.title || "Pilih Event..."}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                <SelectGroup>
+                  <SelectItem value="all">
+                    Semua Event ({events.length})
+                  </SelectItem>
+                  {events.map((ev) => (
+                    <SelectItem key={ev.id} value={String(ev.id)}>
+                      {ev.title}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Checkbox Select All */}
+        <div className="flex items-center gap-2.5 px-4 h-11 bg-white border border-[#E5E7EB] rounded-xl shadow-xs shrink-0">
+          <Checkbox
+            id="select-all-photos-checkbox"
+            checked={allChecked}
+            indeterminate={isIndeterminate}
+            onCheckedChange={toggleSelectAll}
+          />
+          <label
+            htmlFor="select-all-photos-checkbox"
+            className="text-xs font-bold text-[#111827] cursor-pointer select-none"
+          >
+            {selectedIds.size > 0
+              ? `Pilih Semua (${selectedIds.size}/${filtered.length})`
+              : `Pilih Semua (${filtered.length})`}
+          </label>
+        </div>
+      </div>
+
+      {/* Floating Action Bar untuk Edit Massal */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center justify-between p-3.5 bg-brand/5 border border-brand/20 rounded-2xl shadow-xs"
+          >
+            <div className="flex items-center gap-2.5">
+              <Badge className="bg-brand text-white font-bold text-xs px-3 py-1 rounded-full">
+                {selectedIds.size} Foto Terpilih
+              </Badge>
+              <span className="text-xs text-gray-600 hidden sm:inline font-medium">
+                Siap untuk diubah harga atau tag BIB secara bersamaan
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+                className="h-9 text-xs font-bold border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl"
+              >
+                Batalkan Pilihan
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setIsBulkOpen(true)}
+                className="h-9 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl gap-1.5 shadow-sm"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span>Edit ({selectedIds.size})</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setDeleteBulkConfirm(true)}
+                className="h-9 text-xs font-bold rounded-xl px-3 gap-1.5 shadow-sm"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus ({selectedIds.size})</span>
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Content Grid */}
+      {loading ? (
+        <div className="py-16 text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand mx-auto mb-2" />
+          <p className="text-xs text-gray-500 font-medium">
+            Memuat galeri foto...
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="p-12 text-center bg-white border-[#E5E7EB] rounded-2xl">
+          <Camera className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm font-bold text-[#111827]">
+            Tidak Ada Foto Ditemukan
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Belum ada foto yang diunggah atau sesuai kriteria pencarian.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {filtered.map((photo) => {
+            const isSelected = selectedIds.has(photo.id);
+            const isUpdated = Boolean(photo.updatedByName);
+            return (
+              <Card
+                key={photo.id}
+                className={`group relative overflow-hidden bg-white border rounded-2xl transition-all shadow-xs hover:shadow-md ${
+                  isSelected
+                    ? "border-brand ring-2 ring-brand/20"
+                    : "border-[#E5E7EB]"
+                }`}
+              >
+                {/* Shadcn UI Select Checkbox */}
+                <div
+                  className="absolute top-2.5 left-2.5 z-20"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    id={`select-photo-${photo.id}`}
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelectOne(photo.id)}
+                    className="bg-white/90 shadow-md backdrop-blur-xs border-white/80 data-[state=checked]:bg-brand data-[state=checked]:border-brand"
+                  />
+                </div>
+
+                {/* Photo Image Preview */}
+                <div
+                  onClick={() => setPreviewPhoto(photo)}
+                  className="aspect-[4/5] overflow-hidden bg-[#F3F4F6] cursor-pointer group/img relative"
+                >
+                  <ProtectedPhoto
+                    src={photo.watermarkedUrl}
+                    alt={photo.originalFilename}
+                    className="w-full h-full"
+                    imgClassName="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center shadow-lg">
+                      <Eye className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+
+                  {/* Price Tag Overlay */}
+                  <div className="absolute bottom-2 right-2 z-10">
+                    <Badge className="bg-black/70 backdrop-blur-md text-white font-bib text-[11px] font-bold border-0 px-2 py-0.5">
+                      {formatRupiah(photo.price || 0)}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Photo Details & Audit Trail */}
+                <div className="p-3 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                    <span
+                      className="font-semibold text-[#111827] truncate"
+                      title={photo.originalFilename}
+                    >
+                      {photo.originalFilename}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {photo.bibTags ? (
+                      <Badge
+                        variant="outline"
+                        className="font-bib text-[10px] bg-brand/10 text-brand border-brand/20 px-1.5 py-0"
+                      >
+                        BIB #{photo.bibTags}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="font-bib text-[10px] bg-gray-100 text-gray-500 border-gray-200 px-1.5 py-0"
+                      >
+                        Tanpa BIB
+                      </Badge>
+                    )}
+                    <span className="text-[10px] text-gray-500 truncate">
+                      by {photo.photographerName}
+                    </span>
+                  </div>
+
+                  {/* Audit Trail Badge (Siapa yang set harga / BIB) */}
+                  <div className="pt-1 border-t border-gray-100 flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400 truncate">
+                      {isUpdated ? (
+                        <span
+                          title={`Diset oleh ${photo.updatedByName} (${photo.updatedByRole})`}
+                        >
+                          Diset:{" "}
+                          <strong className="text-gray-700">
+                            {photo.updatedByName}
+                          </strong>{" "}
+                          (
+                          {photo.updatedByRole === "super_admin"
+                            ? "Super Admin"
+                            : "Fotografer"}
+                          )
+                        </span>
+                      ) : (
+                        <span className="italic text-gray-400">
+                          Default sistem
+                        </span>
+                      )}
+                    </span>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPhoto(photo);
+                          setEditPrice(photo.price || "");
+                          setEditBib(photo.bibTags || "");
+                        }}
+                        className="p-1 text-gray-500 hover:text-brand transition-colors"
+                        title="Edit Harga & BIB"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletePhotoTarget(photo)}
+                        className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+                        title="Hapus Foto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal Edit Single Photo */}
+      <AlertDialog
+        open={Boolean(editPhoto)}
+        onOpenChange={(open) => !open && setEditPhoto(null)}
+      >
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Edit Harga & BIB Tag Foto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Perbarui harga jual dan nomor BIB untuk berkas{" "}
+              <strong>{editPhoto?.originalFilename}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleSaveSingle} className="space-y-3.5 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Harga Foto (Rp)
+              </label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={formatRupiahInput(editPrice)}
+                onChange={(e) => setEditPrice(parseRupiahInput(e.target.value))}
+                placeholder="Contoh: 50.000"
+                className="h-10 text-xs border-[#E5E7EB] rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Nomor BIB Tag
+              </label>
+              <Input
+                type="text"
+                value={editBib}
+                onChange={(e) => setEditBib(e.target.value)}
+                placeholder="Contoh: 101, A101, atau A-101"
+                className="h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Gunakan koma jika terdapat lebih dari 1 peserta (misal: 101,
+                102).
+              </p>
+            </div>
+
+            <AlertDialogFooter className="pt-2 gap-2">
+              <AlertDialogCancel
+                type="button"
+                disabled={isSavingSingle}
+                className="rounded-xl text-xs h-10"
+              >
+                Batal
+              </AlertDialogCancel>
+              <Button
+                type="submit"
+                disabled={isSavingSingle}
+                className="bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold h-10"
+              >
+                {isSavingSingle ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Simpan Perubahan"
+                )}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Edit Bulk Photos */}
+      <AlertDialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+        <AlertDialogContent className="bg-[#FFFFFF] rounded-2xl border-[#E5E7EB] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Edit ({selectedIds.size} Foto)
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Atur harga atau tag BIB sekaligus untuk {selectedIds.size} foto
+              yang dipilih.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleSaveBulk} className="space-y-3.5 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Set Harga Baru (Rp) (Opsional)
+              </label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={formatRupiahInput(bulkPrice)}
+                onChange={(e) => setBulkPrice(parseRupiahInput(e.target.value))}
+                placeholder="Biarkan kosong jika tidak diubah (contoh: 50.000)"
+                className="h-10 text-xs border-[#E5E7EB] rounded-xl font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Set BIB Tag Baru (Opsional)
+              </label>
+              <Input
+                type="text"
+                value={bulkBib}
+                onChange={(e) => setBulkBib(e.target.value)}
+                placeholder="Contoh: 101 atau A101 (kosongkan jika tidak diubah)"
+                className="h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+              />
+            </div>
+
+            <AlertDialogFooter className="pt-2 gap-2">
+              <AlertDialogCancel
+                type="button"
+                disabled={isSavingBulk}
+                className="rounded-xl text-xs h-10"
+              >
+                Batal
+              </AlertDialogCancel>
+              <Button
+                type="submit"
+                disabled={isSavingBulk}
+                className="bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold h-10"
+              >
+                {isSavingBulk ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Terapkan Ke Semua"
+                )}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Hapus Confirm */}
+      <AlertDialog
+        open={Boolean(deletePhotoTarget)}
+        onOpenChange={(open) => !open && setDeletePhotoTarget(null)}
+      >
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Konfirmasi Hapus Foto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Apakah Anda yakin ingin menghapus foto{" "}
+              <strong>{deletePhotoTarget?.originalFilename}</strong> secara
+              permanen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-2 gap-2">
+            <AlertDialogCancel
+              type="button"
+              disabled={isDeleting}
+              className="rounded-xl text-xs h-10"
+            >
+              Batal
+            </AlertDialogCancel>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold h-10"
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Ya, Hapus"
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Hapus Massal Confirm (Super Admin) */}
+      <AlertDialog open={deleteBulkConfirm} onOpenChange={setDeleteBulkConfirm}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Hapus ({selectedIds.size} Foto)?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Apakah Anda yakin ingin menghapus <strong>{selectedIds.size} foto</strong> yang dipilih secara permanen dari database? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-2 gap-2">
+            <AlertDialogCancel
+              type="button"
+              disabled={isDeleting}
+              className="rounded-xl text-xs h-10"
+            >
+              Batal
+            </AlertDialogCancel>
+            <Button
+              onClick={handleDeleteBulk}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold h-10"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              {isDeleting ? "Menghapus..." : "Ya, Hapus Terpilih"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Lightbox Modal Preview Foto untuk Super Admin */}
+      <AnimatePresence>
+        {previewPhoto && (
+          <PhotoPreviewModal
+            photo={previewPhoto}
+            onClose={() => setPreviewPhoto(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
