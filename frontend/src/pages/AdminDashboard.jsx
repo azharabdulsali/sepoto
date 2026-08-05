@@ -28,6 +28,7 @@ import {
   Lock,
   Hash,
   Pencil,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import AppShell from "../components/AppShell";
+import ProtectedPhoto from "../components/ProtectedPhoto";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 
@@ -292,6 +294,7 @@ function TransactionsTab({
   const [search, setSearch] = useState("");
   const [loadingId, setLoadingId] = useState(null);
   const [actionConfirm, setActionConfirm] = useState(null);
+  const [selectedDetailTx, setSelectedDetailTx] = useState(null);
 
   const updateStatus = async (id, newStatus) => {
     setLoadingId(id);
@@ -357,7 +360,7 @@ function TransactionsTab({
           >
             <SelectTrigger
               id="payment-event-filter"
-              className="!h-11 w-full sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0"
+              className="!h-11 w-full sm:w-48 border border-[#E5E7EB] rounded-xl px-4 text-sm bg-white font-medium text-[#111827] shadow-sm flex items-center justify-between shrink-0"
             >
               <SelectValue placeholder="Pilih Event...">
                 {selectedEventFilter === "all"
@@ -400,159 +403,152 @@ function TransactionsTab({
         </Select>
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 && (
-          <p className="text-sm text-[#4B5563] py-12 text-center">
-            Tidak ada data transaksi yang cocok
+      {filtered.length === 0 ? (
+        <Card className="p-12 text-center bg-white border-[#E5E7EB] rounded-2xl">
+          <FileSpreadsheet className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm font-bold text-[#111827]">
+            Tidak Ada Data Transaksi
           </p>
-        )}
-        {filtered.map((t) => {
-          const photoItems = Array.isArray(t.items)
-            ? t.items.filter((it) => it?.watermarkedUrl)
-            : [];
+          <p className="text-xs text-gray-500 mt-1">
+            Belum ada data transaksi yang cocok dengan kriteria pencarian.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filtered.map((t) => {
+            const photoItems = Array.isArray(t.items)
+              ? t.items.filter((it) => it?.watermarkedUrl)
+              : [];
+            const coverPhoto = photoItems[0]?.watermarkedUrl;
 
-          return (
-            <Card
-              key={t.id}
-              className="bg-white border-[#E5E7EB] rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden"
-            >
-              {/* Header info transaksi */}
-              <div className="p-4 sm:p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <p className="text-sm font-bold text-[#111827]">
-                        {t.userName}
-                      </p>
-                      <Badge
-                        variant="secondary"
-                        className="font-bib text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full"
-                      >
-                        BIB #{t.bibNumber}
-                      </Badge>
-                      <StatusBadge status={t.status} />
+            return (
+              <Card
+                key={t.id}
+                onClick={() => setSelectedDetailTx(t)}
+                className="group relative overflow-hidden bg-white border border-[#E5E7EB] rounded-2xl shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+              >
+                {/* Top Cover Image / Preview Stack */}
+                <div className="relative aspect-16/9 bg-gray-100 overflow-hidden">
+                  {coverPhoto ? (
+                    <ProtectedPhoto
+                      src={coverPhoto}
+                      alt={`Order ${t.orderNumber}`}
+                      className="w-full h-full"
+                      imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#F3F4F6] flex items-center justify-center text-gray-400">
+                      <Camera className="w-8 h-8 opacity-40" />
                     </div>
-                    <p className="font-bib text-xs text-[#4B5563] mb-1">
-                      {t.orderNumber}
-                    </p>
-                    <p className="text-[11px] text-[#9CA3AF]">
-                      {photoItems.length || t.items?.length || 0} foto ·{" "}
-                      {t.createdAt}
-                    </p>
+                  )}
+
+                  {/* Hover Overlay Eye Icon */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center shadow-lg">
+                      <Eye className="w-4 h-4 text-white" />
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-bold text-brand font-bib text-base">
+
+                  {/* Top Status & Item Count Badges */}
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none z-10">
+                    <StatusBadge status={t.status} />
+                    <Badge className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold border-0 px-2 py-0.5">
+                      {photoItems.length || t.items?.length || 0} Foto
+                    </Badge>
+                  </div>
+
+                  {/* Bottom Total Price Overlay Tag */}
+                  <div className="absolute bottom-2 right-2 z-10 pointer-events-none">
+                    <Badge className="bg-brand backdrop-blur-md text-white font-bib text-xs font-bold border-0 px-2.5 py-1 shadow-sm">
                       {formatRupiah(t.total)}
-                    </p>
+                    </Badge>
                   </div>
                 </div>
 
-                {/* Foto Preview Strip */}
-                {photoItems.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-[#F9FAFB]">
-                    <p className="text-[10px] font-bib uppercase tracking-widest text-[#9CA3AF] font-bold mb-2">
-                      Preview Foto yang Dipesan
-                    </p>
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                      {photoItems.map((item, idx) => (
-                        <div
-                          key={item.photoId || idx}
-                          className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] shadow-sm relative group"
-                        >
-                          <img
-                            src={item.watermarkedUrl}
-                            alt={item.originalFilename || `Foto ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] font-bold text-center py-0.5 truncate px-1">
-                            {item.originalFilename
-                              ? item.originalFilename.split(".")[0]
-                              : `Foto ${idx + 1}`}
-                          </div>
-                        </div>
-                      ))}
-                      {photoItems.length < (t.items?.length || 0) && (
-                        <div className="shrink-0 w-20 h-20 rounded-xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center text-[10px] text-[#9CA3AF] font-bold">
-                          +{(t.items?.length || 0) - photoItems.length}
-                        </div>
-                      )}
+                {/* Card Content & Info */}
+                <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between bg-white">
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <h4
+                        className="text-sm font-bold text-[#111827] truncate"
+                        title={t.userName}
+                      >
+                        {t.userName}
+                      </h4>
+                      <Badge
+                        variant="secondary"
+                        className="font-bib text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded-full shrink-0"
+                      >
+                        BIB #{t.bibNumber}
+                      </Badge>
                     </div>
+                    <p className="font-bib text-xs text-[#4B5563] truncate">
+                      {t.orderNumber}
+                    </p>
+                    <p className="text-[11px] text-[#9CA3AF] mt-0.5">
+                      {t.createdAt}
+                    </p>
                   </div>
-                )}
 
-                {t.status === "pending" && (
-                  <div className="flex gap-2 sm:gap-2.5 mt-3.5 pt-3.5 border-t border-[#F3F4F6]">
-                    <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
+                  {/* Action buttons or Auditor badge */}
+                  {t.status === "pending" ? (
+                    <div
+                      className="flex items-center gap-1.5 pt-2 border-t border-gray-100"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         id={`approve-${t.id}`}
-                        onClick={() =>
-                          setActionConfirm({ type: "approve", item: t })
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionConfirm({ type: "approve", item: t });
+                        }}
                         disabled={loadingId === t.id}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm px-2 sm:px-4"
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold h-8 rounded-xl shadow-xs"
                       >
                         {loadingId === t.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <Check className="w-3.5 h-3.5 mr-1" />
+                          <>
+                            <Check className="w-3.5 h-3.5 mr-1" />
+                            Approve
+                          </>
                         )}
-                        <span className="hidden sm:inline">
-                          Approve Pembayaran
-                        </span>
-                        <span className="sm:hidden">Approve</span>
                       </Button>
-                    </motion.div>
-                    <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
                       <Button
                         id={`reject-${t.id}`}
-                        onClick={() =>
-                          setActionConfirm({ type: "reject", item: t })
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionConfirm({ type: "reject", item: t });
+                        }}
                         disabled={loadingId === t.id}
                         variant="outline"
-                        className="w-full bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl px-2 sm:px-4"
+                        className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-[11px] font-bold h-8 rounded-xl px-2.5"
                       >
                         <X className="w-3.5 h-3.5 mr-1" />
                         Tolak
                       </Button>
-                    </motion.div>
-                  </div>
-                )}
-
-                {t.status !== "pending" && t.approvedByName && (
-                  <div className="mt-3.5 pt-3 border-t border-[#F3F4F6] flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-semibold text-gray-600">
-                        {t.status === "approved"
-                          ? "Disetujui oleh:"
-                          : "Ditolak oleh:"}
-                      </span>
-                      <span className="font-bold text-[#111827]">
-                        {t.approvedByName}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
-                          t.approvedByRole === "super_admin"
-                            ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}
-                      >
-                        {t.approvedByRole === "super_admin"
-                          ? "Super Admin"
-                          : t.approvedByRole === "admin"
-                            ? "Event Admin"
-                            : t.approvedByRole}
-                      </Badge>
                     </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+                  ) : (
+                    t.approvedByName && (
+                      <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
+                        <span className="text-gray-400">
+                          {t.status === "approved" ? "Disetujui:" : "Ditolak:"}
+                        </span>
+                        <span
+                          className="font-bold text-[#111827] truncate max-w-[120px]"
+                          title={t.approvedByName}
+                        >
+                          {t.approvedByName}
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       <AlertDialog
         open={Boolean(actionConfirm)}
@@ -671,6 +667,185 @@ function TransactionsTab({
                 : "Ya, Tolak Pembayaran"}
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Modal Detail Rincian Transaksi / Pesanan */}
+      <AlertDialog
+        open={Boolean(selectedDetailTx)}
+        onOpenChange={(open) => !open && setSelectedDetailTx(null)}
+      >
+        <AlertDialogContent className="bg-white rounded-3xl border-[#E5E7EB] max-w-lg p-0 overflow-hidden max-h-[90vh] flex flex-col shadow-2xl">
+          {/* Modal Header */}
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-[#111827]">
+                  Rincian Pesanan
+                </h3>
+                <StatusBadge status={selectedDetailTx?.status} />
+              </div>
+              <p className="font-bib text-xs text-[#4B5563] mt-0.5">
+                {selectedDetailTx?.orderNumber}
+              </p>
+            </div>
+            <Button
+              onClick={() => setSelectedDetailTx(null)}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Modal Scrollable Body */}
+          <div className="p-6 overflow-y-auto space-y-4 flex-1 scrollbar-thin">
+            {/* Informative Grid */}
+            <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-4 grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-gray-400 font-medium block">
+                  Nama Pemesan
+                </span>
+                <strong className="text-[#111827] text-sm">
+                  {selectedDetailTx?.userName}
+                </strong>
+              </div>
+              <div>
+                <span className="text-gray-400 font-medium block">
+                  Nomor BIB Tag
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="font-bib text-xs bg-brand/10 text-brand border-0 px-2 py-0.5 mt-0.5"
+                >
+                  BIB #{selectedDetailTx?.bibNumber}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-gray-400 font-medium block">
+                  Waktu Transaksi
+                </span>
+                <span className="text-[#111827] font-semibold">
+                  {selectedDetailTx?.createdAt}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 font-medium block">
+                  Total Pembayaran
+                </span>
+                <span className="text-brand font-bib font-bold text-sm">
+                  {formatRupiah(selectedDetailTx?.total)}
+                </span>
+              </div>
+            </div>
+
+            {/* Audit Info if Approved/Rejected */}
+            {selectedDetailTx?.status !== "pending" &&
+              selectedDetailTx?.approvedByName && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs flex items-center justify-between">
+                  <span className="text-gray-500 font-medium">
+                    {selectedDetailTx?.status === "approved"
+                      ? "Disetujui oleh:"
+                      : "Ditolak oleh:"}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-[#111827]">
+                      {selectedDetailTx?.approvedByName}
+                    </strong>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-2 py-0.5 font-bold"
+                    >
+                      {selectedDetailTx?.approvedByRole === "super_admin"
+                        ? "Super Admin"
+                        : "Event Admin"}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
+            {/* Itemized Photo List */}
+            <div>
+              <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2.5">
+                Foto Yang Dipesan (
+                {Array.isArray(selectedDetailTx?.items)
+                  ? selectedDetailTx.items.length
+                  : 0}
+                )
+              </h4>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Array.isArray(selectedDetailTx?.items) &&
+                  selectedDetailTx.items.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs"
+                    >
+                      <div className="aspect-[4/5] bg-gray-100 relative">
+                        {item?.watermarkedUrl ? (
+                          <ProtectedPhoto
+                            src={item.watermarkedUrl}
+                            alt={item.originalFilename || `Foto #${idx + 1}`}
+                            className="w-full h-full"
+                            imgClassName="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2 text-[11px]">
+                        <p
+                          className="font-semibold text-[#111827] truncate"
+                          title={item.originalFilename}
+                        >
+                          {item.originalFilename || `Foto #${item.photoId}`}
+                        </p>
+                        <p className="font-bib text-brand font-bold text-xs mt-0.5">
+                          {formatRupiah(item.price || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Modal Footer Actions (Approve / Reject) */}
+          {selectedDetailTx?.status === "pending" && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3">
+              <Button
+                onClick={() => {
+                  setActionConfirm({
+                    type: "reject",
+                    item: selectedDetailTx,
+                  });
+                  setSelectedDetailTx(null);
+                }}
+                disabled={loadingId === selectedDetailTx?.id}
+                variant="outline"
+                className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border-red-200 text-xs font-bold h-10 rounded-xl"
+              >
+                <X className="w-4 h-4 mr-1.5" />
+                Tolak Pembayaran
+              </Button>
+              <Button
+                onClick={() => {
+                  setActionConfirm({
+                    type: "approve",
+                    item: selectedDetailTx,
+                  });
+                  setSelectedDetailTx(null);
+                }}
+                disabled={loadingId === selectedDetailTx?.id}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm"
+              >
+                <Check className="w-4 h-4 mr-1.5" />
+                Approve Pembayaran
+              </Button>
+            </div>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -1961,6 +2136,7 @@ function AdminPhotosTab({
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [previewPhoto, setPreviewPhoto] = useState(null);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -2283,7 +2459,7 @@ function AdminPhotosTab({
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {filtered.map((photo) => {
             const isSelected = selectedIds.has(photo.id);
             const isUpdated = Boolean(photo.updatedByName);
@@ -2310,13 +2486,21 @@ function AdminPhotosTab({
                 </div>
 
                 {/* Photo Image Preview */}
-                <div className="relative aspect-4/3 bg-gray-100 overflow-hidden">
-                  <img
+                <div
+                  onClick={() => setPreviewPhoto(photo)}
+                  className="aspect-[4/5] overflow-hidden bg-[#F3F4F6] cursor-pointer group/img relative"
+                >
+                  <ProtectedPhoto
                     src={photo.watermarkedUrl}
                     alt={photo.originalFilename}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
+                    className="w-full h-full"
+                    imgClassName="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
                   />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center shadow-lg">
+                      <Eye className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
 
                   {/* Price Tag Overlay */}
                   <div className="absolute bottom-2 right-2 z-10">
@@ -2619,7 +2803,103 @@ function AdminPhotosTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Lightbox Modal Preview Foto untuk Super Admin */}
+      <AnimatePresence>
+        {previewPhoto && (
+          <PhotoPreviewModal
+            photo={previewPhoto}
+            onClose={() => setPreviewPhoto(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// ─── Lightbox Modal Preview Foto untuk Super Admin ────────────────────────
+function PhotoPreviewModal({ photo, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  if (!photo) return null;
+
+  const imgUrl = photo.watermarkedUrl || photo.originalUrl || "";
+  const bibVal = photo.bibTags || "";
+  const priceVal = photo.price || 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-2xl w-full bg-[#191C21] rounded-3xl overflow-hidden border border-white/10 shadow-2xl text-white flex flex-col max-h-[90vh]"
+      >
+        {/* Header Modal */}
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Camera className="w-4 h-4 text-brand" />
+            <span className="text-sm font-bold">Pratinjau Foto (Super Admin)</span>
+            {bibVal && (
+              <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
+                BIB #{bibVal}
+              </Badge>
+            )}
+            <Badge variant="outline" className="font-bib text-[10px] bg-white/10 text-white border-white/20">
+              ID #{photo.id}
+            </Badge>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Tutup pratinjau"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Preview Image Container */}
+        <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center min-h-[300px] max-h-[60vh] p-2">
+          <ProtectedPhoto
+            src={imgUrl}
+            alt={`Pratinjau Foto ID ${photo.id}`}
+            className="w-full h-full max-h-[58vh] flex items-center justify-center"
+            imgClassName="w-full h-full object-contain max-h-[58vh] rounded-xl select-none"
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 sm:p-5 border-t border-white/10 bg-[#191C21] flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bib uppercase tracking-widest text-gray-400">Harga Jual Foto</p>
+            <p className="font-bib text-xl font-bold text-brand">
+              {Number(priceVal) > 0 ? `Rp ${Number(priceVal).toLocaleString("id-ID")}` : "Rp 0"}
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="h-11 px-6 rounded-xl border-white/20 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-bold shrink-0"
+          >
+            Tutup
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

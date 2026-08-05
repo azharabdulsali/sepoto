@@ -119,17 +119,23 @@ function buildTransactionEventFilter(role, requestEventId, adminEventId) {
 }
 
 function mapTransactionRow(row) {
+  const rawItems = Array.isArray(row.items) ? row.items : [];
+  const items = rawItems.map((item) => ({
+    ...item,
+    price: Number(item.price || 0),
+  }));
+
   return {
     id: row.id,
     orderNumber: row.order_number,
     userName: row.user_name || 'Peserta',
     bibNumber: row.bib_number || 'Umum',
-    total: Number(row.total_amount),
+    total: Number(row.total_amount || 0),
     status: row.status,
     approvedByName: row.approved_by_name || null,
     approvedByRole: row.approved_by_role || null,
     createdAt: new Date(row.created_at).toLocaleString('id-ID'),
-    items: Array.isArray(row.items) ? row.items : [],
+    items,
   };
 }
 
@@ -141,9 +147,10 @@ const TRANSACTION_SELECT_SQL = `
     COALESCE(
       json_agg(
         json_build_object(
-          'photoId',        p.id,
-          'watermarkedUrl', p.watermarked_url,
-          'originalFilename', p.original_filename
+          'photoId',          p.id,
+          'watermarkedUrl',   p.watermarked_url,
+          'originalFilename', p.original_filename,
+          'price',            COALESCE(ti.price_at_purchase, p.price, 0)
         ) ORDER BY ti.id
       ) FILTER (WHERE p.id IS NOT NULL),
       '[]'
