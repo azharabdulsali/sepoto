@@ -295,6 +295,7 @@ function TransactionsTab({
   const [loadingId, setLoadingId] = useState(null);
   const [actionConfirm, setActionConfirm] = useState(null);
   const [selectedDetailTx, setSelectedDetailTx] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const updateStatus = async (id, newStatus) => {
     setLoadingId(id);
@@ -764,14 +765,69 @@ function TransactionsTab({
                 </div>
               )}
 
+            {/* Bukti Pembayaran */}
+            {selectedDetailTx?.paymentProofUrl ? (
+              <div>
+                <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2.5 flex items-center justify-between">
+                  <span>Bukti Pembayaran</span>
+                  <span className="text-[10px] text-brand font-normal normal-case">Klik foto untuk perbesar</span>
+                </h4>
+                <div
+                  onClick={() =>
+                    setPreviewImage({
+                      url: selectedDetailTx.paymentProofUrl,
+                      title: "Bukti Pembayaran",
+                      subtitle: `Order ${selectedDetailTx.orderNumber} • Pemesan: ${selectedDetailTx.userName}`,
+                    })
+                  }
+                  className="rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] shadow-xs cursor-pointer hover:border-brand transition-all group relative"
+                >
+                  <div className="relative max-h-56 overflow-hidden flex items-center justify-center bg-black/5">
+                    <img
+                      src={selectedDetailTx.paymentProofUrl}
+                      alt="Bukti pembayaran"
+                      className="w-full max-h-56 object-contain group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white text-xs font-bold bg-brand px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5" />
+                        Perbesar Bukti Bayar
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-3 py-2 bg-green-50 border-t border-green-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-[11px] font-semibold text-green-700">Bukti pembayaran sudah diupload</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-brand flex items-center gap-1">
+                      <Eye className="w-3 h-3" /> Lihat Full
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2.5">
+                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-[11px] text-amber-700 font-medium">Belum ada bukti pembayaran yang diupload</span>
+              </div>
+            )}
+
             {/* Itemized Photo List */}
             <div>
-              <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2.5">
-                Foto Yang Dipesan (
-                {Array.isArray(selectedDetailTx?.items)
-                  ? selectedDetailTx.items.length
-                  : 0}
-                )
+              <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2.5 flex items-center justify-between">
+                <span>
+                  Foto Yang Dipesan (
+                  {Array.isArray(selectedDetailTx?.items)
+                    ? selectedDetailTx.items.length
+                    : 0}
+                  )
+                </span>
+                <span className="text-[10px] text-brand font-normal normal-case">Klik foto untuk perbesar</span>
               </h4>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -779,16 +835,32 @@ function TransactionsTab({
                   selectedDetailTx.items.map((item, idx) => (
                     <div
                       key={idx}
-                      className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs"
+                      onClick={() =>
+                        item?.watermarkedUrl &&
+                        setPreviewImage({
+                          url: item.watermarkedUrl,
+                          title: item.originalFilename || `Foto #${item.photoId || idx + 1}`,
+                          subtitle: `Harga: ${formatRupiah(item.price || 0)}`,
+                        })
+                      }
+                      className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs cursor-pointer hover:border-brand hover:shadow-md transition-all group relative"
                     >
-                      <div className="aspect-[4/5] bg-gray-100 relative">
+                      <div className="aspect-[4/5] bg-gray-100 relative overflow-hidden">
                         {item?.watermarkedUrl ? (
-                          <ProtectedPhoto
-                            src={item.watermarkedUrl}
-                            alt={item.originalFilename || `Foto #${idx + 1}`}
-                            className="w-full h-full"
-                            imgClassName="w-full h-full object-cover"
-                          />
+                          <>
+                            <ProtectedPhoto
+                              src={item.watermarkedUrl}
+                              alt={item.originalFilename || `Foto #${idx + 1}`}
+                              className="w-full h-full"
+                              imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
+                              <span className="text-white text-[10px] font-bold bg-brand px-2 py-1 rounded-lg shadow-md flex items-center gap-1">
+                                <Eye className="w-3 h-3" />
+                                Perbesar
+                              </span>
+                            </div>
+                          </>
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                             No Image
@@ -848,6 +920,70 @@ function TransactionsTab({
           )}
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lightbox Preview Modal untuk Rincian Transaksi */}
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewImage(null)}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-3xl w-full bg-[#191C21] rounded-3xl overflow-hidden border border-white/10 shadow-2xl text-white flex flex-col max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-brand" />
+                    {previewImage.title || "Pratinjau Gambar"}
+                  </h3>
+                  {previewImage.subtitle && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {previewImage.subtitle}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center min-h-[300px] max-h-[70vh] p-3">
+                <ProtectedPhoto
+                  src={previewImage.url}
+                  alt={previewImage.title || "Preview"}
+                  className="w-full h-full max-h-[68vh] flex items-center justify-center"
+                  imgClassName="w-full h-full object-contain max-h-[68vh] rounded-xl select-none"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-white/10 bg-[#191C21] flex items-center justify-between gap-3">
+                <span className="text-xs text-gray-400">Klik tombol atau latar luar untuk menutup</span>
+                <Button
+                  onClick={() => setPreviewImage(null)}
+                  className="h-10 px-5 rounded-xl bg-brand hover:bg-[#C2410C] text-white text-xs font-bold shadow-md"
+                >
+                  Tutup Pratinjau
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

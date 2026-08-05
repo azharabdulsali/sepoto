@@ -1,5 +1,5 @@
 const { query } = require('../config/db');
-const { getPresignedDownloadUrl } = require('../services/r2Service');
+const { getPresignedDownloadUrl, uploadToR2 } = require('../services/r2Service');
 
 /** Build today's date string in YYYYMMDD format */
 function buildDateString() {
@@ -132,6 +132,7 @@ function mapTransactionRow(row) {
     bibNumber: row.bib_number || 'Umum',
     total: Number(row.total_amount || 0),
     status: row.status,
+    paymentProofUrl: row.payment_proof_url || null,
     approvedByName: row.approved_by_name || null,
     approvedByRole: row.approved_by_role || null,
     createdAt: new Date(row.created_at).toLocaleString('id-ID'),
@@ -142,6 +143,7 @@ function mapTransactionRow(row) {
 const TRANSACTION_SELECT_SQL = `
   SELECT
     t.id, t.order_number, t.status, t.total_amount, t.created_at,
+    t.payment_proof_url,
     u.name as user_name, u.bib_number, u.event_id,
     ab.name as approved_by_name, ab.role as approved_by_role,
     COALESCE(
@@ -456,12 +458,72 @@ const downloadTransactionZip = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/transactions/:id/proof
+ * Upload bukti pembayaran — maks 5MB, hanya image/*
+ */
+const uploadPaymentProof = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Pastikan transaksi milik user yang sedang login
+    const txCheck = await query(
+      'SELECT id, status FROM transactions WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    if (txCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaksi tidak ditemukan.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'File bukti pembayaran tidak ditemukan.' });
+    }
+
+    // Validasi ukuran file (double-check, multer sudah handle tapi defence in depth)
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'Ukuran file melebihi batas 5MB.' });
+    }
+
+    // Tentukan extension dari mimetype
+    const mimeExtMap = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/heic': 'heic',
+      'image/heif': 'heif',
+    };
+    const ext = mimeExtMap[req.file.mimetype] || 'jpg';
+    const key = `payment-proofs/${id}-${Date.now()}.${ext}`;
+
+    // Upload ke R2
+    const proofUrl = await uploadToR2(req.file.buffer, key, req.file.mimetype);
+
+    // Simpan URL ke database
+    await query(
+      'UPDATE transactions SET payment_proof_url = $1 WHERE id = $2',
+      [proofUrl, id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Bukti pembayaran berhasil diupload.',
+      proofUrl,
+    });
+  } catch (error) {
+    console.error('Upload Payment Proof Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengupload bukti pembayaran.' });
+  }
+};
+
 module.exports = {
   createTransaction,
   getNextOrderNumber,
   getTransactions,
   getUserTransactions,
   updateTransactionStatus,
+  uploadPaymentProof,
   getDownloadUrl,
   downloadTransactionZip,
 };

@@ -3,44 +3,62 @@ import { useAuth } from './AuthContext';
 import { api } from '../services/api';
 
 // ─── CartContext: kelola keranjang foto ────────────────────────────────
-// Menyimpan array foto yang dipilih user untuk dibeli
+// Cart disimpan per-user di localStorage (key: sepoto_cart_{userId})
+// sehingga cart tetap ada setelah logout & login kembali dengan akun yang sama.
 
 const CartContext = createContext(null);
 
-const CART_STORAGE_KEY = 'sepoto_cart';
+const getCartKey = (userId) => (userId ? `sepoto_cart_${userId}` : null);
 
 export const CartProvider = ({ children }) => {
   const { currentUser } = useAuth();
-  const prevUserIdRef = useRef(currentUser?.id);
+  const prevUserIdRef = useRef(currentUser?.id ?? null);
 
-  const [items, setItems] = useState(() => {
-    // Hydrate dari localStorage agar cart persist saat refresh (hanya jika ada user login)
-    const saved = localStorage.getItem(CART_STORAGE_KEY);
-    const savedUser = localStorage.getItem('sepoto_user');
-    return (saved && savedUser) ? JSON.parse(saved) : [];
-  });
-
-  // Simpan ke localStorage setiap kali items berubah
-  const saveToStorage = (newItems) => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
+  // Hydrate cart dari localStorage untuk user yang sedang login
+  const loadCartForUser = (userId) => {
+    const key = getCartKey(userId);
+    if (!key) return [];
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   };
 
-  // Kosongkan cart (setelah checkout selesai / logout)
+  const [items, setItems] = useState(() => loadCartForUser(currentUser?.id));
+
+  // Simpan ke localStorage setiap kali items berubah (per-user key)
+  const saveToStorage = useCallback((newItems, userId) => {
+    const key = getCartKey(userId ?? currentUser?.id);
+    if (key) {
+      localStorage.setItem(key, JSON.stringify(newItems));
+    }
+  }, [currentUser?.id]);
+
+  // Kosongkan cart (setelah checkout selesai)
   const clearCart = useCallback(() => {
     setItems([]);
-    localStorage.removeItem(CART_STORAGE_KEY);
-  }, []);
+    const key = getCartKey(currentUser?.id);
+    if (key) localStorage.removeItem(key);
+  }, [currentUser?.id]);
 
-  // 1. Apabila user logout (currentUser null) atau berganti user: Kosongkan cart secara instan!
+  // Deteksi pergantian user:
+  // - Jika user BERBEDA login → kosongkan cart dan load cart milik user baru
+  // - Jika user SAMA login kembali → load cart-nya dari localStorage
   useEffect(() => {
     const currentId = currentUser?.id ?? null;
-    if (!currentId || currentId !== prevUserIdRef.current) {
-      clearCart();
-    }
-    prevUserIdRef.current = currentId;
-  }, [currentUser, clearCart]);
+    const prevId = prevUserIdRef.current;
 
-  // 2. Apabila user memiliki transaksi yang SUDAH DISETUJUI (approved), hapus foto tersebut dari cart secara otomatis
+    if (currentId !== prevId) {
+      // User berganti atau logout/login — load cart milik user baru (atau array kosong jika logout)
+      const newItems = loadCartForUser(currentId);
+      setItems(newItems);
+      prevUserIdRef.current = currentId;
+    }
+  }, [currentUser]);
+
+  // Sync: hapus foto yang sudah di-approve dari cart secara otomatis
   const syncApprovedPhotos = useCallback(async () => {
     if (!currentUser || currentUser.role !== 'user') return;
     try {
@@ -68,7 +86,7 @@ export const CartProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to sync approved photos with cart:', err);
     }
-  }, [currentUser]);
+  }, [currentUser, saveToStorage]);
 
   useEffect(() => {
     if (currentUser?.role === 'user') {
@@ -84,7 +102,7 @@ export const CartProvider = ({ children }) => {
       saveToStorage(updated);
       return updated;
     });
-  }, []);
+  }, [saveToStorage]);
 
   // Hapus foto dari cart berdasarkan ID
   const removeItem = useCallback((photoId) => {
@@ -93,7 +111,7 @@ export const CartProvider = ({ children }) => {
       saveToStorage(updated);
       return updated;
     });
-  }, []);
+  }, [saveToStorage]);
 
   // Cek apakah foto sudah ada di cart
   const isInCart = useCallback(

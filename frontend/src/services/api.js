@@ -214,6 +214,25 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
+  uploadPaymentProof: (transactionId, file) => {
+    const formData = new FormData();
+    formData.append('proof', file);
+
+    const token = localStorage.getItem('sepoto_token');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    return fetch(`${API_BASE_URL}/transactions/${transactionId}/proof`, {
+      method: 'PATCH',
+      headers,
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal upload bukti pembayaran.');
+      return data;
+    });
+  },
+
   getDownloadUrl: (transactionId, photoId) =>
     fetchApi(`/transactions/${transactionId}/download/${photoId}`),
 };
