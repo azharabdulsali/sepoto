@@ -8,12 +8,14 @@ import {
   Eye,
   Pencil,
   Trash2,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   InputGroup,
   InputGroupAddon,
@@ -37,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedPhoto from "../ProtectedPhoto";
 import { api } from "../../services/api";
 import { formatRupiah, formatRupiahInput, parseRupiahInput } from "./adminUtils.js";
@@ -69,6 +72,9 @@ export default function AdminPhotosTab({
   const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
   const [deleteBulkConfirm, setDeleteBulkConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Action Feedback Alert (Super Admin / Admin)
+  const [actionAlert, setActionAlert] = useState(null);
 
   const fetchPhotos = useCallback(async () => {
     setLoading(true);
@@ -138,14 +144,27 @@ export default function AdminPhotosTab({
               : p,
           ),
         );
+        setActionAlert({
+          type: "success",
+          title: "Berhasil Disimpan!",
+          message: `Detail foto #${editPhoto.id} tersimpan di database.`,
+        });
         setEditPhoto(null);
         fetchPhotos();
       } else {
-        alert(res.message || "Gagal memperbarui foto.");
+        setActionAlert({
+          type: "error",
+          title: "Gagal Menyimpan",
+          message: res.message || "Terjadi kesalahan saat menyimpan ke database.",
+        });
       }
     } catch (err) {
       console.error("Save single error:", err);
-      alert("Terjadi kesalahan saat menyimpan.");
+      setActionAlert({
+        type: "error",
+        title: "Gagal Menyimpan",
+        message: "Terjadi kesalahan koneksi saat menyimpan ke database.",
+      });
     } finally {
       setIsSavingSingle(false);
     }
@@ -155,6 +174,7 @@ export default function AdminPhotosTab({
     e.preventDefault();
     if (selectedIds.size === 0) return;
     setIsSavingBulk(true);
+    const count = selectedIds.size;
     try {
       const res = await api.bulkUpdatePhotosAdmin({
         photoIds: Array.from(selectedIds),
@@ -166,13 +186,26 @@ export default function AdminPhotosTab({
         setBulkPrice("");
         setBulkBib("");
         setSelectedIds(new Set());
+        setActionAlert({
+          type: "success",
+          title: "Tersimpan ke Database!",
+          message: `Berhasil memperbarui ${count} foto di database.`,
+        });
         fetchPhotos();
       } else {
-        alert(res.message || "Gagal memperbarui foto.");
+        setActionAlert({
+          type: "error",
+          title: "Gagal Menyimpan",
+          message: res.message || "Terjadi kesalahan saat memperbarui foto secara massal.",
+        });
       }
     } catch (err) {
       console.error("Save bulk error:", err);
-      alert("Terjadi kesalahan saat menyimpan secara.");
+      setActionAlert({
+        type: "error",
+        title: "Gagal Menyimpan",
+        message: "Terjadi kesalahan koneksi saat menyimpan secara massal.",
+      });
     } finally {
       setIsSavingBulk(false);
     }
@@ -181,17 +214,31 @@ export default function AdminPhotosTab({
   const handleDelete = async () => {
     if (!deletePhotoTarget) return;
     setIsDeleting(true);
+    const targetId = deletePhotoTarget.id;
     try {
-      const res = await api.deletePhotoAdmin(deletePhotoTarget.id);
+      const res = await api.deletePhotoAdmin(targetId);
       if (res.success) {
-        setPhotos((prev) => prev.filter((p) => p.id !== deletePhotoTarget.id));
+        setPhotos((prev) => prev.filter((p) => p.id !== targetId));
+        setActionAlert({
+          type: "success",
+          title: "Foto Berhasil Dihapus!",
+          message: `Foto #${targetId} telah berhasil dihapus dari galeri & server cloud.`,
+        });
         setDeletePhotoTarget(null);
       } else {
-        alert(res.message || "Gagal menghapus foto.");
+        setActionAlert({
+          type: "error",
+          title: "Gagal Menghapus Foto",
+          message: res.message || "Terjadi kesalahan server saat menghapus foto.",
+        });
       }
     } catch (err) {
       console.error("Delete photo error:", err);
-      alert("Terjadi kesalahan saat menghapus foto.");
+      setActionAlert({
+        type: "error",
+        title: "Gagal Menghapus Foto",
+        message: "Terjadi kesalahan koneksi server saat menghapus foto.",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -200,8 +247,8 @@ export default function AdminPhotosTab({
   const handleDeleteBulk = async () => {
     if (selectedIds.size === 0) return;
     setIsDeleting(true);
+    const idsToDelete = Array.from(selectedIds);
     try {
-      const idsToDelete = Array.from(selectedIds);
       for (const id of idsToDelete) {
         try {
           await api.deletePhotoAdmin(id);
@@ -212,9 +259,18 @@ export default function AdminPhotosTab({
       setPhotos((prev) => prev.filter((p) => !selectedIds.has(p.id)));
       setSelectedIds(new Set());
       setDeleteBulkConfirm(false);
+      setActionAlert({
+        type: "success",
+        title: "Foto Berhasil Dihapus!",
+        message: `${idsToDelete.length} foto telah berhasil dihapus secara permanen.`,
+      });
     } catch (err) {
       console.error("Bulk delete admin error:", err);
-      alert("Terjadi kesalahan saat menghapus foto terpilih.");
+      setActionAlert({
+        type: "error",
+        title: "Gagal Menghapus Foto",
+        message: "Terjadi kesalahan server saat menghapus foto terpilih.",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -227,6 +283,42 @@ export default function AdminPhotosTab({
 
   return (
     <div className="space-y-4">
+      {/* Shadcn UI Alert Feedback Notifikasi */}
+      {actionAlert && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Alert
+            className={`rounded-2xl p-4 shadow-sm flex items-center justify-between ${
+              actionAlert.type === "success"
+                ? "bg-green-50 border border-green-200 text-green-900"
+                : "bg-red-50 border border-red-200 text-red-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {actionAlert.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <X className="w-5 h-5 text-red-600 shrink-0" />
+              )}
+              <div>
+                <AlertTitle className="text-xs font-bold tracking-tight">
+                  {actionAlert.title}
+                </AlertTitle>
+                <AlertDescription className="text-xs mt-0.5 opacity-90">
+                  {actionAlert.message}
+                </AlertDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setActionAlert(null)}
+              className="h-7 w-7 text-gray-400 hover:text-gray-700 rounded-full shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </Alert>
+        </motion.div>
+      )}
       {/* Top Bar: Search, Event Select Filter & Checkbox All */}
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         <div className="flex items-center gap-2 flex-1">
@@ -356,11 +448,25 @@ export default function AdminPhotosTab({
 
       {/* Content Grid */}
       {loading ? (
-        <div className="py-16 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-brand mx-auto mb-2" />
-          <p className="text-xs text-gray-500 font-medium">
-            Memuat galeri foto...
-          </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card
+              key={i}
+              className="overflow-hidden bg-white border border-[#E5E7EB] rounded-2xl p-0 shadow-xs"
+            >
+              <Skeleton className="aspect-[4/5] w-full rounded-none" />
+              <div className="p-3 space-y-2">
+                <Skeleton className="h-3.5 w-3/4 rounded-md" />
+                <div className="flex items-center justify-between pt-1">
+                  <Skeleton className="h-4 w-14 rounded-full" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-6 w-6 rounded-lg" />
+                    <Skeleton className="h-6 w-6 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <Card className="p-12 text-center bg-white border-[#E5E7EB] rounded-2xl">

@@ -6,10 +6,12 @@ import {
   X,
   Camera,
   Eye,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   InputGroup,
   InputGroupAddon,
@@ -34,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedPhoto from "../ProtectedPhoto";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
@@ -42,6 +45,7 @@ import { StatusBadge } from "./StatusBadge";
 
 export default function TransactionsTab({
   transactions = [],
+  loading = false,
   onUpdateStatus,
   events = [],
   selectedEventFilter = "all",
@@ -56,18 +60,36 @@ export default function TransactionsTab({
   const [selectedDetailTx, setSelectedDetailTx] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
-  const updateStatus = async (id, newStatus) => {
+  // Action Feedback Alert (Approve / Reject)
+  const [actionAlert, setActionAlert] = useState(null);
+
+  const updateStatus = async (id, newStatus, targetItem = null) => {
     setLoadingId(id);
+    const item = targetItem || actionConfirm?.item || selectedDetailTx;
     try {
       const res = await api.updateTransactionStatus(id, newStatus);
       if (res.success) {
         if (onUpdateStatus) onUpdateStatus(id, newStatus);
+        const isApproved = newStatus === "approved";
+        setActionAlert({
+          type: "success",
+          title: isApproved ? "Pembayaran Disetujui!" : "Pembayaran Ditolak!",
+          message: `Transaksi ${item?.orderNumber || ""} milik ${item?.userName || "Peserta"} telah berhasil ${isApproved ? "disetujui" : "ditolak"}.`,
+        });
       } else {
-        alert(res.message || "Gagal mengubah status.");
+        setActionAlert({
+          type: "error",
+          title: "Gagal Mengubah Status",
+          message: res.message || "Gagal mengubah status transaksi.",
+        });
       }
     } catch (err) {
       console.error("Update status error:", err);
-      alert("Terjadi kesalahan saat mengubah status.");
+      setActionAlert({
+        type: "error",
+        title: "Gagal Mengubah Status",
+        message: "Terjadi kesalahan koneksi saat mengubah status.",
+      });
     } finally {
       setLoadingId(null);
     }
@@ -85,6 +107,43 @@ export default function TransactionsTab({
 
   return (
     <div className="space-y-4">
+      {/* Shadcn UI Alert Feedback Notifikasi */}
+      {actionAlert && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <Alert
+            className={`rounded-2xl p-4 shadow-sm flex items-center justify-between ${
+              actionAlert.type === "success"
+                ? "bg-green-50 border border-green-200 text-green-900"
+                : "bg-red-50 border border-red-200 text-red-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {actionAlert.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <X className="w-5 h-5 text-red-600 shrink-0" />
+              )}
+              <div>
+                <AlertTitle className="text-xs font-bold tracking-tight">
+                  {actionAlert.title}
+                </AlertTitle>
+                <AlertDescription className="text-xs mt-0.5 opacity-90">
+                  {actionAlert.message}
+                </AlertDescription>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setActionAlert(null)}
+              className="h-7 w-7 text-gray-400 hover:text-gray-700 rounded-full shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </Alert>
+        </motion.div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-2.5 items-center">
         <InputGroup className="h-11 border-[#E5E7EB] rounded-xl bg-white flex-1 w-full">
           <InputGroupAddon align="inline-start">
@@ -165,7 +224,42 @@ export default function TransactionsTab({
         </Select>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card
+              key={i}
+              className="bg-white border-[#E5E7EB] rounded-2xl p-4 shadow-sm space-y-3"
+            >
+              <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
+                <Skeleton className="h-4 w-32 rounded-md" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <div className="space-y-2 py-1">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3.5 w-24 rounded-md" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3.5 w-16 rounded-md" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-20 rounded-md" />
+                </div>
+              </div>
+              <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-2.5 w-16 rounded mb-1" />
+                  <Skeleton className="h-5 w-24 rounded-md" />
+                </div>
+                <Skeleton className="h-8 w-24 rounded-xl" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <Card className="p-12 text-center bg-white border-[#E5E7EB] rounded-2xl">
           <p className="text-sm text-[#4B5563] font-medium">
             Tidak ada transaksi ditemukan.
@@ -281,10 +375,12 @@ export default function TransactionsTab({
             <AlertDialogAction
               onClick={() => {
                 if (actionConfirm) {
-                  updateStatus(
-                    actionConfirm.item.id,
-                    actionConfirm.type === "approve" ? "approved" : "rejected",
-                  );
+                  const targetId = actionConfirm.item.id;
+                  const targetStatus =
+                    actionConfirm.type === "approve" ? "approved" : "rejected";
+                  const targetItem = actionConfirm.item;
+                  setActionConfirm(null);
+                  updateStatus(targetId, targetStatus, targetItem);
                 }
               }}
               className={`rounded-xl text-xs font-bold text-white shadow-md ${

@@ -51,7 +51,10 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const [loadingTx, setLoadingTx] = useState(true);
+
   const fetchTransactions = useCallback(async () => {
+    setLoadingTx(true);
     try {
       const res = await api.getTransactions(selectedEventFilter);
       if (res.success && Array.isArray(res.transactions)) {
@@ -62,6 +65,8 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Fetch transactions error:", err);
       setTransactions([]);
+    } finally {
+      setLoadingTx(false);
     }
   }, [selectedEventFilter]);
 
@@ -228,6 +233,7 @@ export default function AdminDashboard() {
             {activeTab === "payments" && (
               <TransactionsTab
                 transactions={transactions}
+                loading={loadingTx}
                 onUpdateStatus={handleUpdateStatus}
                 events={events}
                 selectedEventFilter={selectedEventFilter}
