@@ -22,6 +22,12 @@ router.patch('/:id/price', verifyToken, requireRole('photographer'), photoContro
 // PATCH /api/photos/:id (Fotografer: Update harga & bib_tags foto milik sendiri ke PostgreSQL DB)
 router.patch('/:id', verifyToken, requireRole('photographer'), photoController.updatePhoto);
 
+// Super Admin: Kelola semua foto galeri (Filter by Event, Set Harga & BIB, Audit Trail)
+router.get('/admin', verifyToken, requireRole('super_admin'), photoController.getAdminPhotos);
+router.patch('/admin/bulk-update', verifyToken, requireRole('super_admin'), photoController.bulkUpdatePhotosAdmin);
+router.patch('/admin/:id', verifyToken, requireRole('super_admin'), photoController.updatePhotoAdmin);
+router.delete('/admin/:id', verifyToken, requireRole('super_admin'), photoController.deletePhotoAdmin);
+
 // DELETE /api/photos/:id (Fotografer: Hapus foto milik sendiri)
 router.delete('/:id', verifyToken, requireRole('photographer'), photoController.deletePhoto);
 

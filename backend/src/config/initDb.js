@@ -110,10 +110,22 @@ async function initDb() {
         id SERIAL PRIMARY KEY,
         order_number VARCHAR(100) UNIQUE NOT NULL,
         user_id INT REFERENCES users(id) ON DELETE CASCADE,
+        approved_by_id INT REFERENCES users(id) ON DELETE SET NULL,
         total_amount DECIMAL(10, 2) NOT NULL,
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Migrasi: Tambah kolom approved_by_id jika belum ada
+    await query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='approved_by_id') THEN
+          ALTER TABLE transactions ADD COLUMN approved_by_id INT REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+      END
+      $$;
     `);
 
     // 5. Tabel transaction_items
@@ -124,6 +136,17 @@ async function initDb() {
         photo_id INT REFERENCES photos(id) ON DELETE CASCADE,
         price_at_purchase DECIMAL(10, 2) NOT NULL
       );
+    `);
+
+    // Migrasi: Tambah kolom updated_by_id pada tabel photos jika belum ada
+    await query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='photos' AND column_name='updated_by_id') THEN
+          ALTER TABLE photos ADD COLUMN updated_by_id INT REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+      END
+      $$;
     `);
 
     console.log('✅ Database tables created/verified successfully!');

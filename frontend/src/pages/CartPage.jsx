@@ -139,9 +139,10 @@ export default function CartPage() {
     let isMounted = true;
     async function loadInitialData() {
       try {
+        const userEventId = currentUser?.eventId || '';
         const [eventRes, orderRes] = await Promise.all([
-          api.getActiveEvent(),
-          api.getNextOrderNumber(),
+          api.getActiveEvent(userEventId),
+          api.getNextOrderNumber(userEventId),
         ]);
         if (isMounted) {
           if (eventRes.success && eventRes.event) setActiveEvent(eventRes.event);
@@ -153,7 +154,7 @@ export default function CartPage() {
     }
     loadInitialData();
     return () => { isMounted = false; };
-  }, []);
+  }, [currentUser?.eventId]);
 
   const whatsappUrl = useMemo(
     () =>
@@ -191,6 +192,7 @@ export default function CartPage() {
         items,
         total:     totalPrice,
       });
+      clearCart();
       window.open(finalWaUrl, '_blank', 'noopener,noreferrer');
     }
   };

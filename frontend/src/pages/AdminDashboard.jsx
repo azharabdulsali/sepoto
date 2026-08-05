@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, CheckCircle2, XCircle, Clock,
@@ -68,7 +68,10 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-function OverviewTab({ transactions }) {
+function OverviewTab({ transactions = [], events = [], selectedEventFilter = 'all', onEventFilterChange }) {
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+
   const pending  = transactions.filter((t) => t.status === 'pending').length;
   const approved = transactions.filter((t) => t.status === 'approved').length;
   const rejected = transactions.filter((t) => t.status === 'rejected').length;
@@ -85,6 +88,33 @@ function OverviewTab({ transactions }) {
 
   return (
     <div className="space-y-6">
+      {/* Event Filter untuk Super Admin pada Overview */}
+      {isSuperAdmin && events.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-[#E5E7EB] rounded-2xl p-3.5 sm:px-4 shadow-xs">
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-brand shrink-0" />
+            <span className="text-xs font-bold text-[#111827]">Filter Event Overview:</span>
+          </div>
+          <Select value={String(selectedEventFilter)} onValueChange={(val) => onEventFilterChange && onEventFilterChange(val)}>
+            <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-full sm:w-[210px] shrink-0 shadow-xs">
+              <SelectValue placeholder="Pilih Event...">
+                {selectedEventFilter === 'all'
+                  ? 'Semua Event'
+                  : events.find((e) => String(e.id) === String(selectedEventFilter))?.title || 'Pilih Event...'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+              <SelectItem value="all">Semua Event ({events.length})</SelectItem>
+              {events.map((ev) => (
+                <SelectItem key={ev.id} value={String(ev.id)}>
+                  {ev.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         {stats.map(({ label, value, sub, cls, textCls }) => (
           <motion.div key={label} whileHover={{ y: -3, transition: { duration: 0.2 } }}>
@@ -133,7 +163,9 @@ const STATUS_LABELS = {
   rejected: 'Ditolak',
 };
 
-function TransactionsTab({ transactions = [], onUpdateStatus }) {
+function TransactionsTab({ transactions = [], onUpdateStatus, events = [], selectedEventFilter = 'all', onEventFilterChange }) {
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   const [filter, setFilter]             = useState('all');
   const [search, setSearch]             = useState('');
   const [loadingId, setLoadingId]       = useState(null);
@@ -177,6 +209,31 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
             className="pl-10 h-11 border-[#E5E7EB] rounded-xl text-sm"
           />
         </div>
+
+        {/* Filter Event Dropdown untuk Super Admin pada Menu Pembayaran */}
+        {isSuperAdmin && events.length > 0 && (
+          <Select value={String(selectedEventFilter)} onValueChange={(val) => onEventFilterChange && onEventFilterChange(val)}>
+            <SelectTrigger
+              id="payment-event-filter"
+              className="!h-11 w-full sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0"
+            >
+              <SelectValue placeholder="Pilih Event...">
+                {selectedEventFilter === 'all'
+                  ? 'Semua Event'
+                  : events.find((e) => String(e.id) === String(selectedEventFilter))?.title || 'Pilih Event...'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+              <SelectItem value="all">Semua Event ({events.length})</SelectItem>
+              {events.map((ev) => (
+                <SelectItem key={ev.id} value={String(ev.id)}>
+                  {ev.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         <Select value={filter} onValueChange={(val) => setFilter(val)}>
           <SelectTrigger
             id="payment-filter"
@@ -279,6 +336,27 @@ function TransactionsTab({ transactions = [], onUpdateStatus }) {
                         Tolak
                       </Button>
                     </motion.div>
+                  </div>
+                )}
+
+                {t.status !== 'pending' && t.approvedByName && (
+                  <div className="mt-3.5 pt-3 border-t border-[#F3F4F6] flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-gray-600">
+                        {t.status === 'approved' ? 'Disetujui oleh:' : 'Ditolak oleh:'}
+                      </span>
+                      <span className="font-bold text-[#111827]">{t.approvedByName}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
+                          t.approvedByRole === 'super_admin'
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}
+                      >
+                        {t.approvedByRole === 'super_admin' ? 'Super Admin' : t.approvedByRole === 'admin' ? 'Event Admin' : t.approvedByRole}
+                      </Badge>
+                    </div>
                   </div>
                 )}
               </div>
@@ -942,7 +1020,7 @@ function ParticipantsTab({ events = [], selectedEventFilter = 'all', onEventFilt
                         required
                         value={formBib}
                         onChange={(e) => setFormBib(e.target.value)}
-                        placeholder="Contoh: 101"
+                        placeholder="Contoh: 101, A101, atau A-101"
                         className="pl-9 h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
                       />
                     </div>
@@ -1432,6 +1510,449 @@ function EventSettingsTab({ events = [], onRefreshEvents }) {
   );
 }
 
+function AdminPhotosTab({ events = [], selectedEventFilter = 'all', onEventFilterChange }) {
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  // Bulk Selection
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkPrice, setBulkPrice] = useState('');
+  const [bulkBib, setBulkBib] = useState('');
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [isSavingBulk, setIsSavingBulk] = useState(false);
+
+  // Edit Single Photo Modal
+  const [editPhoto, setEditPhoto] = useState(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editBib, setEditBib] = useState('');
+  const [isSavingSingle, setIsSavingSingle] = useState(false);
+
+  // Delete Confirm
+  const [deletePhotoTarget, setDeletePhotoTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchPhotos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.getAdminPhotos(selectedEventFilter);
+      if (res.success && res.photos) {
+        setPhotos(res.photos);
+      }
+    } catch (err) {
+      console.error('Fetch Admin Photos Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedEventFilter]);
+
+  useEffect(() => {
+    fetchPhotos();
+  }, [fetchPhotos]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return photos;
+    return photos.filter((p) =>
+      (p.bibTags && p.bibTags.toLowerCase().includes(q)) ||
+      (p.originalFilename && p.originalFilename.toLowerCase().includes(q)) ||
+      (p.photographerName && p.photographerName.toLowerCase().includes(q))
+    );
+  }, [photos, search]);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((p) => p.id)));
+    }
+  };
+
+  const toggleSelectOne = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleSaveSingle = async (e) => {
+    e.preventDefault();
+    if (!editPhoto) return;
+    setIsSavingSingle(true);
+    try {
+      const res = await api.updatePhotoAdmin(editPhoto.id, {
+        price: editPrice,
+        bibTags: editBib,
+      });
+      if (res.success) {
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === editPhoto.id
+              ? {
+                  ...p,
+                  price: editPrice !== '' ? Number(editPrice) : p.price,
+                  bibTags: editBib,
+                  updatedByName: res.photo?.updatedByName || 'Super Admin',
+                  updatedByRole: 'super_admin',
+                }
+              : p
+          )
+        );
+        setEditPhoto(null);
+        fetchPhotos();
+      } else {
+        alert(res.message || 'Gagal memperbarui foto.');
+      }
+    } catch (err) {
+      console.error('Save single error:', err);
+      alert('Terjadi kesalahan saat menyimpan.');
+    } finally {
+      setIsSavingSingle(false);
+    }
+  };
+
+  const handleSaveBulk = async (e) => {
+    e.preventDefault();
+    if (selectedIds.size === 0) return;
+    setIsSavingBulk(true);
+    try {
+      const res = await api.bulkUpdatePhotosAdmin({
+        photoIds: Array.from(selectedIds),
+        price: bulkPrice,
+        bibTags: bulkBib,
+      });
+      if (res.success) {
+        setIsBulkOpen(false);
+        setBulkPrice('');
+        setBulkBib('');
+        setSelectedIds(new Set());
+        fetchPhotos();
+      } else {
+        alert(res.message || 'Gagal memperbarui foto massal.');
+      }
+    } catch (err) {
+      console.error('Save bulk error:', err);
+      alert('Terjadi kesalahan saat menyimpan secara massal.');
+    } finally {
+      setIsSavingBulk(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletePhotoTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await api.deletePhotoAdmin(deletePhotoTarget.id);
+      if (res.success) {
+        setPhotos((prev) => prev.filter((p) => p.id !== deletePhotoTarget.id));
+        setDeletePhotoTarget(null);
+      } else {
+        alert(res.message || 'Gagal menghapus foto.');
+      }
+    } catch (err) {
+      console.error('Delete photo error:', err);
+      alert('Terjadi kesalahan saat menghapus foto.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Top Bar: Search, Event Select Filter & Bulk Actions */}
+      <div className="flex flex-col sm:flex-row gap-2.5 items-center justify-between">
+        <div className="flex items-center gap-2 w-full sm:flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563] pointer-events-none z-10" />
+            <Input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari foto berdasarkan BIB, fotografer, atau berkas..."
+              className="pl-10 h-11 border-[#E5E7EB] rounded-xl text-sm bg-white"
+            />
+          </div>
+
+          {/* Event Filter Select Dropdown */}
+          {events.length > 0 && (
+            <Select value={String(selectedEventFilter)} onValueChange={(val) => onEventFilterChange && onEventFilterChange(val)}>
+              <SelectTrigger className="!h-11 w-full sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
+                <SelectValue placeholder="Pilih Event...">
+                  {selectedEventFilter === 'all'
+                    ? 'Semua Event'
+                    : events.find((e) => String(e.id) === String(selectedEventFilter))?.title || 'Pilih Event...'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                <SelectItem value="all">Semua Event ({events.length})</SelectItem>
+                {events.map((ev) => (
+                  <SelectItem key={ev.id} value={String(ev.id)}>
+                    {ev.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+          <Button
+            variant="outline"
+            onClick={toggleSelectAll}
+            className="h-11 border-[#E5E7EB] rounded-xl text-xs font-bold bg-white hover:bg-gray-50"
+          >
+            {selectedIds.size === filtered.length && filtered.length > 0 ? 'Batal Pilih Semua' : `Pilih Semua (${filtered.length})`}
+          </Button>
+
+          {selectedIds.size > 0 && (
+            <Button
+              onClick={() => setIsBulkOpen(true)}
+              className="h-11 bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold gap-1.5 shadow-sm"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Edit Massal ({selectedIds.size})</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Content Grid */}
+      {loading ? (
+        <div className="py-16 text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand mx-auto mb-2" />
+          <p className="text-xs text-gray-500 font-medium">Memuat galeri foto...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="p-12 text-center bg-white border-[#E5E7EB] rounded-2xl">
+          <Camera className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm font-bold text-[#111827]">Tidak Ada Foto Ditemukan</p>
+          <p className="text-xs text-gray-500 mt-1">Belum ada foto yang diunggah atau sesuai kriteria pencarian.</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          {filtered.map((photo) => {
+            const isSelected = selectedIds.has(photo.id);
+            const isUpdated = Boolean(photo.updatedByName);
+            return (
+              <Card
+                key={photo.id}
+                className={`group relative overflow-hidden bg-white border rounded-2xl transition-all shadow-xs hover:shadow-md ${
+                  isSelected ? 'border-brand ring-2 ring-brand/20' : 'border-[#E5E7EB]'
+                }`}
+              >
+                {/* Select Checkbox */}
+                <button
+                  type="button"
+                  onClick={() => toggleSelectOne(photo.id)}
+                  className={`absolute top-2.5 left-2.5 z-20 w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                    isSelected ? 'bg-brand text-white' : 'bg-black/40 text-white hover:bg-black/60 backdrop-blur-xs'
+                  }`}
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </button>
+
+                {/* Photo Image Preview */}
+                <div className="relative aspect-4/3 bg-gray-100 overflow-hidden">
+                  <img
+                    src={photo.watermarkedUrl}
+                    alt={photo.originalFilename}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+
+                  {/* Price Tag Overlay */}
+                  <div className="absolute bottom-2 right-2 z-10">
+                    <Badge className="bg-black/70 backdrop-blur-md text-white font-bib text-[11px] font-bold border-0 px-2 py-0.5">
+                      {photo.price > 0 ? formatRupiah(photo.price) : 'Belum di-set'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Photo Details & Audit Trail */}
+                <div className="p-3 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                    <span className="font-semibold text-[#111827] truncate" title={photo.originalFilename}>
+                      {photo.originalFilename}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {photo.bibTags ? (
+                      <Badge variant="outline" className="font-bib text-[10px] bg-brand/10 text-brand border-brand/20 px-1.5 py-0">
+                        BIB #{photo.bibTags}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="font-bib text-[10px] bg-gray-100 text-gray-500 border-gray-200 px-1.5 py-0">
+                        Tanpa BIB
+                      </Badge>
+                    )}
+                    <span className="text-[10px] text-gray-500 truncate">by {photo.photographerName}</span>
+                  </div>
+
+                  {/* Audit Trail Badge (Siapa yang set harga / BIB) */}
+                  <div className="pt-1 border-t border-gray-100 flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400 truncate">
+                      {isUpdated ? (
+                        <span title={`Diset oleh ${photo.updatedByName} (${photo.updatedByRole})`}>
+                          Diset: <strong className="text-gray-700">{photo.updatedByName}</strong> ({photo.updatedByRole === 'super_admin' ? 'Super Admin' : 'Fotografer'})
+                        </span>
+                      ) : (
+                        <span className="italic text-gray-400">Default sistem</span>
+                      )}
+                    </span>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPhoto(photo);
+                          setEditPrice(photo.price || '');
+                          setEditBib(photo.bibTags || '');
+                        }}
+                        className="p-1 text-gray-500 hover:text-brand transition-colors"
+                        title="Edit Harga & BIB"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletePhotoTarget(photo)}
+                        className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+                        title="Hapus Foto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal Edit Single Photo */}
+      <AlertDialog open={Boolean(editPhoto)} onOpenChange={(open) => !open && setEditPhoto(null)}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Edit Harga & BIB Tag Foto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Perbarui harga jual dan nomor BIB untuk berkas <strong>{editPhoto?.originalFilename}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleSaveSingle} className="space-y-3.5 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Harga Foto (Rp)</label>
+              <Input
+                type="number"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                placeholder="Contoh: 25000"
+                className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Nomor BIB Tag</label>
+              <Input
+                type="text"
+                value={editBib}
+                onChange={(e) => setEditBib(e.target.value)}
+                placeholder="Contoh: 101, A101, atau A-101"
+                className="h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Gunakan koma jika terdapat lebih dari 1 peserta (misal: 101, 102).</p>
+            </div>
+
+            <AlertDialogFooter className="pt-2 gap-2">
+              <AlertDialogCancel type="button" disabled={isSavingSingle} className="rounded-xl text-xs h-10">
+                Batal
+              </AlertDialogCancel>
+              <Button type="submit" disabled={isSavingSingle} className="bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold h-10">
+                {isSavingSingle ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan Perubahan'}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Edit Bulk Photos */}
+      <AlertDialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Edit Massal ({selectedIds.size} Foto)
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Atur harga atau tag BIB sekaligus untuk {selectedIds.size} foto yang dipilih.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <form onSubmit={handleSaveBulk} className="space-y-3.5 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Set Harga Baru (Rp) (Opsional)</label>
+              <Input
+                type="number"
+                value={bulkPrice}
+                onChange={(e) => setBulkPrice(e.target.value)}
+                placeholder="Biarkan kosong jika tidak diubah"
+                className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Set BIB Tag Baru (Opsional)</label>
+              <Input
+                type="text"
+                value={bulkBib}
+                onChange={(e) => setBulkBib(e.target.value)}
+                placeholder="Contoh: 101 atau A101 (kosongkan jika tidak diubah)"
+                className="h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+              />
+            </div>
+
+            <AlertDialogFooter className="pt-2 gap-2">
+              <AlertDialogCancel type="button" disabled={isSavingBulk} className="rounded-xl text-xs h-10">
+                Batal
+              </AlertDialogCancel>
+              <Button type="submit" disabled={isSavingBulk} className="bg-brand hover:bg-[#C2410C] text-white rounded-xl text-xs font-bold h-10">
+                {isSavingBulk ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Terapkan Ke Semua'}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Hapus Confirm */}
+      <AlertDialog open={Boolean(deletePhotoTarget)} onOpenChange={(open) => !open && setDeletePhotoTarget(null)}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-[#111827]">
+              Konfirmasi Hapus Foto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Apakah Anda yakin ingin menghapus foto <strong>{deletePhotoTarget?.originalFilename}</strong> secara permanen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-2 gap-2">
+            <AlertDialogCancel type="button" disabled={isDeleting} className="rounded-xl text-xs h-10">
+              Batal
+            </AlertDialogCancel>
+            <Button onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold h-10">
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ya, Hapus'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -1477,11 +1998,26 @@ export default function AdminDashboard() {
 
   const handleUpdateStatus = (id, newStatus) => {
     setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: newStatus,
+              approvedByName: currentUser?.name || 'Admin',
+              approvedByRole: currentUser?.role || 'admin',
+            }
+          : t
+      )
     );
   };
 
-  const tabs = [
+  const tabs = isSuperAdmin ? [
+    { id: 'overview',     label: 'Overview',   icon: LayoutDashboard },
+    { id: 'payments',     label: 'Pembayaran', icon: CheckCircle2 },
+    { id: 'photos',       label: 'Kelola Foto', icon: Camera },
+    { id: 'participants', label: 'Pengguna',   icon: Users },
+    { id: 'settings',     label: 'Event',      icon: Settings },
+  ] : [
     { id: 'overview',     label: 'Overview',   icon: LayoutDashboard },
     { id: 'payments',     label: 'Pembayaran', icon: CheckCircle2 },
     { id: 'participants', label: 'Pengguna',   icon: Users },
@@ -1548,7 +2084,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="mt-5 mb-6">
-          <div className="grid grid-cols-4 gap-1 p-1 bg-[#F3F4F6] rounded-2xl w-full">
+          <div className={`grid gap-1 p-1 bg-[#F3F4F6] rounded-2xl w-full ${isSuperAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
             {tabs.map(({ id, label, icon: Icon }) => (
               <Button
                 key={id}
@@ -1581,12 +2117,29 @@ export default function AdminDashboard() {
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
           >
-            {activeTab === 'overview'      && <OverviewTab transactions={transactions} />}
+            {activeTab === 'overview'      && (
+              <OverviewTab
+                transactions={transactions}
+                events={events}
+                selectedEventFilter={selectedEventFilter}
+                onEventFilterChange={(val) => setSelectedEventFilter(val)}
+              />
+            )}
             {activeTab === 'payments'      && (
               <TransactionsTab
                 transactions={transactions}
                 setTransactions={setTransactions}
                 onUpdateStatus={handleUpdateStatus}
+                events={events}
+                selectedEventFilter={selectedEventFilter}
+                onEventFilterChange={(val) => setSelectedEventFilter(val)}
+              />
+            )}
+            {activeTab === 'photos' && isSuperAdmin && (
+              <AdminPhotosTab
+                events={events}
+                selectedEventFilter={selectedEventFilter}
+                onEventFilterChange={(val) => setSelectedEventFilter(val)}
               />
             )}
             {activeTab === 'participants'  && (

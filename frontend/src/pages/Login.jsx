@@ -153,14 +153,13 @@ export default function Login() {
                   <Input
                     id="login-bib"
                     type="text"
-                    inputMode="numeric"
                     autoComplete="off"
                     required
                     value={bibNumber}
                     onChange={(e) => { setBibNumber(e.target.value); setError(''); }}
-                    placeholder="Contoh: 105"
+                    placeholder="Contoh: 101, A101, atau A-101"
                     disabled={isLoading}
-                    className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
+                    className="pl-10 h-12 bg-[#FFFFFF]/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
                   />
                 </div>
               </div>

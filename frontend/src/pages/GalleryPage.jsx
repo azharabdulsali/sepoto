@@ -276,7 +276,7 @@ export default function GalleryPage() {
       try {
         const userEventId = currentUser?.eventId || '';
         const [eventRes, photoRes] = await Promise.all([
-          api.getActiveEvent(),
+          api.getActiveEvent(userEventId),
           api.getPhotos(searchBib, userEventId),
         ]);
         if (isMounted) {
@@ -297,6 +297,13 @@ export default function GalleryPage() {
     return () => { isMounted = false; };
   }, [searchBib, currentUser?.eventId]);
 
+  const isBibMatch = (tags, bib) => {
+    if (!tags || !bib) return false;
+    const target = String(bib).trim().toLowerCase();
+    const tagList = String(tags).toLowerCase().split(',').map((s) => s.trim());
+    return tagList.includes(target) || String(tags).toLowerCase().includes(target);
+  };
+
   const pricedPhotos = useMemo(() => {
     return realPhotos.filter((p) => p.price != null && Number(p.price) > 0);
   }, [realPhotos]);
@@ -307,16 +314,14 @@ export default function GalleryPage() {
     if (!bib) {
       if (currentUser?.bibNumber) {
         const userBib = String(currentUser.bibNumber);
-        const myPhotos    = pricedPhotos.filter((p) => p.bibTags === userBib);
-        const otherPhotos = pricedPhotos.filter((p) => p.bibTags !== userBib);
+        const myPhotos    = pricedPhotos.filter((p) => isBibMatch(p.bibTags, userBib));
+        const otherPhotos = pricedPhotos.filter((p) => !isBibMatch(p.bibTags, userBib));
         return [...myPhotos, ...otherPhotos];
       }
       return pricedPhotos;
     }
 
-    return pricedPhotos.filter((p) =>
-      p.bibTags ? p.bibTags.toLowerCase().includes(bib) : false
-    );
+    return pricedPhotos.filter((p) => isBibMatch(p.bibTags, bib));
   }, [searchBib, currentUser, pricedPhotos]);
 
   const displayedPhotos = useMemo(() => {
@@ -325,7 +330,7 @@ export default function GalleryPage() {
 
   const userPhotoCount = useMemo(() => {
     if (!currentUser?.bibNumber) return 0;
-    return pricedPhotos.filter((p) => p.bibTags === String(currentUser.bibNumber)).length;
+    return pricedPhotos.filter((p) => isBibMatch(p.bibTags, currentUser.bibNumber)).length;
   }, [currentUser, pricedPhotos]);
 
   const handleLoadMore = () => {
@@ -374,10 +379,9 @@ export default function GalleryPage() {
               <Input
                 id="gallery-search-bib"
                 type="text"
-                inputMode="numeric"
                 value={searchBib}
                 onChange={(e) => setSearchBib(e.target.value)}
-                placeholder="Cari Nomor BIB (misal: 101)..."
+                placeholder="Cari Nomor BIB (misal: 101, A101, A-101)..."
                 className="pl-10 pr-8 h-11 bg-white border-[#E5E7EB] rounded-xl text-sm font-bib text-[#111827] focus-visible:border-brand/50 focus-visible:ring-brand/20"
               />
               {searchBib && (

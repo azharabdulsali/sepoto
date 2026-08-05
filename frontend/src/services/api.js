@@ -132,8 +132,27 @@ export const api = {
       method: 'DELETE',
     }),
 
+  getAdminPhotos: (eventId = '') => fetchApi(`/photos/admin${eventId ? `?eventId=${eventId}` : ''}`),
+
+  updatePhotoAdmin: (photoId, data) =>
+    fetchApi(`/photos/admin/${photoId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  bulkUpdatePhotosAdmin: (data) =>
+    fetchApi('/photos/admin/bulk-update', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deletePhotoAdmin: (photoId) =>
+    fetchApi(`/photos/admin/${photoId}`, {
+      method: 'DELETE',
+    }),
+
   // ─── Events API ────────────────────────────────────────────────────────
-  getActiveEvent: () => fetchApi('/events/active'),
+  getActiveEvent: (eventId = '') => fetchApi(`/events/active${eventId ? `?eventId=${eventId}` : ''}`),
 
   getAllEvents: () => fetchApi('/events'),
 
@@ -177,7 +196,7 @@ export const api = {
     }),
 
   // ─── Transactions API ──────────────────────────────────────────────────
-  getNextOrderNumber: () => fetchApi('/transactions/next-order-number'),
+  getNextOrderNumber: (eventId = '') => fetchApi(`/transactions/next-order-number${eventId ? `?eventId=${eventId}` : ''}`),
 
   createTransaction: (data) =>
     fetchApi('/transactions', {

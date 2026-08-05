@@ -4,15 +4,30 @@ const { query } = require('../config/db');
  * GET /api/events/active
  * Ambil event yang sedang aktif
  */
+/**
+ * GET /api/events/active
+ * Ambil event yang sedang aktif (mendukung ?eventId=X untuk peserta)
+ */
 const getActiveEvent = async (req, res) => {
   try {
-    const result = await query('SELECT * FROM events WHERE is_active = TRUE ORDER BY id DESC LIMIT 1');
+    const { eventId } = req.query;
+    let sql = 'SELECT * FROM events';
+    const params = [];
+
+    if (eventId) {
+      sql += ' WHERE id = $1';
+      params.push(eventId);
+    } else {
+      sql += ' WHERE is_active = TRUE ORDER BY id DESC LIMIT 1';
+    }
+
+    const result = await query(sql, params);
 
     if (result.rows.length === 0) {
       return res.json({
         success: true,
         event: null,
-        message: 'Tidak ada event aktif saat ini.',
+        message: 'Tidak ada event yang ditemukan.',
       });
     }
 

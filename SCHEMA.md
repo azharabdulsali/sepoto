@@ -48,6 +48,7 @@ Menyimpan data pesanan/pembelian foto yang dilakukan oleh *user* sebelum dan ses
 * `id` (SERIAL / PRIMARY KEY)
 * `order_number` (VARCHAR(100) / UNIQUE / NOT NULL) - Nomor order unik (contoh: `SEPOTO-20260801-XXXX`)
 * `user_id` (INT / FOREIGN KEY to `users.id` / ON DELETE CASCADE) - Pembeli (peserta)
+* `approved_by_id` (INT / FOREIGN KEY to `users.id` / ON DELETE SET NULL) - Admin (Super Admin / Event Admin) yang menyetujui atau menolak transaksi
 * `total_amount` (DECIMAL(10, 2) / NOT NULL) - Total harga pembelian foto
 * `status` (VARCHAR(50) / DEFAULT 'pending') - Status transaksi (`pending`, `approved`, `rejected`)
 * `created_at` (TIMESTAMP / DEFAULT CURRENT_TIMESTAMP)
@@ -65,9 +66,9 @@ Tabel relasi many-to-many untuk menghubungkan transaksi dengan foto-foto apa saj
 
 ```text
   [ events ] 1 --------< N [ users ] (Super Admin, Event Admin, Photographer, User)
-      |
-      | 1
-      |
+      |                       ^
+      | 1                     | (approved_by_id)
+      |                       |
       +------------< N [ photos ] (Diunggah oleh photographer per event)
                           |
                           | 1

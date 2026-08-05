@@ -1,25 +1,30 @@
 # Sepoto 📷
 
-**Sepoto** adalah aplikasi web galeri fotografi dan unduh digital yang dirancang khusus untuk *event* berdurasi singkat (1–2 hari, seperti lari maraton, wisuda, atau gathering) dengan kapasitas peserta maksimal sekitar 500 orang.
+**Sepoto** adalah aplikasi web galeri fotografi dan unduh digital yang dirancang khusus untuk *event* berdurasi singkat (seperti lari maraton, wisuda, atau gathering) dengan dukungan *multi-event* bersamaan.
 
-Aplikasi ini bertujuan untuk memudahkan fotografer mengunggah dan memberi harga pada karya mereka, memudahkan peserta (*user*) mencari foto pribadi berdasarkan Nomor BIB/Nama, serta menyediakan alur pembelian digital yang sederhana melalui QRIS statis dan konfirmasi manual via WhatsApp.
+Aplikasi ini bertujuan untuk memudahkan fotografer mengunggah dan memberi harga pada karya mereka per event, memudahkan peserta (*user*) mencari foto pribadi berdasarkan Nomor BIB/Nama pada event yang diikutinya, serta menyediakan alur pembelian digital yang sederhana melalui QRIS statis dan konfirmasi manual via WhatsApp.
 
 ---
 
 ## 🌟 Fitur Utama
 
-- **Multi-Role Access:** Terdiri dari Super Admin, Fotografer, dan User (Peserta).
+- **Multi-Role Access Control:** Mengelola 4 role: Super Admin, Event Admin, Fotografer, dan Peserta.
+- **Multi-Event Scoping:**
+  - **Super Admin**: Akses penuh lintas event dengan Filter Event Global di header dashboard.
+  - **Event Admin**: Akses dan pengelolaan terkunci khusus untuk event miliknya (overview, verifikasi pembayaran, peserta, dan fotografer).
+- **Per-Event BIB Uniqueness:** Keunikan nomor BIB berlaku per event (`idx_users_unique_event_bib`), memungkinkan peserta di event berbeda menggunakan nomor BIB yang sama.
+- **Isolated Participant Gallery:** Galeri foto peserta secara otomatis menyesuaikan (*scoped*) khusus dengan event yang diikuti peserta.
 - **Auto Watermarking:** Otomatis menambahkan watermark pada foto *preview* saat diunggah (menggunakan Node.js + Sharp).
-- **Pencarian Cerdas:** Peserta dapat mencari foto mereka menggunakan Nomor BIB.
-- **Pembelian & Checkout:** Sistem keranjang belanja (cart) dengan konfirmasi pembayaran statis QRIS yang diarahkan langsung ke WhatsApp Admin.
 - **Unduhan Aman:** File resolusi tinggi tanpa watermark disimpan secara privat di Cloudflare R2 dan hanya dapat diunduh setelah pembayaran disetujui.
 - **Mobile-First Design:** Antarmuka galeri dan sistem checkout yang dioptimalkan untuk perangkat seluler.
+
+---
 
 ## 🛠️ Teknologi yang Digunakan
 
 Proyek ini dibangun menggunakan struktur **Monorepo** dengan NPM Workspaces.
 
-- **Frontend:** React.js, Vite, Tailwind CSS
+- **Frontend:** React.js, Vite, Tailwind CSS, Framer Motion
 - **Backend:** Node.js, Express.js, Sharp (Image Processing)
 - **Database:** PostgreSQL
 - **Penyimpanan:** Cloudflare R2 (Object Storage)
@@ -27,54 +32,36 @@ Proyek ini dibangun menggunakan struktur **Monorepo** dengan NPM Workspaces.
 
 ---
 
-## 📂 Struktur Repositori
+## 📂 Struktur Repositori & Dokumentasi
 
-Proyek ini dibagi menjadi dua bagian utama:
 - `/frontend`: Berisi antarmuka pengguna berbasis React.
 - `/backend`: Berisi API server berbasis Node.js/Express.
 
-Terdapat juga berbagai dokumen panduan pengembangan di direktori utama:
+Dokumen panduan utama:
 - [Product Requirement Document.md](Product%20Requirement%20Document.md) - Detail kebutuhan produk dan alur sistem.
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Panduan arsitektur sistem.
-- [DESIGN.md](DESIGN.md) - Panduan UI/UX dan estetika web.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Panduan arsitektur sistem & hak akses.
+- [DESIGN.md](DESIGN.md) - Panduan UI/UX dan sistem desain.
 - [SCHEMA.md](SCHEMA.md) - Skema database PostgreSQL.
-- [RULES.md](RULES.md) - Aturan standar koding dan pengembangan.
+- [RULES.md](RULES.md) - Aturan standar koding dan keamanan.
+- [AGENT.md](AGENT.md) - Panduan persona dan eksekusi AI.
 
 ---
 
 ## 🚀 Cara Menjalankan Secara Lokal (Development)
 
-### Prasyarat
-- Node.js (versi 18+)
-- PostgreSQL (berjalan di lokal atau remote)
-- Akun Cloudflare (untuk R2 Storage)
-
-### Instalasi & Menjalankan
-
-1. **Clone repository ini** (jika belum):
-   ```bash
-   git clone <repo-url>
-   cd sepoto
-   ```
-
-2. **Install semua dependensi:**
-   Karena menggunakan NPM Workspaces, perintah ini akan menginstal modul untuk frontend dan backend secara otomatis:
+1. **Install dependensi:**
    ```bash
    npm install
    ```
 
-3. **Konfigurasi Environment:**
-   - Duplikat `.env.example` menjadi `.env` di folder `backend/` (jika ada) dan isi kredensial database serta AWS/R2 Anda.
-
-4. **Jalankan Aplikasi:**
-   Perintah ini akan menjalankan backend (Nodemon) dan frontend (Vite) secara bersamaan:
+2. **Jalankan aplikasi (Frontend + Backend):**
    ```bash
    npm run dev
    ```
 
-   - Frontend akan berjalan di: `http://localhost:5173`
-   - Backend akan berjalan di: `http://localhost:5000` (tergantung konfigurasi port Anda)
+   - Frontend: `http://localhost:5173`
+   - Backend: `http://localhost:5000`
 
 ---
 
-**Sepoto** © 2024.
+**Sepoto** © 2026.

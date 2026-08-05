@@ -2,16 +2,18 @@ const { query } = require('../config/db');
 const { getPresignedDownloadUrl } = require('../services/r2Service');
 
 /**
- * Generates sequential order number: SEPOTO-YYYYMMDD-XXXX (e.g. SEPOTO-20260802-0001)
+ * Generates sequential order number: SEPOTO-E{eventId}-YYYYMMDD-XXXX (e.g. SEPOTO-E1-20260804-0001)
  */
-async function generateSequentialOrderNumber() {
+async function generateSequentialOrderNumber(targetEventId = null) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  const datePrefix = `SEPOTO-${year}${month}${day}`;
 
-  // Hitung jumlah transaksi pada tanggal hari ini di database
+  const eventTag = targetEventId ? `E${targetEventId}` : 'E1';
+  const datePrefix = `SEPOTO-${eventTag}-${year}${month}${day}`;
+
+  // Hitung jumlah transaksi pada tanggal & event ini di database
   const result = await query(
     `SELECT COUNT(*) as count FROM transactions WHERE order_number LIKE $1`,
     [`${datePrefix}-%`]
@@ -25,11 +27,17 @@ async function generateSequentialOrderNumber() {
 
 /**
  * GET /api/transactions/next-order-number
- * Ambil nomor order sekuensial berikutnya untuk tanggal hari ini (User & Admin)
+ * Ambil nomor order sekuensial berikutnya untuk tanggal & event terkait (User & Admin)
  */
 const getNextOrderNumber = async (req, res) => {
   try {
-    const orderNumber = await generateSequentialOrderNumber();
+    let eventId = req.query.eventId || req.user?.eventId;
+    if (!eventId && req.user?.id) {
+      const uRes = await query('SELECT event_id FROM users WHERE id = $1', [req.user.id]);
+      eventId = uRes.rows[0]?.event_id;
+    }
+
+    const orderNumber = await generateSequentialOrderNumber(eventId);
     return res.json({ success: true, orderNumber });
   } catch (error) {
     console.error('Get Next Order Number Error:', error);
@@ -50,14 +58,21 @@ const createTransaction = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Data transaksi tidak lengkap.' });
     }
 
+    // Ambil eventId milik user
+    let userEventId = req.user?.eventId;
+    if (!userEventId) {
+      const uRes = await query('SELECT event_id FROM users WHERE id = $1', [userId]);
+      userEventId = uRes.rows[0]?.event_id;
+    }
+
     let finalOrderNumber = orderNumber;
     if (!finalOrderNumber) {
-      finalOrderNumber = await generateSequentialOrderNumber();
+      finalOrderNumber = await generateSequentialOrderNumber(userEventId);
     } else {
       // Cek apakah orderNumber sudah ada di DB untuk mencegah duplikasi/race condition
       const checkResult = await query('SELECT id FROM transactions WHERE order_number = $1', [finalOrderNumber]);
       if (checkResult.rows.length > 0) {
-        finalOrderNumber = await generateSequentialOrderNumber();
+        finalOrderNumber = await generateSequentialOrderNumber(userEventId);
       }
     }
 
@@ -97,6 +112,7 @@ const getTransactions = async (req, res) => {
       SELECT
         t.id, t.order_number, t.status, t.total_amount, t.created_at,
         u.name as user_name, u.bib_number, u.event_id,
+        ab.name as approved_by_name, ab.role as approved_by_role,
         COALESCE(
           json_agg(
             json_build_object(
@@ -109,6 +125,7 @@ const getTransactions = async (req, res) => {
         ) as items
       FROM transactions t
       LEFT JOIN users u ON t.user_id = u.id
+      LEFT JOIN users ab ON t.approved_by_id = ab.id
       LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
       LEFT JOIN photos p ON p.id = ti.photo_id
     `;
@@ -128,7 +145,7 @@ const getTransactions = async (req, res) => {
     }
 
     sql += `
-      GROUP BY t.id, u.name, u.bib_number, u.event_id
+      GROUP BY t.id, u.name, u.bib_number, u.event_id, ab.name, ab.role
       ORDER BY t.id DESC
     `;
 
@@ -141,6 +158,8 @@ const getTransactions = async (req, res) => {
       bibNumber: t.bib_number || 'Umum',
       total: Number(t.total_amount),
       status: t.status,
+      approvedByName: t.approved_by_name || null,
+      approvedByRole: t.approved_by_role || null,
       createdAt: new Date(t.created_at).toLocaleString('id-ID'),
       items: Array.isArray(t.items) ? t.items : [],
     }));
@@ -203,14 +222,15 @@ const updateTransactionStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body; // 'approved' atau 'rejected'
+    const adminUserId = req.user?.id || null;
 
     if (!['approved', 'rejected', 'pending'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Status transaksi tidak valid.' });
     }
 
     const result = await query(
-      'UPDATE transactions SET status = $1 WHERE id = $2 RETURNING *',
-      [status, id]
+      'UPDATE transactions SET status = $1, approved_by_id = $2 WHERE id = $3 RETURNING *',
+      [status, adminUserId, id]
     );
 
     if (result.rows.length === 0) {

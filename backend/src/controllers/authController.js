@@ -35,7 +35,7 @@ const loginUser = async (req, res) => {
     }
 
     const result = await query(
-      `SELECT * FROM users WHERE LOWER(name) = LOWER($1) AND bib_number = $2 AND role = 'user'`,
+      `SELECT * FROM users WHERE LOWER(TRIM(name)) = LOWER($1) AND LOWER(TRIM(bib_number)) = LOWER($2) AND role = 'user'`,
       [name.trim(), bibNumber.trim()]
     );
 
@@ -281,9 +281,9 @@ const createUserManual = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Nomor BIB wajib diisi untuk peserta.' });
       }
 
-      // Cek duplikasi Nomor BIB untuk event yang sama
+      // Cek duplikasi Nomor BIB (case-insensitive) untuk event yang sama
       const checkBib = await query(
-        `SELECT id FROM users WHERE bib_number = $1 AND role = 'user' AND event_id = $2`,
+        `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND role = 'user' AND event_id = $2`,
         [bibNumber.trim(), finalEventId]
       );
       if (checkBib.rows.length > 0) {
@@ -431,9 +431,9 @@ const updateUser = async (req, res) => {
       const newName = name && name.trim() ? name.trim() : targetUser.name;
       const newBib = bibNumber && bibNumber.trim() ? bibNumber.trim() : targetUser.bib_number;
 
-      if (newBib !== targetUser.bib_number) {
+      if (newBib.toLowerCase() !== (targetUser.bib_number || '').toLowerCase()) {
         const checkBib = await query(
-          `SELECT id FROM users WHERE bib_number = $1 AND role = 'user' AND event_id = $2 AND id != $3`,
+          `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND role = 'user' AND event_id = $2 AND id != $3`,
           [newBib, targetUser.event_id, id]
         );
         if (checkBib.rows.length > 0) {
