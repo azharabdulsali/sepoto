@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, LogOut, Menu, X, User,
-  ClipboardList, Home, LayoutDashboard, Aperture, ArrowRight
+  ClipboardList, Home, LogIn, ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -64,46 +64,20 @@ export default function Navbar() {
           {/* Right actions */}
           <div className="flex items-center gap-1.5">
 
-            {/* ─── Non-Authenticated (Public Nav Links) ──────────── */}
+            {/* ─── Non-Authenticated (Public Nav Link) ──────────── */}
             {!isAuthenticated && (
               <div className="hidden md:flex items-center gap-1.5">
                 <Link
                   to="/login"
-                  id="nav-public-user-login"
-                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-semibold transition-all ${
+                  id="nav-public-login"
+                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-4 h-9 rounded-xl text-xs font-bold transition-all ${
                     location.pathname === '/login'
                       ? 'bg-brand/10 text-brand'
-                      : 'text-[#4B5563] hover:text-[#111827] hover:bg-[#F3F4F6]'
+                      : 'text-[#4B5563] hover:text-brand hover:bg-brand/5'
                   }`}
                 >
-                  <User className="w-4 h-4 shrink-0 text-brand" />
-                  <span className="whitespace-nowrap">Peserta Login</span>
-                </Link>
-
-                <Link
-                  to="/photographer/login"
-                  id="nav-public-photographer-login"
-                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-semibold transition-all ${
-                    location.pathname === '/photographer/login'
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-[#4B5563] hover:text-blue-600 hover:bg-blue-50/60'
-                  }`}
-                >
-                  <Aperture className="w-4 h-4 shrink-0 text-blue-600" />
-                  <span className="whitespace-nowrap">Fotografer</span>
-                </Link>
-
-                <Link
-                  to="/admin/login"
-                  id="nav-public-admin-login"
-                  className={`inline-flex flex-row items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl text-xs font-semibold transition-all ${
-                    location.pathname === '/admin/login'
-                      ? 'bg-red-50 text-red-600'
-                      : 'text-[#4B5563] hover:text-red-600 hover:bg-red-50/60'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4 shrink-0 text-red-600" />
-                  <span className="whitespace-nowrap">Admin</span>
+                  <LogIn className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap">Masuk</span>
                 </Link>
               </div>
             )}
@@ -119,7 +93,7 @@ export default function Navbar() {
             {/* User info (sm+) — hanya user peserta */}
             {isAuthenticated && isUser && (
               <div className="hidden sm:flex items-center gap-1.5 text-sm text-[#4B5563] mr-1">
-                <User className="w-3.5 h-3.5" />
+                <User className="w-3.5 h-3.5 text-brand shrink-0" />
                 <span className="font-medium text-[#111827] max-w-[100px] truncate">
                   {currentUser.name.split(' ')[0]}
                 </span>
@@ -201,35 +175,15 @@ export default function Navbar() {
             <nav className="px-4 py-3 flex flex-col gap-1.5">
               <Link
                 to="/login"
-                id="mobile-user-link"
-                className="flex items-center justify-between px-3 py-3 text-sm text-[#111827] bg-brand/5 border border-brand/10 rounded-xl font-semibold"
+                id="mobile-login-link"
+                className="flex items-center justify-between px-3 py-3 text-sm text-[#111827] bg-brand/5 border border-brand/10 rounded-xl font-bold"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <div className="flex items-center gap-2 text-brand">
-                  <User className="w-4 h-4" />
-                  <span>Login Peserta</span>
+                  <LogIn className="w-4 h-4" />
+                  <span>Masuk ke Sepoto</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-brand" />
-              </Link>
-
-              <Link
-                to="/photographer/login"
-                id="mobile-photographer-link"
-                className="flex items-center gap-2.5 px-3 py-3 text-sm text-[#4B5563] hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Aperture className="w-4 h-4 text-blue-600" />
-                <span>Login Fotografer</span>
-              </Link>
-
-              <Link
-                to="/admin/login"
-                id="mobile-admin-link"
-                className="flex items-center gap-2.5 px-3 py-3 text-sm text-[#4B5563] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <LayoutDashboard className="w-4 h-4 text-red-600" />
-                <span>Login Admin</span>
               </Link>
             </nav>
           </div>

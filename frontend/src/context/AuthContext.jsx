@@ -13,13 +13,15 @@ export const AuthProvider = ({ children }) => {
   });
 
   // Login: simpan data user + token ke state + localStorage
-  const login = useCallback((userData, token = null) => {
+  const login = useCallback((userData, token = null, availableEvents = []) => {
     const user = {
       id:       userData.id ?? null,
       name:     userData.name,
       bibNumber: userData.bibNumber ?? userData.bib_number ?? null,
       role:     userData.role, // 'user' | 'photographer' | 'super_admin'
       eventId:  userData.eventId ?? userData.event_id ?? null,
+      eventName: userData.eventName ?? null,
+      availableEvents: availableEvents.length > 0 ? availableEvents : (userData.availableEvents ?? []),
     };
     setCurrentUser(user);
     localStorage.setItem('sepoto_user', JSON.stringify(user));

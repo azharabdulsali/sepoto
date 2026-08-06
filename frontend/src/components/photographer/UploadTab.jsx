@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/attachment";
 import { api } from "../../services/api";
 
-export default function UploadTab({ onUploadSuccess }) {
+export default function UploadTab({ onUploadSuccess, selectedEventId }) {
   const fileInputRef = useRef(null);
   const [previews, setPreviews] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -109,6 +109,9 @@ export default function UploadTab({ onUploadSuccess }) {
 
       formData.append("price", avgPrice);
       formData.append("bibTags", bibs);
+      if (selectedEventId) {
+        formData.append("eventId", selectedEventId);
+      }
 
       const res = await api.uploadPhotos(formData);
       if (res.success) {

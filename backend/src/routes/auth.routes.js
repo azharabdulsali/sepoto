@@ -3,7 +3,10 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 
-// POST /api/auth/login-user (Login Peserta via Nama & Nomor BIB)
+// POST /api/auth/login (Unified Login — all roles: user, admin, photographer)
+router.post('/login', authController.unifiedLogin);
+
+// POST /api/auth/login-user (Legacy: Login Peserta via Nama & Nomor BIB)
 router.post('/login-user', authController.loginUser);
 
 // POST /api/auth/login-admin (Login Super Admin via username + password)

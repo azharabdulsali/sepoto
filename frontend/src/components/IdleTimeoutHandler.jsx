@@ -29,12 +29,8 @@ export default function IdleTimeoutHandler() {
   const countdownTimerRef = useRef(null);
   const isWarningRef = useRef(false);
 
-  // Helper redirect login sesuai role saat timeout
-  const getLoginRedirect = useCallback(() => {
-    if (currentUser?.role === 'super_admin') return '/admin/login';
-    if (currentUser?.role === 'photographer') return '/photographer/login';
-    return '/login';
-  }, [currentUser]);
+  // Always redirect to the single unified login page
+  const getLoginRedirect = useCallback(() => '/login', []);
 
   // Handle logout otomatis akibat idle timeout
   const handleTimeoutLogout = useCallback(() => {

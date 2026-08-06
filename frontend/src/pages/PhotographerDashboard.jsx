@@ -1,8 +1,15 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CloudUpload, Image as ImageIcon, Camera } from "lucide-react";
+import { CloudUpload, Image as ImageIcon, Camera, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import AppShell from "../components/AppShell";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
@@ -14,6 +21,26 @@ export default function PhotographerDashboard() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("upload");
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [events, setEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState("");
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await api.getAllEvents();
+      if (res.success && res.events) {
+        setEvents(res.events);
+        if (res.events.length > 0 && !selectedEventId) {
+          setSelectedEventId(String(res.events[0].id));
+        }
+      }
+    } catch (err) {
+      console.error("Fetch events error:", err);
+    }
+  }, [selectedEventId]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   const fetchUploadedCount = useCallback(async () => {
     try {
@@ -42,15 +69,44 @@ export default function PhotographerDashboard() {
     <AppShell>
       <div className="max-w-screen-lg mx-auto px-4 pb-12">
         <div className="py-6 md:py-8 border-b border-[#E5E7EB]">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <Badge
-                variant="outline"
-                className="inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest text-blue-600 bg-blue-50 border-blue-200 px-3 py-1 rounded-full mb-2"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                Fotografer
-              </Badge>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Badge
+                  variant="outline"
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest text-blue-600 bg-blue-50 border-blue-200 px-3 py-1 rounded-full"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  Fotografer
+                </Badge>
+                {events.length > 0 && (
+                  <div className="inline-flex items-center gap-1.5 text-xs text-gray-700 bg-white border border-[#E5E7EB] px-2.5 py-1 rounded-2xl shadow-sm">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="font-semibold text-xs text-gray-500">Event:</span>
+                    <Select
+                      value={selectedEventId}
+                      onValueChange={setSelectedEventId}
+                    >
+                      <SelectTrigger className="h-7 border-0 bg-transparent text-xs font-bold text-[#111827] px-1 focus:ring-0 shadow-none">
+                        <SelectValue>
+                          {events.find((e) => String(e.id) === String(selectedEventId))?.name || "Pilih Event"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-[#E5E7EB] rounded-2xl shadow-xl p-1 z-50">
+                        {events.map((evt) => (
+                          <SelectItem
+                            key={evt.id}
+                            value={String(evt.id)}
+                            className="hover:bg-blue-50 text-xs py-2 px-3 rounded-xl cursor-pointer text-[#111827]"
+                          >
+                            {evt.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
               <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">
                 Dashboard Fotografer
               </h1>
@@ -61,7 +117,7 @@ export default function PhotographerDashboard() {
                 </span>
               </p>
             </div>
-            <div className="text-right shrink-0 bg-white border border-[#E5E7EB] rounded-2xl px-3.5 py-1.5 shadow-sm">
+            <div className="text-right shrink-0 bg-white border border-[#E5E7EB] rounded-2xl px-3.5 py-1.5 shadow-sm self-start md:self-auto">
               <p className="text-xl font-bold text-[#111827] font-bib">
                 {uploadedCount}
               </p>
@@ -98,7 +154,7 @@ export default function PhotographerDashboard() {
             transition={{ duration: 0.25 }}
           >
             {activeTab === "upload" ? (
-              <UploadTab onUploadSuccess={fetchUploadedCount} />
+              <UploadTab onUploadSuccess={fetchUploadedCount} selectedEventId={selectedEventId} />
             ) : (
               <MyPhotosTab
                 onPhotosChange={(count) => {

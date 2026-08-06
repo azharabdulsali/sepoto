@@ -12,8 +12,8 @@ const upload = multer({
 // GET /api/events/active (Publik: Ambil event aktif saat ini)
 router.get('/active', eventController.getActiveEvent);
 
-// GET /api/events (Super Admin & Admin: Ambil semua daftar event)
-router.get('/', verifyToken, requireRole('super_admin', 'admin'), eventController.getAllEvents);
+// GET /api/events (Super Admin, Admin, & Fotografer: Ambil semua daftar event)
+router.get('/', verifyToken, requireRole('super_admin', 'admin', 'photographer'), eventController.getAllEvents);
 
 // POST /api/events (Super Admin: Buat event baru)
 router.post('/', verifyToken, requireRole('super_admin'), eventController.createEvent);

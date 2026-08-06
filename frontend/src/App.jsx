@@ -5,8 +5,6 @@ import { useAuth } from './context/AuthContext';
 // Pages — Public
 import LandingPage          from './pages/LandingPage';
 import Login                from './pages/Login';
-import AdminLogin           from './pages/AdminLogin';
-import PhotographerLogin    from './pages/PhotographerLogin';
 
 // Pages — User Peserta
 import GalleryPage          from './pages/GalleryPage';
@@ -60,7 +58,7 @@ export default function App() {
         }
       />
 
-      {/* ─── Public Login Routes ─── */}
+      {/* ─── Unified Login Route ─── */}
       <Route
         path="/login"
         element={
@@ -69,22 +67,10 @@ export default function App() {
             : <Login />
         }
       />
-      <Route
-        path="/admin/login"
-        element={
-          isAuthenticated
-            ? getAuthenticatedRedirect()
-            : <AdminLogin />
-        }
-      />
-      <Route
-        path="/photographer/login"
-        element={
-          isAuthenticated
-            ? getAuthenticatedRedirect()
-            : <PhotographerLogin />
-        }
-      />
+
+      {/* ─── Legacy login routes → redirect to unified /login ─── */}
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+      <Route path="/photographer/login" element={<Navigate to="/login" replace />} />
 
       {/* ─── Protected: User Peserta ─── */}
       <Route

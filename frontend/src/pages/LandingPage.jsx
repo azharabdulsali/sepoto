@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   User,
-  ShieldCheck,
   Aperture,
+  ShieldCheck,
   ArrowRight,
   Sparkles,
   QrCode,
@@ -12,7 +12,7 @@ import {
   Image as ImageIcon,
   ChevronRight,
   Search,
-  Check,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,13 +134,13 @@ export default function LandingPage() {
                 className="w-full sm:w-auto"
               >
                 <Button
-                  id="hero-cta-user"
+                  id="hero-cta-login"
                   onClick={() => navigate("/login")}
                   size="lg"
                   className="w-full sm:w-auto h-12 sm:h-13 px-6 sm:px-8 bg-brand hover:bg-[#C2410C] text-white font-bold text-sm sm:text-base rounded-2xl shadow-xl shadow-orange-600/25 transition-all flex items-center justify-center gap-2"
                 >
-                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Cari Foto Saya (BIB)</span>
+                  <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Masuk ke Sepoto</span>
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 opacity-80" />
                 </Button>
               </motion.div>
@@ -195,7 +195,7 @@ export default function LandingPage() {
             </motion.div>
           </motion.div>
 
-          {/* ─── 2. QUICK ACCESS PORTAL CARDS (3 ROLES) ──────────────────── */}
+          {/* ─── 2. UNIFIED LOGIN PORTAL CARD ──────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -207,177 +207,74 @@ export default function LandingPage() {
                 variant="outline"
                 className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5"
               >
-                Hak Akses Pengguna
+                Akses Platform
               </Badge>
               <h2 className="text-xl sm:text-3xl font-bold text-[#111827]">
-                Pilih Portal Akses Anda
+                Satu Pintu Masuk untuk Semua
               </h2>
               <p className="text-xs sm:text-sm text-[#4B5563] mt-1">
-                Masuk sesuai peran Anda di dalam sistem Sepoto
+                Peserta, Fotografer, dan Admin — login di satu tempat yang sama.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto px-2">
-              {/* CARD 1: PESERTA */}
+            <div className="max-w-lg mx-auto px-2">
               <motion.div
                 whileHover={{ y: -6, transition: { duration: 0.2 } }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-brand/50 shadow-md hover:shadow-2xl hover:shadow-orange-900/10 transition-all rounded-2xl sm:rounded-3xl overflow-hidden p-4 sm:p-6 flex flex-col justify-between group relative">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-brand" />
+                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-brand/50 shadow-md hover:shadow-2xl hover:shadow-orange-900/10 transition-all rounded-2xl sm:rounded-3xl overflow-hidden p-5 sm:p-7 flex flex-col justify-between group relative">
+                  <div className="absolute top-0 left-0 right-0 h-1.5 gradient-brand" />
 
-                  <div className="space-y-3 sm:space-y-4 pt-1">
+                  <div className="space-y-4 pt-1">
                     <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-brand/10 text-brand flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-colors shadow-sm">
-                        <User className="w-5 h-5 sm:w-6 sm:h-6" />
+                      <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-brand/10 text-brand flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-colors shadow-sm">
+                        <LogIn className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
                       <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-brand/10 text-brand border-brand/20">
-                        Peserta Event
+                        Universal Login
                       </Badge>
                     </div>
 
                     <div>
                       <h3 className="text-lg sm:text-xl font-bold text-[#111827]">
-                        Portal Peserta
+                        Masuk ke Sepoto
                       </h3>
                       <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
-                        Cari foto aksi marathon/event Anda berdasarkan Nama &
-                        Nomor BIB.
+                        Semua pengguna — peserta event, fotografer, maupun admin — dapat login dengan akun masing-masing di satu halaman.
                       </p>
                     </div>
 
-                    <ul className="space-y-1.5 sm:space-y-2 pt-2 border-t border-[#F3F4F6] text-xs text-[#4B5563]">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-brand shrink-0" />
-                        <span>Pencarian otomatis berdasarkan BIB</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-brand shrink-0" />
-                        <span>Pembayaran cepat via QRIS Statis</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-brand shrink-0" />
-                        <span>Unduh file foto resolusi tinggi (HD)</span>
-                      </li>
-                    </ul>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#F3F4F6]">
+                      <div className="flex items-center gap-2.5 p-2.5 bg-brand/5 rounded-xl">
+                        <User className="w-4 h-4 text-brand shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-[#111827]">Peserta</p>
+                          <p className="text-[10px] text-[#4B5563]">Nama & BIB</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 p-2.5 bg-blue-50 rounded-xl">
+                        <Aperture className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-[#111827]">Fotografer</p>
+                          <p className="text-[10px] text-[#4B5563]">Username & Pass</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 p-2.5 bg-red-50 rounded-xl">
+                        <ShieldCheck className="w-4 h-4 text-red-600 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-[#111827]">Admin</p>
+                          <p className="text-[10px] text-[#4B5563]">Username & Pass</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <Button
-                    id="portal-card-user"
+                    id="portal-card-login"
                     onClick={() => navigate("/login")}
-                    className="w-full mt-4 sm:mt-6 bg-[#191C21] hover:bg-brand text-white font-bold text-xs h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between shadow-md"
+                    className="w-full mt-5 sm:mt-6 bg-[#191C21] hover:bg-brand text-white font-bold text-xs h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between shadow-md"
                   >
-                    <span>Masuk ke Portal Peserta</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </Card>
-              </motion.div>
-
-              {/* CARD 2: FOTOGRAFER */}
-              <motion.div
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-blue-500/50 shadow-md hover:shadow-2xl hover:shadow-blue-900/10 transition-all rounded-2xl sm:rounded-3xl overflow-hidden p-4 sm:p-6 flex flex-col justify-between group relative">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-blue-600" />
-
-                  <div className="space-y-3 sm:space-y-4 pt-1">
-                    <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-sm">
-                        <Aperture className="w-5 h-5 sm:w-6 sm:h-6" />
-                      </div>
-                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-blue-50 text-blue-600 border-blue-200">
-                        Fotografer
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold text-[#111827]">
-                        Portal Fotografer
-                      </h3>
-                      <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
-                        Upload hasil jepretan Anda, atur harga jual, dan tag BIB
-                        peserta sekaligus.
-                      </p>
-                    </div>
-
-                    <ul className="space-y-1.5 sm:space-y-2 pt-2 border-t border-[#F3F4F6] text-xs text-[#4B5563]">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>Bulk Drag & Drop Photo Upload</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>Atur Harga & Tag BIB Massal</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>Otomatisasi watermark pelindung</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <Button
-                    id="portal-card-photographer"
-                    onClick={() => navigate("/photographer/login")}
-                    className="w-full mt-4 sm:mt-6 bg-[#191C21] hover:bg-blue-600 text-white font-bold text-xs h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between shadow-md"
-                  >
-                    <span>Masuk ke Portal Fotografer</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </Card>
-              </motion.div>
-
-              {/* CARD 3: SUPER ADMIN */}
-              <motion.div
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-red-500/50 shadow-md hover:shadow-2xl hover:shadow-red-900/10 transition-all rounded-2xl sm:rounded-3xl overflow-hidden p-4 sm:p-6 flex flex-col justify-between group relative">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-600" />
-
-                  <div className="space-y-3 sm:space-y-4 pt-1">
-                    <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-colors shadow-sm">
-                        <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
-                      </div>
-                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-red-50 text-red-600 border-red-200">
-                        Super Admin
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold text-[#111827]">
-                        Dashboard Admin
-                      </h3>
-                      <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
-                        Pusat kendali event, verifikasi bukti pembayaran QRIS, &
-                        impor CSV.
-                      </p>
-                    </div>
-
-                    <ul className="space-y-1.5 sm:space-y-2 pt-2 border-t border-[#F3F4F6] text-xs text-[#4B5563]">
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                        <span>Verifikasi & Approval Transaksi</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                        <span>Impor Peserta via CSV/Excel</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                        <span>Pengaturan QRIS Statis Event</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <Button
-                    id="portal-card-admin"
-                    onClick={() => navigate("/admin/login")}
-                    className="w-full mt-4 sm:mt-6 bg-[#191C21] hover:bg-red-600 text-white font-bold text-xs h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between shadow-md"
-                  >
-                    <span>Masuk ke Dashboard Admin</span>
+                    <span>Masuk Sekarang</span>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </Card>
@@ -564,21 +461,7 @@ export default function LandingPage() {
 
             <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold text-[#4B5563] flex-wrap justify-center">
               <Link to="/login" className="hover:text-brand transition-colors">
-                Portal Peserta
-              </Link>
-              <span>·</span>
-              <Link
-                to="/photographer/login"
-                className="hover:text-blue-600 transition-colors"
-              >
-                Portal Fotografer
-              </Link>
-              <span>·</span>
-              <Link
-                to="/admin/login"
-                className="hover:text-red-600 transition-colors"
-              >
-                Portal Admin
+                Login
               </Link>
             </div>
           </div>

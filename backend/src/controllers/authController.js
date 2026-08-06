@@ -468,7 +468,143 @@ const updateUser = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/auth/login
+ * Unified Login — single endpoint for all roles.
+ * Accepts { username, password }.
+ *   - Peserta: username = Nama Lengkap, password = Nomor BIB (no hash).
+ *   - Admin / Super Admin: username + bcrypt password.
+ *   - Photographer: username + bcrypt password.
+ */
+const unifiedLogin = async (req, res) => {
+  try {
+    const { username, password, eventId } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username dan Password wajib diisi.' });
+    }
+
+    const trimmedUser = username.trim();
+    const trimmedPass = password.trim();
+
+    // ── Step 1: Try participant login (name + bib_number, no hash) ──
+    const userResult = await query(
+      `SELECT u.*, e.title as event_name, e.event_date
+       FROM users u
+       LEFT JOIN events e ON u.event_id = e.id
+       WHERE LOWER(TRIM(u.name)) = LOWER($1) AND LOWER(TRIM(u.bib_number)) = LOWER($2) AND u.role = 'user'`,
+      [trimmedUser, trimmedPass]
+    );
+
+    if (userResult.rows.length > 0) {
+      // If participant exists in multiple events and no specific eventId is passed yet
+      if (userResult.rows.length > 1 && !eventId) {
+        const eventsList = userResult.rows.map((row) => ({
+          eventId: row.event_id,
+          eventName: row.event_name || `Event #${row.event_id}`,
+          eventDate: row.event_date || null,
+          userId: row.id,
+          bibNumber: row.bib_number,
+        }));
+        return res.json({
+          success: true,
+          selectEventRequired: true,
+          events: eventsList,
+          user: { name: userResult.rows[0].name, bibNumber: userResult.rows[0].bib_number },
+        });
+      }
+
+      // If specific eventId passed OR only 1 event match exists
+      let selectedUser = userResult.rows[0];
+      if (eventId) {
+        const matched = userResult.rows.find((row) => Number(row.event_id) === Number(eventId));
+        if (matched) selectedUser = matched;
+      }
+
+      const availableEvents = userResult.rows.map((row) => ({
+        eventId: row.event_id,
+        eventName: row.event_name || `Event #${row.event_id}`,
+        eventDate: row.event_date || null,
+        userId: row.id,
+        bibNumber: row.bib_number,
+      }));
+
+      const token = buildJwt(selectedUser);
+      return res.json({
+        success: true,
+        token,
+        availableEvents,
+        user: {
+          id: selectedUser.id,
+          name: selectedUser.name,
+          bibNumber: selectedUser.bib_number,
+          role: selectedUser.role,
+          eventId: selectedUser.event_id,
+          eventName: selectedUser.event_name,
+        },
+      });
+    }
+
+    // ── Step 2: Try admin / super_admin login (username + password hash) ──
+    const adminResult = await query(
+      `SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND role IN ('super_admin', 'admin')`,
+      [trimmedUser]
+    );
+    const adminUser = adminResult.rows[0] || null;
+    const adminHash = adminUser ? adminUser.password_hash : DUMMY_HASH;
+    const adminMatch = await bcrypt.compare(trimmedPass, adminHash);
+
+    if (adminUser && adminMatch) {
+      const token = buildJwt(adminUser);
+      return res.json({
+        success: true,
+        token,
+        user: {
+          id: adminUser.id,
+          name: adminUser.name,
+          username: adminUser.username,
+          role: adminUser.role,
+          eventId: adminUser.event_id,
+        },
+      });
+    }
+
+    // ── Step 3: Try photographer login (username + password hash) ──
+    const photoResult = await query(
+      `SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND role = 'photographer'`,
+      [trimmedUser]
+    );
+    const photoUser = photoResult.rows[0] || null;
+    const photoHash = photoUser ? photoUser.password_hash : DUMMY_HASH;
+    const photoMatch = await bcrypt.compare(trimmedPass, photoHash);
+
+    if (photoUser && photoMatch) {
+      const token = buildJwt(photoUser);
+      return res.json({
+        success: true,
+        token,
+        user: {
+          id: photoUser.id,
+          name: photoUser.name,
+          username: photoUser.username,
+          role: photoUser.role,
+          eventId: photoUser.event_id,
+        },
+      });
+    }
+
+    // ── All steps failed ──
+    return res.status(401).json({
+      success: false,
+      message: 'Username atau Password tidak valid. Pastikan data yang Anda masukkan sudah benar.',
+    });
+  } catch (error) {
+    console.error('Unified Login Error:', error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+  }
+};
+
 module.exports = {
+  unifiedLogin,
   loginUser,
   loginAdmin,
   loginPhotographer,

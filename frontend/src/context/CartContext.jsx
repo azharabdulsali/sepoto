@@ -62,7 +62,7 @@ export const CartProvider = ({ children }) => {
   const syncApprovedPhotos = useCallback(async () => {
     if (!currentUser || currentUser.role !== 'user') return;
     try {
-      const res = await api.getUserTransactions();
+      const res = await api.getMyTransactions();
       if (res.success && Array.isArray(res.transactions)) {
         const approvedPhotoIds = new Set();
         res.transactions.forEach((tx) => {

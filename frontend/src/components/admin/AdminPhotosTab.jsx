@@ -404,10 +404,10 @@ export default function AdminPhotosTab({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center justify-between p-3.5 bg-brand/5 border border-brand/20 rounded-2xl shadow-xs"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 bg-brand/5 border border-brand/20 rounded-2xl shadow-xs"
           >
-            <div className="flex items-center gap-2.5">
-              <Badge className="bg-brand text-white font-bold text-xs px-3 py-1 rounded-full">
+            <div className="flex items-center justify-between sm:justify-start gap-2.5">
+              <Badge className="bg-brand text-white font-bold text-xs px-3 py-1 rounded-full shrink-0">
                 {selectedIds.size} Foto Terpilih
               </Badge>
               <span className="text-xs text-gray-600 hidden sm:inline font-medium">
@@ -415,19 +415,19 @@ export default function AdminPhotosTab({
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setSelectedIds(new Set())}
-                className="h-9 text-xs font-bold border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl"
+                className="flex-1 sm:flex-initial h-9 text-xs font-bold border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl whitespace-nowrap"
               >
                 Batalkan Pilihan
               </Button>
               <Button
                 size="sm"
                 onClick={() => setIsBulkOpen(true)}
-                className="h-9 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-initial h-9 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl gap-1.5 shadow-sm whitespace-nowrap"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 <span>Edit ({selectedIds.size})</span>
@@ -436,7 +436,7 @@ export default function AdminPhotosTab({
                 size="sm"
                 variant="destructive"
                 onClick={() => setDeleteBulkConfirm(true)}
-                className="h-9 text-xs font-bold rounded-xl px-3 gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-initial h-9 text-xs font-bold rounded-xl px-3 gap-1.5 shadow-sm whitespace-nowrap"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Hapus ({selectedIds.size})</span>

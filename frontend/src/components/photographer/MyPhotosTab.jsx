@@ -357,10 +357,10 @@ export default function MyPhotosTab({ onPhotosChange }) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="sticky top-16 z-30 bg-[#191C21]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl text-white my-2"
+            className="sticky top-16 z-30 bg-[#191C21]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-2xl text-white my-2"
           >
-            <div className="flex items-center gap-2">
-              <Badge className="bg-brand text-white font-bold font-bib text-xs px-2.5 py-0.5">
+            <div className="flex items-center justify-between sm:justify-start gap-2">
+              <Badge className="bg-brand text-white font-bold font-bib text-xs px-2.5 py-0.5 shrink-0">
                 {selected.size} Foto Terpilih
               </Badge>
               <span className="text-xs text-gray-300 hidden md:inline">
@@ -368,19 +368,19 @@ export default function MyPhotosTab({ onPhotosChange }) {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setSelected(new Set())}
-                className="h-9 text-xs font-bold border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl"
+                className="flex-1 sm:flex-initial h-9 text-xs font-bold border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl whitespace-nowrap"
               >
                 Batalkan Pilihan
               </Button>
               <Button
                 size="sm"
                 onClick={() => setIsBulkOpen(true)}
-                className="h-9 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-initial h-9 text-xs font-bold bg-brand hover:bg-[#C2410C] text-white rounded-xl gap-1.5 shadow-sm whitespace-nowrap"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 <span>Edit ({selected.size})</span>
@@ -390,7 +390,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
                 onClick={requestDeleteBulk}
                 variant="destructive"
                 size="sm"
-                className="h-9 text-xs font-bold rounded-xl px-3 gap-1.5 shadow-sm"
+                className="flex-1 sm:flex-initial h-9 text-xs font-bold rounded-xl px-3 gap-1.5 shadow-sm whitespace-nowrap"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Hapus ({selected.size})</span>

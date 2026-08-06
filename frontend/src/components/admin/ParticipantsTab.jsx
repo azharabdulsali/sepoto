@@ -322,15 +322,15 @@ export default function ParticipantsTab({
           </motion.div>
           <Button
             variant="ghost"
-            asChild
+            render={
+              <a href="#" onClick={(e) => e.preventDefault()}>
+                <Download className="w-4 h-4 mr-1.5" />
+                Template CSV
+              </a>
+            }
             id="download-template"
             className="text-xs font-semibold text-[#4B5563] hover:text-brand px-4 h-11"
-          >
-            <a href="#" onClick={(e) => e.preventDefault()}>
-              <Download className="w-4 h-4 mr-1.5" />
-              Template CSV
-            </a>
-          </Button>
+          />
           <input
             ref={csvRef}
             type="file"

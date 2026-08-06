@@ -55,7 +55,7 @@ const getPhotos = async (req, res) => {
 const uploadPhotos = async (req, res) => {
   try {
     const photographerId = req.user.id; // Dari JWT token
-    const { price = 0, bibTags = '', orientation = 'portrait' } = req.body;
+    const { price = 0, bibTags = '', orientation = 'portrait', eventId } = req.body;
     const photoPrice = Number(price) || 0;
     const files = req.files;
 
@@ -63,8 +63,8 @@ const uploadPhotos = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Tidak ada file foto yang diunggah.' });
     }
 
-    // Ambil event_id fotografer (dari token atau tabel users)
-    let photoEventId = req.user?.eventId;
+    // Ambil event_id fotografer (dari body, token, atau tabel users)
+    let photoEventId = eventId ? Number(eventId) : req.user?.eventId;
     if (!photoEventId) {
       const uRes = await query('SELECT event_id FROM users WHERE id = $1', [photographerId]);
       photoEventId = uRes.rows[0]?.event_id;

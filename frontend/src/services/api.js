@@ -59,6 +59,13 @@ export async function fetchApiMultipart(endpoint, options = {}) {
 
 export const api = {
   // ─── Auth API ──────────────────────────────────────────────────────────
+  loginUnified: (username, password, eventId = null) =>
+    fetchApi('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, eventId }),
+    }),
+
+  // Legacy login endpoints (kept for backward compatibility)
   loginUser: (name, bibNumber) =>
     fetchApi('/auth/login-user', {
       method: 'POST',
@@ -207,6 +214,7 @@ export const api = {
   getTransactions: (eventId = '') => fetchApi(`/transactions${eventId ? `?eventId=${eventId}` : ''}`),
 
   getMyTransactions: () => fetchApi('/transactions/my'),
+  getUserTransactions: () => fetchApi('/transactions/my'),
 
   updateTransactionStatus: (id, status) =>
     fetchApi(`/transactions/${id}/status`, {
