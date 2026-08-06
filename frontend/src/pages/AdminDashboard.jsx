@@ -228,6 +228,7 @@ export default function AdminDashboard() {
                 events={events}
                 selectedEventFilter={selectedEventFilter}
                 onEventFilterChange={(val) => setSelectedEventFilter(val)}
+                onUpdateStatus={handleUpdateStatus}
               />
             )}
             {activeTab === "payments" && (
