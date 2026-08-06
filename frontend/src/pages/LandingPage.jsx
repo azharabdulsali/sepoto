@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   User,
-  Aperture,
-  ShieldCheck,
   ArrowRight,
   Sparkles,
   QrCode,
@@ -13,14 +11,33 @@ import {
   ChevronRight,
   Search,
   LogIn,
+  Calendar,
+  Trophy,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import AppShell from "../components/AppShell";
 import ProtectedPhoto from "../components/ProtectedPhoto";
 import SepotoLogo from "../components/SepotoLogo";
+import { api } from "../services/api";
 
 // ─── Animation Variants (Framer Motion) ────────────────────────────────
 const containerVariants = {
@@ -75,9 +92,54 @@ const SAMPLE_PHOTOS = [
   },
 ];
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return "Tanggal belum ditentukan";
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const [demoBib, setDemoBib] = useState("");
+  const [events, setEvents] = useState([]);
+  const [selectedInactiveEvent, setSelectedInactiveEvent] = useState(null);
+  const [carouselApi, setCarouselApi] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    setCurrentSlide(carouselApi.selectedScrollSnap());
+    const onSelect = () => {
+      setCurrentSlide(carouselApi.selectedScrollSnap());
+    };
+    carouselApi.on("select", onSelect);
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
+  }, [carouselApi]);
+
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        const res = await api.getAllEvents();
+        if (res.success && res.events) {
+          setEvents(res.events);
+        }
+      } catch (err) {
+        console.error("Failed to load events on landing page:", err);
+      }
+    }
+    loadEvents();
+  }, []);
 
   return (
     <AppShell>
@@ -195,7 +257,7 @@ export default function LandingPage() {
             </motion.div>
           </motion.div>
 
-          {/* ─── 2. UNIFIED LOGIN PORTAL CARD ──────────────────── */}
+          {/* ─── 2. EVENT CAROUSEL SECTION ──────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -207,78 +269,152 @@ export default function LandingPage() {
                 variant="outline"
                 className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5"
               >
-                Akses Platform
+                Event Sepoto
               </Badge>
               <h2 className="text-xl sm:text-3xl font-bold text-[#111827]">
-                Satu Pintu Masuk untuk Semua
+                Jelajahi Event Fotografi
               </h2>
               <p className="text-xs sm:text-sm text-[#4B5563] mt-1">
-                Peserta, Fotografer, dan Admin — login di satu tempat yang sama.
+                Pilih event yang aktif untuk masuk ke portal login atau lihat event yang telah selesai.
               </p>
             </div>
 
-            <div className="max-w-lg mx-auto px-2">
-              <motion.div
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-brand/50 shadow-md hover:shadow-2xl hover:shadow-orange-900/10 transition-all rounded-2xl sm:rounded-3xl overflow-hidden p-5 sm:p-7 flex flex-col justify-between group relative">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 gradient-brand" />
+            <div className="max-w-3xl mx-auto px-1.5 sm:px-4 relative group">
+              {/* Outer Ambient Glow */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-orange-400/20 via-amber-400/15 to-orange-500/20 rounded-[28px] sm:rounded-[36px] blur-xl opacity-60 pointer-events-none" />
 
-                  <div className="space-y-4 pt-1">
-                    <div className="flex items-center justify-between">
-                      <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-brand/10 text-brand flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-colors shadow-sm">
-                        <LogIn className="w-5 h-5 sm:w-6 sm:h-6" />
-                      </div>
-                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-brand/10 text-brand border-brand/20">
-                        Universal Login
-                      </Badge>
-                    </div>
+              {events.length > 0 ? (
+                <div className="bg-[#F9FAFB]/95 border border-[#E5E7EB] rounded-[24px] sm:rounded-[32px] p-3.5 sm:p-8 shadow-xl shadow-gray-200/50 backdrop-blur-xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600" />
+                  
+                  {/* Decorative ambient internal light */}
+                  <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-32 bg-orange-400/10 rounded-full blur-3xl pointer-events-none" />
 
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold text-[#111827]">
-                        Masuk ke Sepoto
-                      </h3>
-                      <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
-                        Semua pengguna — peserta event, fotografer, maupun admin — dapat login dengan akun masing-masing di satu halaman.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#F3F4F6]">
-                      <div className="flex items-center gap-2.5 p-2.5 bg-brand/5 rounded-xl">
-                        <User className="w-4 h-4 text-brand shrink-0" />
-                        <div>
-                          <p className="text-xs font-bold text-[#111827]">Peserta</p>
-                          <p className="text-[10px] text-[#4B5563]">Nama & BIB</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2.5 p-2.5 bg-blue-50 rounded-xl">
-                        <Aperture className="w-4 h-4 text-blue-600 shrink-0" />
-                        <div>
-                          <p className="text-xs font-bold text-[#111827]">Fotografer</p>
-                          <p className="text-[10px] text-[#4B5563]">Username & Pass</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2.5 p-2.5 bg-red-50 rounded-xl">
-                        <ShieldCheck className="w-4 h-4 text-red-600 shrink-0" />
-                        <div>
-                          <p className="text-xs font-bold text-[#111827]">Admin</p>
-                          <p className="text-[10px] text-[#4B5563]">Username & Pass</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button
-                    id="portal-card-login"
-                    onClick={() => navigate("/login")}
-                    className="w-full mt-5 sm:mt-6 bg-[#191C21] hover:bg-brand text-white font-bold text-xs h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between shadow-md"
+                  <Carousel
+                    setApi={setCarouselApi}
+                    opts={{
+                      align: "center",
+                      loop: true,
+                    }}
+                    plugins={[
+                      Autoplay({
+                        delay: 4500,
+                        stopOnInteraction: false,
+                      }),
+                    ]}
+                    className="w-full relative px-0 sm:px-12"
                   >
-                    <span>Masuk Sekarang</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </Card>
-              </motion.div>
+                    <CarouselContent>
+                      {events.map((evt) => {
+                        const isActive = evt.isActive ?? evt.is_active;
+                        const eventDateFormatted = formatDate(evt.eventDate || evt.event_date);
+                        return (
+                          <CarouselItem
+                            key={evt.id}
+                            className="basis-full flex justify-center py-1 sm:py-2 px-1 sm:px-0"
+                          >
+                            <motion.div
+                              whileHover={{ y: -4, scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                              transition={{ duration: 0.2 }}
+                              onClick={() => {
+                                if (isActive) {
+                                  navigate("/login", { state: { selectedEventId: evt.id } });
+                                } else {
+                                  setSelectedInactiveEvent(evt);
+                                }
+                              }}
+                              className="w-full max-w-[340px] sm:max-w-md cursor-pointer"
+                            >
+                              {/* Sleek Dark Event Card */}
+                              <Card className="h-full bg-gradient-to-b from-[#181B22] to-[#12141A] border border-white/10 hover:border-brand/60 shadow-2xl hover:shadow-orange-950/30 transition-all rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col justify-between group/card relative overflow-hidden">
+                                <div className="space-y-3 sm:space-y-4">
+                                  {/* Top Header Row: Icon + Badge Status */}
+                                  <div className="flex items-center justify-between">
+                                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover/card:scale-105 transition-transform shrink-0">
+                                      <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
+                                    </div>
+                                    {isActive ? (
+                                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)] px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider">
+                                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                        EVENT AKTIF
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-white/5 text-gray-400 border border-white/10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider">
+                                        EVENT SELESAI
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  {/* Event Name & Date */}
+                                  <div className="pt-1 sm:pt-2">
+                                    <h3 className="text-lg sm:text-2xl font-bold text-white group-hover/card:text-amber-400 transition-colors leading-snug line-clamp-2">
+                                      {evt.title || evt.name}
+                                    </h3>
+                                    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/5 text-[11px] sm:text-xs text-gray-300 mt-2 sm:mt-3 font-medium">
+                                      <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand shrink-0" />
+                                      <span>{eventDateFormatted}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Action Button CTA */}
+                                <Button
+                                  variant={isActive ? "default" : "outline"}
+                                  className={`w-full mt-5 sm:mt-6 font-bold text-xs sm:text-sm h-11 sm:h-13 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 sm:px-5 shadow-lg ${
+                                    isActive
+                                      ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25"
+                                      : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
+                                  }`}
+                                >
+                                  <span>{isActive ? "Masuk Portal Event" : "Lihat Informasi Event"}</span>
+                                  {isActive ? (
+                                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/card:translate-x-1 transition-transform" />
+                                  ) : (
+                                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                                  )}
+                                </Button>
+                              </Card>
+                            </motion.div>
+                          </CarouselItem>
+                        );
+                      })}
+                    </CarouselContent>
+                    
+                    {/* Desktop Only Navigation Buttons (hidden on mobile to prevent overlapping card text) */}
+                    <CarouselPrevious className="hidden sm:flex left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white hover:bg-brand text-[#111827] hover:text-white border border-[#E5E7EB] hover:border-brand z-20 transition-all shadow-md hover:scale-110 active:scale-95" />
+                    <CarouselNext className="hidden sm:flex right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white hover:bg-brand text-[#111827] hover:text-white border border-[#E5E7EB] hover:border-brand z-20 transition-all shadow-md hover:scale-110 active:scale-95" />
+                  </Carousel>
+
+                  {/* Mobile Touch Navigation Dots */}
+                  {events.length > 1 && (
+                    <div className="flex sm:hidden items-center justify-center gap-2 mt-4">
+                      {events.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => carouselApi?.scrollTo(idx)}
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            idx === currentSlide
+                              ? "w-6 bg-brand shadow-sm shadow-orange-500/50"
+                              : "w-2 bg-gray-300 hover:bg-gray-400"
+                          }`}
+                          aria-label={`Lihat slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Mobile Touch Swipe Hint */}
+                  <div className="flex sm:hidden items-center justify-center gap-1.5 mt-2.5 text-[10px] text-gray-400 font-medium">
+                    <span>Swipe untuk melihat event lainnya</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-10 sm:py-12 bg-gray-50 rounded-2xl sm:rounded-3xl border border-dashed border-gray-200">
+                  <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 mx-auto mb-2 sm:mb-3" />
+                  <p className="text-xs sm:text-sm font-semibold text-gray-600">Belum ada event terdaftar</p>
+                </div>
+              )}
             </div>
           </motion.div>
         </section>
@@ -466,6 +602,56 @@ export default function LandingPage() {
             </div>
           </div>
         </footer>
+
+        {/* ─── MODAL INFORMASI EVENT TIDAK AKTIF ──────────────────── */}
+        <Dialog
+          open={Boolean(selectedInactiveEvent)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedInactiveEvent(null);
+          }}
+        >
+          <DialogContent className="bg-white border border-[#E5E7EB] rounded-3xl p-6 max-w-md shadow-2xl">
+            <DialogHeader>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-3">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <DialogTitle className="text-xl font-bold text-[#111827]">
+                Event Telah Berakhir
+              </DialogTitle>
+              <DialogDescription className="text-xs text-[#4B5563] mt-1 leading-relaxed">
+                Event <strong className="text-[#111827]">{selectedInactiveEvent?.title || selectedInactiveEvent?.name}</strong> saat ini dalam status non-aktif / telah selesai.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 my-2 text-xs space-y-2">
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Tanggal Pelaksanaan:</span>
+                <span className="font-semibold text-gray-900">
+                  {selectedInactiveEvent?.eventDate || selectedInactiveEvent?.event_date || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Status Event:</span>
+                <Badge variant="outline" className="bg-gray-200 text-gray-700 text-[10px]">
+                  SELESAI / NON-AKTIF
+                </Badge>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Aktivitas login dan unggah foto baru untuk event ini sudah ditutup. Silakan hubungi panitia atau admin jika Anda memerlukan bantuan lebih lanjut.
+            </p>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                onClick={() => setSelectedInactiveEvent(null)}
+                className="w-full bg-[#191C21] hover:bg-brand text-white font-bold text-xs h-11 rounded-xl shadow-md"
+              >
+                Saya Mengerti
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );
