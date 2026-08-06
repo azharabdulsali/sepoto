@@ -45,6 +45,17 @@ const loginUser = async (req, res) => {
 
     user = result.rows[0];
 
+    if (user.event_id) {
+      const evRes = await query('SELECT is_active, title FROM events WHERE id = $1', [user.event_id]);
+      if (evRes.rows.length > 0 && !evRes.rows[0].is_active) {
+        const evName = evRes.rows[0].title || 'ini';
+        return res.status(403).json({
+          success: false,
+          message: `Event "${evName}" saat ini dalam status non-aktif / telah berakhir. Akses login peserta & fotografer ditutup.`,
+        });
+      }
+    }
+
     const token = buildJwt(user);
 
     return res.json({
@@ -129,6 +140,17 @@ const loginPhotographer = async (req, res) => {
 
     if (!user || !isMatch) {
       return res.status(401).json({ success: false, message: 'Username atau Password tidak valid.' });
+    }
+
+    if (user.event_id) {
+      const evRes = await query('SELECT is_active, title FROM events WHERE id = $1', [user.event_id]);
+      if (evRes.rows.length > 0 && !evRes.rows[0].is_active) {
+        const evName = evRes.rows[0].title || 'ini';
+        return res.status(403).json({
+          success: false,
+          message: `Event "${evName}" saat ini dalam status non-aktif / telah berakhir. Akses login peserta & fotografer ditutup.`,
+        });
+      }
     }
 
     const token = buildJwt(user);
@@ -520,6 +542,18 @@ const unifiedLogin = async (req, res) => {
         if (matched) selectedUser = matched;
       }
 
+      // Check if event is active for participant login
+      if (selectedUser.event_id) {
+        const evRes = await query('SELECT is_active, title FROM events WHERE id = $1', [selectedUser.event_id]);
+        if (evRes.rows.length > 0 && !evRes.rows[0].is_active) {
+          const evName = evRes.rows[0].title || selectedUser.event_name || 'ini';
+          return res.status(403).json({
+            success: false,
+            message: `Event "${evName}" saat ini dalam status non-aktif / telah berakhir. Akses login peserta & fotografer ditutup.`,
+          });
+        }
+      }
+
       const availableEvents = userResult.rows.map((row) => ({
         eventId: row.event_id,
         eventName: row.event_name || `Event #${row.event_id}`,
@@ -578,6 +612,18 @@ const unifiedLogin = async (req, res) => {
     const photoMatch = await bcrypt.compare(trimmedPass, photoHash);
 
     if (photoUser && photoMatch) {
+      // Check if event is active for photographer login
+      if (photoUser.event_id) {
+        const evRes = await query('SELECT is_active, title FROM events WHERE id = $1', [photoUser.event_id]);
+        if (evRes.rows.length > 0 && !evRes.rows[0].is_active) {
+          const evName = evRes.rows[0].title || 'ini';
+          return res.status(403).json({
+            success: false,
+            message: `Event "${evName}" saat ini dalam status non-aktif / telah berakhir. Akses login peserta & fotografer ditutup.`,
+          });
+        }
+      }
+
       const token = buildJwt(photoUser);
       return res.json({
         success: true,

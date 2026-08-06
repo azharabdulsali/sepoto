@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Lock, Loader2, AlertCircle, User, LogIn, Clock, Calendar, Trophy, ChevronRight } from 'lucide-react';
+import { ArrowRight, Lock, Loader2, AlertCircle, User, LogIn, Clock, Calendar, Trophy, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,7 @@ export default function Login() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]       = useState('');
 
@@ -202,15 +203,29 @@ export default function Login() {
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
                   <Input
                     id="login-password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     required
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setError(''); }}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
+                    className="pl-10 pr-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    disabled={isLoading}
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none p-1 rounded-md z-10"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-brand" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-gray-400 hover:text-white" />
+                    )}
+                  </button>
                 </div>
               </div>
 

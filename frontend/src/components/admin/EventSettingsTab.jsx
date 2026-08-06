@@ -45,6 +45,8 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
   const qrInputRef = useRef(null);
 
   const fetchEventData = useCallback(async (evId) => {
@@ -116,11 +118,15 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadSuccess(false);
     try {
       const res = await api.uploadQrisImage(selectedEventId, file);
       if (res.success && res.qrCodeUrl) {
         setForm((f) => ({ ...f, qrCodeUrl: res.qrCodeUrl }));
-        alert("Gambar QR Code QRIS berhasil diunggah!");
+        setUploadMessage("Gambar QR Code QRIS berhasil diunggah dan diperbarui!");
+        setUploadSuccess(true);
+        if (onRefreshEvents) onRefreshEvents();
+        setTimeout(() => setUploadSuccess(false), 4000);
       } else {
         alert(res.message || "Gagal mengunggah QRIS.");
       }
@@ -304,6 +310,36 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
         onSubmit={handleSave}
         className="space-y-4.5"
       >
+        {uploadSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Alert className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div>
+                  <AlertTitle className="text-xs font-bold text-emerald-900">
+                    Unggah QRIS Berhasil!
+                  </AlertTitle>
+                  <AlertDescription className="text-xs mt-0.5 text-emerald-700">
+                    {uploadMessage || "Gambar QR Code QRIS pembayaran telah berhasil diunggah dan diperbarui."}
+                  </AlertDescription>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setUploadSuccess(false)}
+                className="h-7 w-7 text-emerald-600 hover:bg-emerald-100 rounded-full"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </Alert>
+          </motion.div>
+        )}
+
         {saved && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}

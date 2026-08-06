@@ -57,7 +57,7 @@ const getActiveEvent = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, eventDate, qrCodeUrl } = req.body;
+    const { title, eventDate, qrCodeUrl, isActive } = req.body;
 
     const fields = [];
     const values = [];
@@ -74,6 +74,10 @@ const updateEvent = async (req, res) => {
     if (qrCodeUrl) {
       fields.push(`qr_code_url = $${paramIndex++}`);
       values.push(qrCodeUrl);
+    }
+    if (typeof isActive === 'boolean' || isActive !== undefined) {
+      fields.push(`is_active = $${paramIndex++}`);
+      values.push(Boolean(isActive));
     }
 
     if (fields.length === 0) {

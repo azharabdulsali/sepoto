@@ -97,12 +97,15 @@ export default function TransactionsTab({
 
   const filtered = transactions.filter((t) => {
     const matchFilter = filter === "all" || t.status === filter;
-    const matchSearch =
-      !search ||
-      t.userName.toLowerCase().includes(search.toLowerCase()) ||
-      t.orderNumber.includes(search) ||
-      t.bibNumber.includes(search);
-    return matchFilter && matchSearch;
+    const q = search.trim().toLowerCase();
+    if (!q) return matchFilter;
+
+    const matchUserName = t.userName && t.userName.toLowerCase().includes(q);
+    const matchOrderNumber = t.orderNumber && t.orderNumber.toLowerCase().includes(q);
+    const matchBibNumber = t.bibNumber && String(t.bibNumber).toLowerCase().includes(q);
+    const matchTxId = t.id && String(t.id).toLowerCase().includes(q);
+
+    return matchFilter && (matchUserName || matchOrderNumber || matchBibNumber || matchTxId);
   });
 
   return (
@@ -154,7 +157,7 @@ export default function TransactionsTab({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari transaksi berdasarkan nama, nomor order, atau BIB..."
+            placeholder="Cari berdasarkan Nomor Pesanan, Nama, Nomor BIB, atau ID..."
             className="text-xs sm:text-sm font-medium text-[#111827]"
           />
           {search && (
