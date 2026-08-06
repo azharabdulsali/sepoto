@@ -24,6 +24,9 @@ router.patch('/:id', verifyToken, requireRole('super_admin', 'admin'), eventCont
 // POST /api/events/:id/qris (Super Admin & Admin: Upload QR Code QRIS)
 router.post('/:id/qris', verifyToken, requireRole('super_admin', 'admin'), upload.single('qrisImage'), eventController.uploadQris);
 
+// POST /api/events/:id/banner (Super Admin & Admin: Upload Gambar Banner Event)
+router.post('/:id/banner', verifyToken, requireRole('super_admin', 'admin'), upload.single('bannerImage'), eventController.uploadBanner);
+
 // PATCH /api/events/:id/active (Super Admin & Admin: Toggle status ON/OFF event)
 router.patch('/:id/active', verifyToken, requireRole('super_admin', 'admin'), eventController.toggleEventActive);
 

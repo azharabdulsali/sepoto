@@ -38,7 +38,9 @@ const getActiveEvent = async (req, res) => {
         id: event.id,
         title: event.title,
         eventDate: event.event_date,
-        logoUrl: event.logo_url,
+        location: event.location || null,
+        bannerUrl: event.banner_url || event.logo_url || null,
+        logoUrl: event.logo_url || null,
         qrCodeUrl: event.qr_code_url,
         isActive: event.is_active,
         createdAt: event.created_at,
@@ -57,7 +59,7 @@ const getActiveEvent = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, eventDate, qrCodeUrl, isActive } = req.body;
+    const { title, eventDate, location, bannerUrl, logoUrl, qrCodeUrl, isActive } = req.body;
 
     const fields = [];
     const values = [];
@@ -70,6 +72,18 @@ const updateEvent = async (req, res) => {
     if (eventDate) {
       fields.push(`event_date = $${paramIndex++}`);
       values.push(eventDate);
+    }
+    if (location !== undefined) {
+      fields.push(`location = $${paramIndex++}`);
+      values.push(location);
+    }
+    if (bannerUrl !== undefined) {
+      fields.push(`banner_url = $${paramIndex++}`);
+      values.push(bannerUrl);
+    }
+    if (logoUrl !== undefined) {
+      fields.push(`logo_url = $${paramIndex++}`);
+      values.push(logoUrl);
     }
     if (qrCodeUrl) {
       fields.push(`qr_code_url = $${paramIndex++}`);
@@ -135,6 +149,45 @@ const toggleEventActive = async (req, res) => {
 };
 
 /**
+ * POST /api/events/:id/banner
+ * Upload gambar banner / logo event oleh Super Admin & Event Admin
+ */
+const uploadBanner = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'Tidak ada file gambar event yang diunggah.' });
+    }
+
+    const { uploadToR2 } = require('../services/r2Service');
+    const timeId = Date.now();
+    const key = `events/banner-${id}-${timeId}.jpg`;
+    const bannerUrl = await uploadToR2(file.buffer, key, file.mimetype);
+
+    const result = await query(
+      'UPDATE events SET banner_url = $1 WHERE id = $2 RETURNING *',
+      [bannerUrl, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Event tidak ditemukan.' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Gambar event berhasil diunggah dan diperbarui!',
+      bannerUrl,
+      event: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Upload Banner Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengunggah gambar event.' });
+  }
+};
+
+/**
  * POST /api/events/:id/qris
  * Upload gambar QR Code QRIS oleh Super Admin
  */
@@ -185,7 +238,9 @@ const getAllEvents = async (req, res) => {
       id: event.id,
       title: event.title,
       eventDate: event.event_date,
-      logoUrl: event.logo_url,
+      location: event.location || null,
+      bannerUrl: event.banner_url || event.logo_url || null,
+      logoUrl: event.logo_url || null,
       qrCodeUrl: event.qr_code_url,
       isActive: event.is_active,
       createdAt: event.created_at,
@@ -204,7 +259,7 @@ const getAllEvents = async (req, res) => {
  */
 const createEvent = async (req, res) => {
   try {
-    const { title, eventDate, qrCodeUrl } = req.body;
+    const { title, eventDate, location, bannerUrl, logoUrl, qrCodeUrl } = req.body;
 
     if (!title || !title.trim() || !eventDate) {
       return res.status(400).json({ success: false, message: 'Nama Event dan Tanggal Event wajib diisi.' });
@@ -215,9 +270,9 @@ const createEvent = async (req, res) => {
       : 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SEPOTO_QRIS_DEFAULT';
 
     const result = await query(
-      `INSERT INTO events (title, event_date, qr_code_url, is_active)
-       VALUES ($1, $2, $3, TRUE) RETURNING *`,
-      [title.trim(), eventDate, defaultQr]
+      `INSERT INTO events (title, event_date, location, banner_url, logo_url, qr_code_url, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING *`,
+      [title.trim(), eventDate, location ? location.trim() : null, bannerUrl || null, logoUrl || null, defaultQr]
     );
 
     return res.json({
@@ -237,5 +292,6 @@ module.exports = {
   createEvent,
   updateEvent,
   toggleEventActive,
+  uploadBanner,
   uploadQris,
 };

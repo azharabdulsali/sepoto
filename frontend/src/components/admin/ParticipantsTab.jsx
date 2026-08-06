@@ -15,6 +15,7 @@ import {
   Lock,
   Hash,
   Settings,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,9 +51,23 @@ export default function ParticipantsTab({
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [users, setUsers] = useState([]);
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const csvRef = useRef(null);
   const [importSuccess, setImportSuccess] = useState("");
+
+  const filteredUsers = users.filter((u) => {
+    const matchRole = roleFilter === "all" || u.role === roleFilter;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return matchRole;
+
+    const matchName = u.name && u.name.toLowerCase().includes(q);
+    const matchBib = u.bibNumber && String(u.bibNumber).toLowerCase().includes(q);
+    const matchUser = u.username && u.username.toLowerCase().includes(q);
+
+    return matchRole && (matchName || matchBib || matchUser);
+  });
 
   // Shadcn Alert State untuk Feedback Pengguna
   const [actionAlert, setActionAlert] = useState(null);
@@ -342,18 +357,65 @@ export default function ParticipantsTab({
       </Card>
 
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2.5">
           <h3 className="text-sm font-bold text-[#111827]">
-            Daftar Pengguna ({users.length})
+            Daftar Pengguna ({filteredUsers.length})
           </h3>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Search Bar Input */}
+            <div className="relative w-full sm:w-56 shrink-0">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama, BIB, username..."
+                className="pl-9 pr-7 h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium shadow-xs"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Dropdown Filter Role */}
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[150px] shrink-0 shadow-xs">
+                <SelectValue placeholder="Pilih Role...">
+                  {roleFilter === "all"
+                    ? "Semua Role"
+                    : roleFilter === "user"
+                      ? "Peserta"
+                      : roleFilter === "photographer"
+                        ? "Fotografer"
+                        : roleFilter === "admin"
+                          ? "Event Admin"
+                          : "Super Admin"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                <SelectGroup>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="user">Peserta</SelectItem>
+                  <SelectItem value="photographer">Fotografer</SelectItem>
+                  <SelectItem value="admin">Event Admin</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            {/* Dropdown Filter Event (Super Admin) */}
             {isSuperAdmin && events.length > 0 && (
               <Select
                 value={String(selectedEventFilter)}
                 onValueChange={(val) => onEventFilterChange(val)}
               >
-                <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[180px] sm:w-[210px] shrink-0 shadow-xs">
+                <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[170px] shrink-0 shadow-xs">
                   <SelectValue placeholder="Pilih Event...">
                     {selectedEventFilter === "all"
                       ? "Semua Event"
@@ -391,93 +453,101 @@ export default function ParticipantsTab({
 
         {/* Mobile View */}
         <div className="sm:hidden space-y-2.5">
-          {users.map((u, i) => (
-            <Card
-              key={u.id}
-              className="bg-white border-[#E5E7EB] rounded-2xl px-3.5 py-3 flex flex-row items-center gap-3 shadow-sm"
-            >
-              <div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-brand">{i + 1}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-[#111827] truncate">
-                  {u.name}
-                </p>
-                <p className="text-[11px] font-mono text-[#9CA3AF] truncate">
-                  {u.eventTitle || "Semua Event"} ·{" "}
-                  {u.role === "user"
-                    ? "Peserta"
-                    : u.username !== "-"
-                      ? `@${u.username}`
-                      : ""}
-                </p>
-              </div>
-              <div className="text-right shrink-0 flex items-center gap-2">
-                <div className="flex flex-col items-end justify-center">
-                  {u.role === "user" ? (
-                    <>
+          {filteredUsers.length === 0 ? (
+            <Card className="bg-white border-[#E5E7EB] rounded-2xl p-6 text-center shadow-sm">
+              <p className="text-xs text-gray-500 font-medium">
+                Tidak ada pengguna yang cocok dengan pencarian atau filter.
+              </p>
+            </Card>
+          ) : (
+            filteredUsers.map((u, i) => (
+              <Card
+                key={u.id}
+                className="bg-white border-[#E5E7EB] rounded-2xl px-3.5 py-3 flex flex-row items-center gap-3 shadow-sm"
+              >
+                <div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-brand">{i + 1}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-[#111827] truncate">
+                    {u.name}
+                  </p>
+                  <p className="text-[11px] font-mono text-[#9CA3AF] truncate">
+                    {u.eventTitle || "Semua Event"} ·{" "}
+                    {u.role === "user"
+                      ? "Peserta"
+                      : u.username !== "-"
+                        ? `@${u.username}`
+                        : ""}
+                  </p>
+                </div>
+                <div className="text-right shrink-0 flex items-center gap-2">
+                  <div className="flex flex-col items-end justify-center">
+                    {u.role === "user" ? (
+                      <>
+                        <Badge
+                          variant="outline"
+                          className="font-bib text-xs font-bold text-brand border-brand/20 bg-brand/10 px-2 py-0.5 mb-0.5"
+                        >
+                          #{u.bibNumber}
+                        </Badge>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                          PESERTA
+                        </span>
+                      </>
+                    ) : (
                       <Badge
                         variant="outline"
-                        className="font-bib text-xs font-bold text-brand border-brand/20 bg-brand/10 px-2 py-0.5 mb-0.5"
+                        className={`font-semibold text-[10px] px-2 py-0.5 rounded-full ${
+                          u.role === "super_admin"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : u.role === "admin"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
                       >
-                        #{u.bibNumber}
-                      </Badge>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                        PESERTA
-                      </span>
-                    </>
-                  ) : (
-                    <Badge
-                      variant="outline"
-                      className={`font-semibold text-[10px] px-2 py-0.5 rounded-full ${
-                        u.role === "super_admin"
-                          ? "bg-purple-50 text-purple-700 border-purple-200"
+                        {u.role === "super_admin"
+                          ? "Super Admin"
                           : u.role === "admin"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}
-                    >
-                      {u.role === "super_admin"
-                        ? "Super Admin"
-                        : u.role === "admin"
-                          ? "Event Admin"
-                          : "Fotografer"}
-                    </Badge>
-                  )}
-                </div>
+                            ? "Event Admin"
+                            : "Fotografer"}
+                      </Badge>
+                    )}
+                  </div>
 
-                {/* Action Icons (Mobile) */}
-                <div className="flex items-center gap-0.5 ml-1">
-                  {(isSuperAdmin ||
-                    u.id === currentUser?.id ||
-                    (u.role !== "admin" && u.role !== "super_admin")) && (
-                    <Button
-                      onClick={() => openEditModal(u)}
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg shrink-0"
-                      title="Edit Pengguna"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                  {u.id !== currentUser?.id &&
-                    (isSuperAdmin ||
+                  {/* Action Icons (Mobile) */}
+                  <div className="flex items-center gap-0.5 ml-1">
+                    {(isSuperAdmin ||
+                      u.id === currentUser?.id ||
                       (u.role !== "admin" && u.role !== "super_admin")) && (
                       <Button
-                        onClick={() => setDeleteConfirm(u)}
+                        onClick={() => openEditModal(u)}
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
-                        title="Hapus Pengguna"
+                        className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg shrink-0"
+                        title="Edit Pengguna"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Pencil className="w-3.5 h-3.5" />
                       </Button>
                     )}
+                    {u.id !== currentUser?.id &&
+                      (isSuperAdmin ||
+                        (u.role !== "admin" && u.role !== "super_admin")) && (
+                        <Button
+                          onClick={() => setDeleteConfirm(u)}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+                          title="Hapus Pengguna"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </div>
 
         {/* Desktop View */}
@@ -503,7 +573,14 @@ export default function ParticipantsTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F3F4F6]">
-              {users.map((u) => (
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
+                    Tidak ada pengguna yang cocok dengan pencarian atau filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors">
                   <td className="px-5 py-3.5 font-bold text-[#111827]">
                     {u.name}
@@ -575,7 +652,8 @@ export default function ParticipantsTab({
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </Card>

@@ -196,6 +196,27 @@ export const api = {
     });
   },
 
+  uploadEventBanner: (eventId, file) => {
+    const formData = new FormData();
+    formData.append('bannerImage', file);
+
+    const token = localStorage.getItem('sepoto_token');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return fetch(`${API_BASE_URL}/events/${eventId}/banner`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal unggah gambar event.');
+      return data;
+    });
+  },
+
   toggleEventActive: (id, isActive) =>
     fetchApi(`/events/${id}/active`, {
       method: 'PATCH',

@@ -8,10 +8,14 @@ import {
   Loader2,
   QrCode,
   UserPlus,
+  MapPin,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -32,6 +36,8 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [newLocation, setNewLocation] = useState("");
+  const [newBannerUrl, setNewBannerUrl] = useState("");
   const [newQr, setNewQr] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -39,15 +45,19 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
   const [form, setForm] = useState({
     title: "",
     date: "",
+    location: "",
+    bannerUrl: "",
     qrCodeUrl: "",
     isActive: true,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const qrInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
 
   const fetchEventData = useCallback(async (evId) => {
     try {
@@ -64,6 +74,8 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
           setForm({
             title: ev.title || "",
             date: formattedDate,
+            location: ev.location || "",
+            bannerUrl: ev.bannerUrl || ev.logoUrl || "",
             qrCodeUrl: ev.qrCodeUrl || "",
             isActive: ev.isActive ?? true,
           });
@@ -93,12 +105,16 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
       const res = await api.createEvent({
         title: newTitle.trim(),
         eventDate: newDate,
+        location: newLocation.trim(),
+        bannerUrl: newBannerUrl.trim(),
         qrCodeUrl: newQr.trim(),
       });
       if (res.success) {
         setIsCreateModalOpen(false);
         setNewTitle("");
         setNewDate("");
+        setNewLocation("");
+        setNewBannerUrl("");
         setNewQr("");
         if (onRefreshEvents) onRefreshEvents();
         alert(`Event "${newTitle.trim()}" berhasil dibuat!`);
@@ -110,6 +126,31 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
       setCreateError("Terjadi kesalahan server saat membuat event.");
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleBannerUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingBanner(true);
+    setUploadSuccess(false);
+    try {
+      const res = await api.uploadEventBanner(selectedEventId, file);
+      if (res.success && res.bannerUrl) {
+        setForm((f) => ({ ...f, bannerUrl: res.bannerUrl }));
+        setUploadMessage("Gambar banner/logo event berhasil diunggah dan diperbarui!");
+        setUploadSuccess(true);
+        if (onRefreshEvents) onRefreshEvents();
+        setTimeout(() => setUploadSuccess(false), 4000);
+      } else {
+        alert(res.message || "Gagal mengunggah gambar event.");
+      }
+    } catch (err) {
+      console.error("Upload banner error:", err);
+      alert("Terjadi kesalahan saat unggah gambar event.");
+    } finally {
+      setIsUploadingBanner(false);
     }
   };
 
@@ -145,6 +186,8 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
       await api.updateEvent(selectedEventId, {
         title: form.title,
         eventDate: form.date,
+        location: form.location,
+        bannerUrl: form.bannerUrl,
         qrCodeUrl: form.qrCodeUrl,
       });
       await api.toggleEventActive(selectedEventId, form.isActive);
@@ -160,19 +203,24 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
   };
 
   return (
-    <div className="max-w-lg space-y-5">
+    <div className="w-full space-y-6">
       {/* Super Admin: Event Switcher & Add New Event Button */}
       {isSuperAdmin && (
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-bold text-[#111827]">
-              Pilih Event untuk Dikelola:
-            </span>
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4.5 space-y-3 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-bold text-[#111827] block">
+                Pilih Event untuk Dikelola:
+              </span>
+              <span className="text-[11px] text-[#6B7280]">
+                Pilih event dari daftar untuk memperbarui informasi, QRIS, dan status aktif.
+              </span>
+            </div>
             <Button
               id="open-create-event-modal"
               onClick={() => setIsCreateModalOpen(true)}
               size="sm"
-              className="bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-9 px-3.5 rounded-xl shadow-sm"
+              className="bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-9 px-4 rounded-xl shadow-sm shrink-0"
             >
               <UserPlus className="w-3.5 h-3.5 mr-1.5" />
               Tambah Event Baru
@@ -247,7 +295,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
                     required
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Contoh: Marathon Bandung 2026"
+                    placeholder="Contoh: Dingklik Mountain Run vol.2"
                     className="h-10 text-xs border-[#E5E7EB] rounded-xl"
                   />
                 </div>
@@ -261,6 +309,32 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
                     required
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
+                    className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    Lokasi Event (Opsional)
+                  </label>
+                  <Input
+                    type="text"
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    placeholder="Contoh: Wisata Gunung Dingklik, Tuban, Jatim"
+                    className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    URL Gambar / Banner Event (Opsional)
+                  </label>
+                  <Input
+                    type="text"
+                    value={newBannerUrl}
+                    onChange={(e) => setNewBannerUrl(e.target.value)}
+                    placeholder="Contoh: https://... (opsional)"
                     className="h-10 text-xs border-[#E5E7EB] rounded-xl"
                   />
                 </div>
@@ -305,98 +379,260 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
         )}
       </AnimatePresence>
 
+      {/* Notifications */}
+      {uploadSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Alert className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <AlertTitle className="text-xs font-bold text-emerald-900">
+                  Unggah Berhasil!
+                </AlertTitle>
+                <AlertDescription className="text-xs mt-0.5 text-emerald-700">
+                  {uploadMessage || "Data event telah berhasil diunggah dan diperbarui."}
+                </AlertDescription>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setUploadSuccess(false)}
+              className="h-7 w-7 text-emerald-600 hover:bg-emerald-100 rounded-full"
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </Alert>
+        </motion.div>
+      )}
+
+      {saved && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Alert className="bg-green-50 border border-green-200 text-green-900 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Check className="w-5 h-5 text-green-600 shrink-0" />
+              <div>
+                <AlertTitle className="text-xs font-bold">
+                  Pengaturan Berhasil Disimpan!
+                </AlertTitle>
+                <AlertDescription className="text-xs mt-0.5 opacity-90">
+                  Konfigurasi event, lokasi & banner telah diperbarui.
+                </AlertDescription>
+              </div>
+            </div>
+          </Alert>
+        </motion.div>
+      )}
+
+      {/* 2-Column Responsive Form Layout (Kiri & Kanan di Desktop, Stacked 1 Kolom di Mobile) */}
       <form
         id="event-settings-form"
         onSubmit={handleSave}
-        className="space-y-4.5"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
       >
-        {uploadSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Alert className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 shadow-sm flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-emerald-600 shrink-0" />
-                <div>
-                  <AlertTitle className="text-xs font-bold text-emerald-900">
-                    Unggah QRIS Berhasil!
-                  </AlertTitle>
-                  <AlertDescription className="text-xs mt-0.5 text-emerald-700">
-                    {uploadMessage || "Gambar QR Code QRIS pembayaran telah berhasil diunggah dan diperbarui."}
-                  </AlertDescription>
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setUploadSuccess(false)}
-                className="h-7 w-7 text-emerald-600 hover:bg-emerald-100 rounded-full"
+        {/* ── Kolom Kiri: Informasi Dasar Event & Banner ── */}
+        <Card className="bg-white border-[#E5E7EB] rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="border-b border-[#F3F4F6] pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Settings className="w-4.5 h-4.5 text-brand" />
+              <h3 className="text-sm font-bold text-[#111827]">Pengaturan Informasi Event</h3>
+            </div>
+            <Badge
+              variant="outline"
+              className={`font-bib text-[10px] uppercase px-2.5 py-0.5 rounded-full ${
+                form.isActive
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-gray-100 text-gray-600 border-gray-200"
+              }`}
+            >
+              {form.isActive ? "AKTIF" : "NON-AKTIF"}
+            </Badge>
+          </div>
+
+          <div className="space-y-4">
+            {/* Nama Event */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="event-title"
+                className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold"
               >
-                <X className="w-3.5 h-3.5" />
-              </Button>
-            </Alert>
-          </motion.div>
-        )}
+                Nama Event
+              </label>
+              <Input
+                id="event-title"
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="Masukkan nama event..."
+                className="h-11 border-[#E5E7EB] rounded-xl text-sm bg-white"
+              />
+            </div>
 
-        {saved && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Alert className="bg-green-50 border border-green-200 text-green-900 rounded-2xl p-4 shadow-sm flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-green-600 shrink-0" />
-                <div>
-                  <AlertTitle className="text-xs font-bold">
-                    Pengaturan Berhasil Disimpan!
-                  </AlertTitle>
-                  <AlertDescription className="text-xs mt-0.5 opacity-90">
-                    Konfigurasi event & QRIS telah diperbarui.
-                  </AlertDescription>
-                </div>
+            {/* Tanggal Event */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="event-date"
+                className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold"
+              >
+                Tanggal Event
+              </label>
+              <Input
+                id="event-date"
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                className="h-11 border-[#E5E7EB] rounded-xl text-sm bg-white"
+              />
+            </div>
+
+            {/* Lokasi Event */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="event-location"
+                className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold"
+              >
+                Lokasi Event (Opsional)
+              </label>
+              <div className="relative">
+                <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  id="event-location"
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                  placeholder="Contoh: Wisata gunung dingklik, Ds Ngimbang, Tuban, Jatim"
+                  className="pl-9 h-11 border-[#E5E7EB] rounded-xl text-sm bg-white"
+                />
               </div>
-            </Alert>
-          </motion.div>
-        )}
+            </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="event-title"
-            className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold"
-          >
-            Nama Event
-          </label>
-          <Input
-            id="event-title"
-            type="text"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            className="h-11 border-[#E5E7EB] rounded-xl text-sm"
-          />
-        </div>
+            {/* Gambar / Banner Event Upload Box */}
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                Gambar / Banner Event (Opsional)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                ref={bannerInputRef}
+                onChange={handleBannerUpload}
+                className="hidden"
+                id="banner-upload-input"
+              />
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="event-date"
-            className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold"
-          >
-            Tanggal Event
-          </label>
-          <Input
-            id="event-date"
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-            className="h-11 border-[#E5E7EB] rounded-xl text-sm"
-          />
-        </div>
+              {form.bannerUrl ? (
+                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-3.5 space-y-3">
+                  <div className="w-full h-36 rounded-xl overflow-hidden border border-[#E5E7EB] shadow-xs relative bg-black/5">
+                    <img
+                      src={form.bannerUrl}
+                      alt="Banner Event"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-gray-500 truncate max-w-[200px]">
+                      Gambar event terpasang
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => bannerInputRef.current?.click()}
+                      disabled={isUploadingBanner}
+                      className="text-xs font-bold border-gray-300 rounded-xl h-8 px-3 bg-white hover:bg-gray-50 shrink-0"
+                    >
+                      {isUploadingBanner ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5 mr-1.5 text-brand" />
+                      )}
+                      {isUploadingBanner ? "Mengunggah..." : "Ganti Gambar Event"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => bannerInputRef.current?.click()}
+                  className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-5 text-center hover:border-brand/40 transition-colors cursor-pointer bg-[#F9FAFB] space-y-1"
+                >
+                  {isUploadingBanner ? (
+                    <div className="py-2">
+                      <Loader2 className="w-7 h-7 text-brand animate-spin mx-auto mb-1" />
+                      <p className="text-xs font-bold text-gray-600">
+                        Mengunggah Gambar Event...
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-8 h-8 text-[#D1D5DB] mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-[#111827]">
+                        Upload Gambar / Banner Event
+                      </p>
+                      <p className="text-[11px] text-[#9CA3AF]">
+                        PNG, JPG, atau JPEG · Maks. 5MB
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
-        <div className="space-y-1.5">
-          <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
-            QR Code Pembayaran QRIS Statis
-          </label>
+            {/* Status Event Toggle Box */}
+            <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-[#111827]">Status Akses Event</p>
+                <p className="text-[11px] text-[#6B7280]">
+                  {form.isActive
+                    ? "Aktif — Peserta & fotografer dapat login dan mengakses galeri."
+                    : "Non-Aktif — Akses login peserta & fotografer ditutup."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Switch
+                  id="toggle-event-active"
+                  checked={form.isActive}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, isActive: checked }))
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <Button
+                id="save-event-settings"
+                type="submit"
+                disabled={isSaving}
+                className="w-full bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-11 rounded-xl shadow-md shadow-orange-600/20 transition-all"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Check className="w-4 h-4 mr-2" />
+                )}
+                {isSaving ? "Menyimpan Pengaturan..." : "Simpan Pengaturan Event"}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Kolom Kanan: Pengaturan Pembayaran QRIS ── */}
+        <Card className="bg-white border-[#E5E7EB] rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="border-b border-[#F3F4F6] pb-3 flex items-center gap-2">
+            <QrCode className="w-4.5 h-4.5 text-brand" />
+            <h3 className="text-sm font-bold text-[#111827]">QR Code Pembayaran QRIS Statis</h3>
+          </div>
+
+          <p className="text-xs text-[#6B7280] leading-relaxed">
+            Unggah gambar QR Code QRIS yang akan ditampilkan kepada peserta saat checkout pembayaran pesanan foto.
+          </p>
 
           <input
             type="file"
@@ -408,21 +644,21 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
           />
 
           {form.qrCodeUrl ? (
-            <div className="bg-white border-2 border-dashed border-brand/30 rounded-2xl p-4 text-center shadow-sm relative">
-              <div className="w-48 h-48 mx-auto bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2 mb-3">
+            <div className="bg-[#F9FAFB] border-2 border-dashed border-brand/30 rounded-2xl p-4 sm:p-5 text-center shadow-xs space-y-3">
+              <div className="w-48 h-48 sm:w-52 sm:h-52 mx-auto bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm flex items-center justify-center p-2">
                 <img
                   src={form.qrCodeUrl}
                   alt="Gambar QRIS Event"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center pt-1">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => qrInputRef.current?.click()}
                   disabled={isUploading}
-                  className="text-xs font-bold border-gray-300 rounded-xl h-9"
+                  className="text-xs font-bold border-gray-300 rounded-xl h-10 px-4 bg-white hover:bg-gray-50 transition-all"
                 >
                   {isUploading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
@@ -436,70 +672,29 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
           ) : (
             <div
               onClick={() => qrInputRef.current?.click()}
-              className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-6 text-center hover:border-brand/40 transition-colors cursor-pointer bg-[#F9FAFB]"
+              className="border-2 border-dashed border-[#E5E7EB] rounded-2xl p-8 text-center hover:border-brand/40 transition-colors cursor-pointer bg-[#F9FAFB] space-y-2"
             >
               {isUploading ? (
-                <div className="py-2">
-                  <Loader2 className="w-8 h-8 text-brand animate-spin mx-auto mb-2" />
+                <div className="py-4">
+                  <Loader2 className="w-9 h-9 text-brand animate-spin mx-auto mb-2" />
                   <p className="text-xs font-bold text-gray-600">
                     Mengunggah Gambar QRIS...
                   </p>
                 </div>
               ) : (
                 <>
-                  <QrCode className="w-9 h-9 text-[#D1D5DB] mx-auto mb-2" />
+                  <QrCode className="w-10 h-10 text-[#D1D5DB] mx-auto mb-2" />
                   <p className="text-sm font-semibold text-[#111827]">
                     Upload gambar QR Code QRIS
                   </p>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1">
+                  <p className="text-xs text-[#9CA3AF]">
                     PNG, JPG, atau JPEG · Maks. 5MB
                   </p>
                 </>
               )}
             </div>
           )}
-        </div>
-
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-          <div>
-            <p className="text-sm font-bold text-[#111827]">Status Event</p>
-            <p className="text-xs text-[#4B5563] mt-0.5">
-              {form.isActive
-                ? "Event sedang aktif. Peserta dapat mencari dan membeli foto."
-                : "Event non-aktif. Peserta tidak dapat mengakses galeri event."}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Switch
-              id="toggle-event-active"
-              checked={form.isActive}
-              onCheckedChange={(checked) =>
-                setForm((f) => ({ ...f, isActive: checked }))
-              }
-            />
-            <span
-              className={`text-xs font-bold font-bib ${form.isActive ? "text-brand" : "text-gray-500"}`}
-            >
-              {form.isActive ? "AKTIF" : "NON-AKTIF"}
-            </span>
-          </div>
-        </div>
-
-        <motion.div whileTap={{ scale: 0.97 }}>
-          <Button
-            id="save-event-settings"
-            type="submit"
-            disabled={isSaving}
-            className="bg-brand hover:bg-[#C2410C] text-white text-sm font-bold h-11 px-6 rounded-xl shadow-md shadow-orange-600/20"
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Check className="w-4 h-4 mr-2" />
-            )}
-            {isSaving ? "Menyimpan..." : "Simpan Pengaturan"}
-          </Button>
-        </motion.div>
+        </Card>
       </form>
     </div>
   );

@@ -14,6 +14,7 @@ import {
   Calendar,
   Trophy,
   AlertCircle,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -272,7 +273,7 @@ export default function LandingPage() {
                 Event Sepoto
               </Badge>
               <h2 className="text-xl sm:text-3xl font-bold text-[#111827]">
-                Jelajahi Event Fotografi
+                Jelajahi Event
               </h2>
               <p className="text-xs sm:text-sm text-[#4B5563] mt-1">
                 Pilih event yang aktif untuk masuk ke portal login atau lihat event yang telah selesai.
@@ -308,6 +309,9 @@ export default function LandingPage() {
                       {events.map((evt) => {
                         const isActive = evt.isActive ?? evt.is_active;
                         const eventDateFormatted = formatDate(evt.eventDate || evt.event_date);
+                        const bannerUrl = evt.bannerUrl || evt.banner_url || evt.logoUrl || evt.logo_url;
+                        const locationText = evt.location;
+
                         return (
                           <CarouselItem
                             key={evt.id}
@@ -326,55 +330,139 @@ export default function LandingPage() {
                               }}
                               className="w-full max-w-[340px] sm:max-w-md cursor-pointer"
                             >
-                              {/* Sleek Dark Event Card */}
-                              <Card className="h-full bg-gradient-to-b from-[#181B22] to-[#12141A] border border-white/10 hover:border-brand/60 shadow-2xl hover:shadow-orange-950/30 transition-all rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col justify-between group/card relative overflow-hidden">
-                                <div className="space-y-3 sm:space-y-4">
-                                  {/* Top Header Row: Icon + Badge Status */}
-                                  <div className="flex items-center justify-between">
-                                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover/card:scale-105 transition-transform shrink-0">
-                                      <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
+                              {bannerUrl ? (
+                                /* ─── Light Card Theme (With Banner Image - Following User Photo Reference) ─── */
+                                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-brand/40 shadow-xl hover:shadow-2xl transition-all rounded-2xl sm:rounded-3xl flex flex-col justify-between group/card relative overflow-hidden">
+                                  <div>
+                                    {/* Top Image Banner Section */}
+                                    <div className="relative w-full h-44 sm:h-52 bg-gray-100 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
+                                      <img
+                                        src={bannerUrl}
+                                        alt={evt.title || evt.name}
+                                        className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
+                                      />
+                                      {/* Top Dark Gradient Overlay for Badges */}
+                                      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent" />
+
+                                      {/* Top Floating Badges */}
+                                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
+                                        <Badge className="bg-white/95 text-gray-800 font-semibold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md">
+                                          Pilihan
+                                        </Badge>
+                                        {isActive ? (
+                                          <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-500 text-white shadow-md px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider font-bold">
+                                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse" />
+                                            EVENT AKTIF
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-gray-900/80 text-gray-200 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider font-bold">
+                                            EVENT SELESAI
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
+
+                                    {/* Bottom Content Section */}
+                                    <div className="p-4 sm:p-6 space-y-3">
+                                      <h3 className="text-lg sm:text-2xl font-bold text-[#111827] group-hover/card:text-brand transition-colors leading-snug line-clamp-2">
+                                        {evt.title || evt.name}
+                                      </h3>
+
+                                      {/* Location Row */}
+                                      {locationText && (
+                                        <div className="flex items-start gap-2 text-xs sm:text-sm text-[#4B5563]">
+                                          <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                          <span className="line-clamp-2">{locationText}</span>
+                                        </div>
+                                      )}
+
+                                      {/* Date Row */}
+                                      <div className="flex items-center gap-2 text-xs sm:text-sm text-[#6B7280]">
+                                        <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
+                                        <span>{eventDateFormatted}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Action CTA Button */}
+                                  <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+                                    <Button
+                                      variant={isActive ? "default" : "outline"}
+                                      className={`w-full font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 shadow-sm ${
+                                        isActive
+                                          ? "bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/20"
+                                          : "bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200"
+                                      }`}
+                                    >
+                                      <span>{isActive ? "Masuk Portal Event" : "Lihat Informasi Event"}</span>
+                                      {isActive ? (
+                                        <ChevronRight className="w-4 h-4 group-hover/card:translate-x-1 transition-transform" />
+                                      ) : (
+                                        <AlertCircle className="w-4 h-4 text-gray-400" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                </Card>
+                              ) : (
+                                /* ─── Dark Card Theme (Without Banner Image - Current Sleek Design) ─── */
+                                <Card className="h-full bg-gradient-to-b from-[#181B22] to-[#12141A] border border-white/10 hover:border-brand/60 shadow-2xl hover:shadow-orange-950/30 transition-all rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col justify-between group/card relative overflow-hidden">
+                                  <div className="space-y-3 sm:space-y-4">
+                                    {/* Top Header Row: Icon + Badge Status */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover/card:scale-105 transition-transform shrink-0">
+                                        <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
+                                      </div>
+                                      {isActive ? (
+                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)] px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider">
+                                          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                          EVENT AKTIF
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-white/5 text-gray-400 border border-white/10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider">
+                                          EVENT SELESAI
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Event Name, Location & Date */}
+                                    <div className="pt-1 sm:pt-2 space-y-2">
+                                      <h3 className="text-lg sm:text-2xl font-bold text-white group-hover/card:text-amber-400 transition-colors leading-snug line-clamp-2">
+                                        {evt.title || evt.name}
+                                      </h3>
+
+                                      {/* Location Row (if available) */}
+                                      {locationText && (
+                                        <div className="flex items-start gap-1.5 text-xs text-gray-300">
+                                          <MapPin className="w-3.5 h-3.5 text-brand shrink-0 mt-0.5" />
+                                          <span className="line-clamp-2">{locationText}</span>
+                                        </div>
+                                      )}
+
+                                      <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/5 text-[11px] sm:text-xs text-gray-300 font-medium">
+                                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand shrink-0" />
+                                        <span>{eventDateFormatted}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Action Button CTA */}
+                                  <Button
+                                    variant={isActive ? "default" : "outline"}
+                                    className={`w-full mt-5 sm:mt-6 font-bold text-xs sm:text-sm h-11 sm:h-13 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 sm:px-5 shadow-lg ${
+                                      isActive
+                                        ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25"
+                                        : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
+                                    }`}
+                                  >
+                                    <span>{isActive ? "Masuk Portal Event" : "Lihat Informasi Event"}</span>
                                     {isActive ? (
-                                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)] px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider">
-                                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                        EVENT AKTIF
-                                      </Badge>
+                                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/card:translate-x-1 transition-transform" />
                                     ) : (
-                                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-white/5 text-gray-400 border border-white/10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider">
-                                        EVENT SELESAI
-                                      </Badge>
+                                      <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                                     )}
-                                  </div>
-
-                                  {/* Event Name & Date */}
-                                  <div className="pt-1 sm:pt-2">
-                                    <h3 className="text-lg sm:text-2xl font-bold text-white group-hover/card:text-amber-400 transition-colors leading-snug line-clamp-2">
-                                      {evt.title || evt.name}
-                                    </h3>
-                                    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/5 text-[11px] sm:text-xs text-gray-300 mt-2 sm:mt-3 font-medium">
-                                      <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand shrink-0" />
-                                      <span>{eventDateFormatted}</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Action Button CTA */}
-                                <Button
-                                  variant={isActive ? "default" : "outline"}
-                                  className={`w-full mt-5 sm:mt-6 font-bold text-xs sm:text-sm h-11 sm:h-13 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 sm:px-5 shadow-lg ${
-                                    isActive
-                                      ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25"
-                                      : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
-                                  }`}
-                                >
-                                  <span>{isActive ? "Masuk Portal Event" : "Lihat Informasi Event"}</span>
-                                  {isActive ? (
-                                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/card:translate-x-1 transition-transform" />
-                                  ) : (
-                                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                                  )}
-                                </Button>
-                              </Card>
+                                  </Button>
+                                </Card>
+                              )}
                             </motion.div>
                           </CarouselItem>
                         );

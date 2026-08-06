@@ -80,6 +80,20 @@ async function initDb() {
       $$;
     `);
 
+    // Migrasi: Tambah kolom location & banner_url pada tabel events jika belum ada
+    await query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='location') THEN
+          ALTER TABLE events ADD COLUMN location TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='banner_url') THEN
+          ALTER TABLE events ADD COLUMN banner_url TEXT;
+        END IF;
+      END
+      $$;
+    `);
+
     // Drop indeks lama (global) & buat Partial Unique Index per Event untuk Nomor BIB Peserta
     await query(`DROP INDEX IF EXISTS public.idx_users_unique_bib CASCADE;`);
     await query(`DROP INDEX IF EXISTS idx_users_unique_bib CASCADE;`);
