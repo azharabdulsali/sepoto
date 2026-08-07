@@ -8,7 +8,7 @@ const { generateWatermark } = require('../utils/watermark');
  */
 const getPhotos = async (req, res) => {
   try {
-    const { bib, eventId } = req.query;
+    const { bib, eventId, page, limit } = req.query;
     let sql = `
       SELECT p.*, u.name as photographer_name 
       FROM photos p
@@ -27,7 +27,23 @@ const getPhotos = async (req, res) => {
       params.push(`%${bib}%`);
     }
 
+    // Total count query
+    const countSql = `SELECT COUNT(*) FROM (${sql}) AS count_table`;
+    const countRes = await query(countSql, params);
+    const total = parseInt(countRes.rows[0].count, 10);
+
     sql += ` ORDER BY p.id DESC`;
+
+    // Pagination LIMIT & OFFSET
+    const pageNum = page ? parseInt(page, 10) : null;
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (pageNum && limitNum) {
+      const offset = (pageNum - 1) * limitNum;
+      sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limitNum, offset);
+    }
+
     const result = await query(sql, params);
 
     const photos = result.rows.map((row) => ({
@@ -41,7 +57,16 @@ const getPhotos = async (req, res) => {
       photographerName: row.photographer_name || 'Fotografer',
     }));
 
-    return res.json({ success: true, photos });
+    const totalPages = limitNum ? Math.ceil(total / limitNum) : 1;
+
+    return res.json({
+      success: true,
+      photos,
+      total,
+      page: pageNum || 1,
+      totalPages: totalPages || 1,
+      hasMore: pageNum && limitNum ? pageNum < totalPages : false,
+    });
   } catch (error) {
     console.error('Fetch Photos Error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengambil foto galeri.' });
@@ -117,6 +142,7 @@ const uploadPhotos = async (req, res) => {
 const getMyPhotos = async (req, res) => {
   try {
     const photographerId = req.user.id;
+    const { page, limit } = req.query;
 
     let eventId = req.user?.eventId;
     if (!eventId) {
@@ -132,7 +158,23 @@ const getMyPhotos = async (req, res) => {
       params.push(eventId);
     }
 
+    // Total count
+    const countSql = `SELECT COUNT(*) FROM (${sql}) AS count_table`;
+    const countRes = await query(countSql, params);
+    const total = parseInt(countRes.rows[0].count, 10);
+
     sql += ` ORDER BY id DESC`;
+
+    // Pagination
+    const pageNum = page ? parseInt(page, 10) : null;
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (pageNum && limitNum) {
+      const offset = (pageNum - 1) * limitNum;
+      sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limitNum, offset);
+    }
+
     const result = await query(sql, params);
 
     const photos = result.rows.map((row) => ({
@@ -146,7 +188,16 @@ const getMyPhotos = async (req, res) => {
       createdAt: row.created_at,
     }));
 
-    return res.json({ success: true, photos });
+    const totalPages = limitNum ? Math.ceil(total / limitNum) : 1;
+
+    return res.json({
+      success: true,
+      photos,
+      total,
+      page: pageNum || 1,
+      totalPages: totalPages || 1,
+      hasMore: pageNum && limitNum ? pageNum < totalPages : false,
+    });
   } catch (error) {
     console.error('Get My Photos Error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengambil foto.' });

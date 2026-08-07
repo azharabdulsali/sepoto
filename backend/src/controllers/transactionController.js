@@ -109,11 +109,12 @@ const createTransaction = async (req, res) => {
 };
 
 function buildTransactionEventFilter(role, requestEventId, adminEventId) {
+  const targetEventId = (requestEventId && requestEventId !== 'all') ? requestEventId : adminEventId;
   if (role === 'admin') {
-    return { clause: ' WHERE u.event_id = $1 OR p.event_id = $1', params: [adminEventId || 1] };
+    return { clause: ' WHERE (u.event_id = $1 OR p.event_id = $1)', params: [targetEventId || 1] };
   }
   if (requestEventId && requestEventId !== 'all') {
-    return { clause: ' WHERE u.event_id = $1 OR p.event_id = $1', params: [requestEventId] };
+    return { clause: ' WHERE (u.event_id = $1 OR p.event_id = $1)', params: [requestEventId] };
   }
   return { clause: '', params: [] };
 }
@@ -170,19 +171,49 @@ const TRANSACTION_SELECT_SQL = `
  */
 const getTransactions = async (req, res) => {
   try {
-    const { eventId } = req.query;
+    const { eventId, page, limit } = req.query;
     const adminEventId = req.user?.eventId || (req.user?.id ? await resolveUserEventId(req.user.id) : null);
     const { clause, params } = buildTransactionEventFilter(req.user?.role, eventId, adminEventId);
 
-    const sql = `
+    // Total Count - Include joins for transaction_items and photos so p.event_id is valid
+    const countSql = `
+      SELECT COUNT(DISTINCT t.id)
+      FROM transactions t
+      LEFT JOIN users u ON t.user_id = u.id
+      LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
+      LEFT JOIN photos p ON p.id = ti.photo_id
+      ${clause}
+    `;
+    const countRes = await query(countSql, params);
+    const total = parseInt(countRes.rows[0].count, 10);
+
+    let sql = `
       ${TRANSACTION_SELECT_SQL}
       ${clause}
       GROUP BY t.id, u.name, u.bib_number, u.event_id, ab.name, ab.role
       ORDER BY t.id DESC
     `;
 
+    // Pagination
+    const pageNum = page ? parseInt(page, 10) : null;
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (pageNum && limitNum) {
+      const offset = (pageNum - 1) * limitNum;
+      sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limitNum, offset);
+    }
+
     const result = await query(sql, params);
-    return res.json({ success: true, transactions: result.rows.map(mapTransactionRow) });
+    const totalPages = limitNum ? Math.ceil(total / limitNum) : 1;
+
+    return res.json({
+      success: true,
+      transactions: result.rows.map(mapTransactionRow),
+      total,
+      page: pageNum || 1,
+      totalPages: totalPages || 1,
+    });
   } catch (error) {
     console.error('Fetch Transactions Error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengambil transaksi.' });
@@ -373,19 +404,99 @@ const downloadTransactionZip = async (req, res) => {
       return res.status(404).send('Tidak ada foto dalam transaksi ini.');
     }
 
-    const archiver = require('archiver');
+    const archiverModule = require('archiver');
     const { r2Client } = require('../services/r2Service');
     const { GetObjectCommand } = require('@aws-sdk/client-s3');
-    const { Readable } = require('stream');
+    const fs = require('fs');
+    const path = require('path');
 
+    // 3. Kumpulkan semua buffer foto terlebih dahulu SEBELUM menulis header HTTP response
+    const photoBuffers = [];
+    for (let i = 0; i < itemsRes.rows.length; i++) {
+      const item = itemsRes.rows[i];
+      const filename = item.original_filename || `IMG_${item.id}.jpg`;
+      let buffer = null;
+
+      // Layer 1: Coba ambil dari R2 / S3 Storage
+      try {
+        const match = (item.original_url || '').match(/(original\/[^?#]+)/);
+        const key = match
+          ? match[1]
+          : (item.original_url || '').replace(/^https?:\/\/[^\/]+\/(api\/photos\/file\/)?/, '');
+
+        if (key) {
+          const getCmd = new GetObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME || 'sepoto-photos',
+            Key: key,
+          });
+          const r2Response = await r2Client.send(getCmd);
+          const chunks = [];
+          const webStream = r2Response.Body;
+          if (typeof webStream.getReader === 'function') {
+            const reader = webStream.getReader();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(Buffer.isBuffer(value) ? value : Buffer.from(value));
+            }
+          } else {
+            for await (const chunk of webStream) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+          }
+          buffer = Buffer.concat(chunks);
+        }
+      } catch (r2Err) {
+        console.warn(`[ZIP] R2 fetch failed for photo #${item.id}:`, r2Err.message);
+      }
+
+      // Layer 2: Fallback HTTP fetch jika original_url berupa URL lengkap
+      if ((!buffer || buffer.length === 0) && item.original_url && /^https?:\/\//.test(item.original_url)) {
+        try {
+          const resp = await fetch(item.original_url);
+          if (resp.ok) {
+            const arrayBuf = await resp.arrayBuffer();
+            buffer = Buffer.from(arrayBuf);
+          }
+        } catch (httpErr) {
+          console.warn(`[ZIP] HTTP fetch fallback failed for photo #${item.id}:`, httpErr.message);
+        }
+      }
+
+      // Layer 3: Fallback Local File System
+      if ((!buffer || buffer.length === 0) && item.original_url) {
+        try {
+          const cleanPath = item.original_url.replace(/^\//, '');
+          const localPath = path.resolve(process.cwd(), cleanPath);
+          if (fs.existsSync(localPath)) {
+            buffer = fs.readFileSync(localPath);
+          }
+        } catch (fsErr) {
+          console.warn(`[ZIP] Local FS fallback failed for photo #${item.id}:`, fsErr.message);
+        }
+      }
+
+      if (buffer && buffer.length > 0) {
+        photoBuffers.push({ buffer, filename });
+      }
+    }
+
+    if (photoBuffers.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal mengambil berkas foto dari penyimpanan server.',
+      });
+    }
+
+    // 4. Kirim header ZIP setelah buffer terbukti valid
     const zipName = `${tx.order_number || `SEPOTO-TX-${transactionId}`}.zip`;
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
 
-    // Gunakan level kompresi rendah (0 = store) supaya ZIP lebih cepat dan stabil
-    const archive = archiver('zip', { zlib: { level: 0 } });
+    const archive = typeof archiverModule === 'function'
+      ? archiverModule('zip', { zlib: { level: 5 } })
+      : new archiverModule.ZipArchive({ zlib: { level: 5 } });
 
-    // Jika archiver error, tutup response agar tidak hang
     archive.on('error', (err) => {
       console.error('Archiver error:', err);
       if (!res.headersSent) res.status(500).send('Gagal membuat ZIP.');
@@ -393,60 +504,8 @@ const downloadTransactionZip = async (req, res) => {
 
     archive.pipe(res);
 
-    // Kumpulkan semua foto dari R2 TERLEBIH DAHULU agar archive tidak finalize sebelum selesai
-    const photoBuffers = [];
-    for (let i = 0; i < itemsRes.rows.length; i++) {
-      const item = itemsRes.rows[i];
-      const match = (item.original_url || '').match(/(original\/[^?#]+)/);
-      const key = match
-        ? match[1]
-        : (item.original_url || '').replace(/^https?:\/\/[^\/]+\/(api\/photos\/file\/)?/, '');
-      const filename = item.original_filename || `IMG_${item.id}.jpg`;
-
-      try {
-        const getCmd = new GetObjectCommand({
-          Bucket: process.env.R2_BUCKET_NAME || 'sepoto-photos',
-          Key: key,
-        });
-        const r2Response = await r2Client.send(getCmd);
-
-        // Konversi Web ReadableStream / AWS SDK body ke Buffer
-        // agar archiver mendapatkan data yang sudah lengkap
-        const chunks = [];
-        const webStream = r2Response.Body;
-
-        // AWS SDK v3 Body bisa berupa ReadableStream (Web) atau Node Readable
-        if (typeof webStream.getReader === 'function') {
-          // Web ReadableStream → baca chunk per chunk
-          const reader = webStream.getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            chunks.push(Buffer.isBuffer(value) ? value : Buffer.from(value));
-          }
-        } else {
-          // Node.js Readable stream
-          for await (const chunk of webStream) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-          }
-        }
-
-        const buffer = Buffer.concat(chunks);
-        photoBuffers.push({ buffer, filename });
-      } catch (err) {
-        console.error(`Gagal mengambil foto ${item.id} untuk ZIP:`, err);
-        // Lewati foto yang gagal, lanjutkan sisanya
-      }
-    }
-
-    if (photoBuffers.length === 0) {
-      archive.abort();
-      return res.status(500).send('Gagal mengambil semua foto dari penyimpanan.');
-    }
-
-    // Tambahkan buffer ke archive
     for (const { buffer, filename } of photoBuffers) {
-      archive.append(Readable.from(buffer), { name: filename });
+      archive.append(buffer, { name: filename });
     }
 
     await archive.finalize();

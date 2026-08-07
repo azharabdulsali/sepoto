@@ -17,13 +17,20 @@ export default function CartItem({ photo, onRemove }) {
       <div className="w-16 h-20 rounded-xl overflow-hidden bg-[#F3F4F6] shrink-0 border border-[#E5E7EB]">
         <img
           src={photo.watermarkedUrl}
-          alt={`Foto #${photo.id}`}
+          alt={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           loading="lazy"
         />
       </div>
 
       <div className="flex-1 min-w-0">
+        <h4
+          className="font-bold text-xs text-[#111827] truncate mb-0.5"
+          title={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
+        >
+          {photo.originalFilename || photo.original_filename || photo.title || photo.name || `Foto #${photo.id}`}
+        </h4>
+
         <div className="flex items-center gap-1.5 mb-1">
           <Camera className="w-3.5 h-3.5 text-[#4B5563] shrink-0" />
           <span className="text-xs text-[#4B5563] font-medium truncate">

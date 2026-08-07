@@ -135,18 +135,7 @@ function OrderCard({ order, currentUser }) {
   const handleDownloadAll = async () => {
     setDownloading("all");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/transactions/${order.id}/download-zip`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error("Gagal mengunduh file ZIP.");
-      }
-
-      const blob = await res.blob();
+      const blob = await api.downloadTransactionZipBlob(order.id);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -161,7 +150,7 @@ function OrderCard({ order, currentUser }) {
       });
     } catch (err) {
       console.error("Download all zip error:", err);
-      alert("Gagal mengunduh berkas ZIP transaksi.");
+      alert(err.message || "Gagal mengunduh berkas ZIP transaksi.");
     } finally {
       setDownloading(null);
     }
@@ -267,7 +256,7 @@ function OrderCard({ order, currentUser }) {
                           ? photo.originalUrl
                           : photo.watermarkedUrl
                       }
-                      alt={`Foto #${photo.id}`}
+                      alt={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
                       className="w-full h-full"
                       imgClassName="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
                     />
@@ -282,8 +271,9 @@ function OrderCard({ order, currentUser }) {
                         <AttachmentTitle
                           onClick={() => setPreviewPhoto(photo)}
                           className="text-xs font-bold text-[#111827] cursor-pointer hover:text-brand transition-colors"
+                          title={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
                         >
-                          Foto #{photo.id}
+                          {photo.originalFilename || photo.original_filename || photo.title || photo.name || `Foto #${photo.id}`}
                         </AttachmentTitle>
                         {photo.bibTags && (
                           <Badge

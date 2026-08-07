@@ -59,11 +59,18 @@ export async function fetchApiMultipart(endpoint, options = {}) {
 
 export const api = {
   // ─── Auth API ──────────────────────────────────────────────────────────
-  loginUnified: (username, password, eventId = null) =>
-    fetchApi('/auth/login', {
+  loginUnified: (payload, password = null, eventId = null) => {
+    let bodyObj = {};
+    if (typeof payload === 'object' && payload !== null) {
+      bodyObj = payload;
+    } else {
+      bodyObj = { username: payload, password, eventId };
+    }
+    return fetchApi('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password, eventId }),
-    }),
+      body: JSON.stringify(bodyObj),
+    });
+  },
 
   // Legacy login endpoints (kept for backward compatibility)
   loginUser: (name, bibNumber) =>
@@ -86,7 +93,14 @@ export const api = {
 
   getMe: () => fetchApi('/auth/me'),
 
-  getAllUsers: (eventId = '') => fetchApi(`/auth/users${eventId ? `?eventId=${eventId}` : ''}`),
+  getAllUsers: (eventId = '', page = null, limit = null) => {
+    const params = new URLSearchParams();
+    if (eventId) params.append('eventId', eventId);
+    if (page) params.append('page', page);
+    if (limit) params.append('limit', limit);
+    const q = params.toString();
+    return fetchApi(`/auth/users${q ? `?${q}` : ''}`);
+  },
 
   createUser: (data) =>
     fetchApi('/auth/users', {
@@ -105,16 +119,30 @@ export const api = {
       method: 'DELETE',
     }),
 
+  importParticipants: (data) =>
+    fetchApi('/auth/users/import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   // ─── Photos API ────────────────────────────────────────────────────────
-  getPhotos: (bib = '', eventId = '') => {
+  getPhotos: (bib = '', eventId = '', page = null, limit = null) => {
     const params = new URLSearchParams();
     if (bib) params.append('bib', bib);
     if (eventId) params.append('eventId', eventId);
+    if (page) params.append('page', page);
+    if (limit) params.append('limit', limit);
     const queryString = params.toString();
     return fetchApi(`/photos${queryString ? `?${queryString}` : ''}`);
   },
 
-  getMyPhotos: () => fetchApi('/photos/my'),
+  getMyPhotos: (page = null, limit = null) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page);
+    if (limit) params.append('limit', limit);
+    const q = params.toString();
+    return fetchApi(`/photos/my${q ? `?${q}` : ''}`);
+  },
 
   uploadPhotos: (formData) =>
     fetchApiMultipart('/photos/upload', {
@@ -232,7 +260,14 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getTransactions: (eventId = '') => fetchApi(`/transactions${eventId ? `?eventId=${eventId}` : ''}`),
+  getTransactions: (eventId = '', page = null, limit = null) => {
+    const params = new URLSearchParams();
+    if (eventId) params.append('eventId', eventId);
+    if (page) params.append('page', page);
+    if (limit) params.append('limit', limit);
+    const q = params.toString();
+    return fetchApi(`/transactions${q ? `?${q}` : ''}`);
+  },
 
   getMyTransactions: () => fetchApi('/transactions/my'),
   getUserTransactions: () => fetchApi('/transactions/my'),
@@ -264,4 +299,28 @@ export const api = {
 
   getDownloadUrl: (transactionId, photoId) =>
     fetchApi(`/transactions/${transactionId}/download/${photoId}`),
+
+  downloadTransactionZipBlob: async (transactionId) => {
+    const token = localStorage.getItem('sepoto_token');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE_URL}/transactions/${transactionId}/download-zip`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!res.ok) {
+      let errorMsg = 'Gagal mengunduh file ZIP.';
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) errorMsg = errJson.message;
+      } catch {
+        // ignore
+      }
+      throw new Error(errorMsg);
+    }
+
+    return await res.blob();
+  },
 };

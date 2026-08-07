@@ -16,6 +16,7 @@ import {
   Hash,
   Settings,
   Search,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,8 +41,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export default function ParticipantsTab({
   events = [],
@@ -57,6 +68,9 @@ export default function ParticipantsTab({
   const csvRef = useRef(null);
   const [importSuccess, setImportSuccess] = useState("");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const filteredUsers = users.filter((u) => {
     const matchRole = roleFilter === "all" || u.role === roleFilter;
     const q = searchQuery.trim().toLowerCase();
@@ -65,9 +79,13 @@ export default function ParticipantsTab({
     const matchName = u.name && u.name.toLowerCase().includes(q);
     const matchBib = u.bibNumber && String(u.bibNumber).toLowerCase().includes(q);
     const matchUser = u.username && u.username.toLowerCase().includes(q);
+    const matchBirthDate = u.birthDate && String(u.birthDate).toLowerCase().includes(q);
 
-    return matchRole && (matchName || matchBib || matchUser);
+    return matchRole && (matchName || matchBib || matchUser || matchBirthDate);
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Shadcn Alert State untuk Feedback Pengguna
   const [actionAlert, setActionAlert] = useState(null);
@@ -79,6 +97,7 @@ export default function ParticipantsTab({
   const [formEventId, setFormEventId] = useState("");
   const [formName, setFormName] = useState("");
   const [formBib, setFormBib] = useState("");
+  const [formBirthDate, setFormBirthDate] = useState("");
   const [formUsername, setFormUsername] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formError, setFormError] = useState("");
@@ -103,17 +122,109 @@ export default function ParticipantsTab({
     loadUsers();
   }, [loadUsers]);
 
+  const downloadCsvTemplate = (e) => {
+    if (e) e.preventDefault();
+    const csvContent = "Nama Lengkap,Nomor BIB,Tanggal Lahir\nBudi Santoso,1001,17/08/1995\nSiti Aminah,1002,25/12/1998\n";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "template_peserta.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleCsvImport = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setIsImporting(true);
     setImportSuccess("");
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsImporting(false);
-    setImportSuccess(
-      `File "${file.name}" berhasil diimport. 5 peserta baru ditambahkan.`,
-    );
-    e.target.value = "";
+
+    try {
+      const text = await file.text();
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (lines.length <= 1) {
+        setActionAlert({
+          type: "error",
+          title: "File Tidak Valid",
+          message: "File CSV tidak memiliki baris data peserta.",
+        });
+        setIsImporting(false);
+        return;
+      }
+
+      // Parse headers with tolerant matching
+      const headerRow = lines[0].split(",").map((h) => h.replace(/^["']|["']$/g, "").trim().toLowerCase());
+
+      let nameIdx = headerRow.findIndex((h) => h.includes("nama") || h.includes("name"));
+      let bibIdx = headerRow.findIndex((h) => h.includes("bib"));
+      let birthIdx = headerRow.findIndex((h) => h.includes("lahir") || h.includes("tgl") || h.includes("birth"));
+
+      // Fallback if headers are positional
+      if (nameIdx === -1) nameIdx = 0;
+      if (bibIdx === -1) bibIdx = 1;
+      if (birthIdx === -1) birthIdx = 2;
+
+      const participants = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map((c) => c.replace(/^["']|["']$/g, "").trim());
+        const name = cols[nameIdx] || "";
+        const bibNumber = cols[bibIdx] || "";
+        const birthDate = cols[birthIdx] || "";
+
+        if (name && bibNumber) {
+          participants.push({ name, bibNumber, birthDate });
+        }
+      }
+
+      if (participants.length === 0) {
+        setActionAlert({
+          type: "error",
+          title: "Format Data Tidak Sesuai",
+          message: "Tidak ada baris data Nama Lengkap dan Nomor BIB yang valid dalam file.",
+        });
+        setIsImporting(false);
+        return;
+      }
+
+      const targetEventId = isSuperAdmin
+        ? selectedEventFilter !== "all"
+          ? Number(selectedEventFilter)
+          : Number(events[0]?.id || 1)
+        : Number(currentUser?.eventId || 1);
+
+      const res = await api.importParticipants({
+        eventId: targetEventId,
+        participants,
+      });
+
+      if (res.success) {
+        setImportSuccess(res.message);
+        loadUsers();
+      } else {
+        setActionAlert({
+          type: "error",
+          title: "Gagal Impor Peserta",
+          message: res.message || "Terjadi kesalahan saat mengimpor data.",
+        });
+      }
+    } catch (err) {
+      console.error("CSV Import Error:", err);
+      setActionAlert({
+        type: "error",
+        title: "Error Membaca File",
+        message: "Gagal membaca isi file CSV. Pastikan format file berupa text/csv.",
+      });
+    } finally {
+      setIsImporting(false);
+      e.target.value = "";
+    }
   };
 
   const openAddModal = () => {
@@ -128,6 +239,7 @@ export default function ParticipantsTab({
     );
     setFormName("");
     setFormBib("");
+    setFormBirthDate("");
     setFormUsername("");
     setFormPassword("");
     setFormError("");
@@ -146,6 +258,7 @@ export default function ParticipantsTab({
     setFormEventId(String(u.eventId || events[0]?.id || 1));
     setFormName(u.name || "");
     setFormBib(u.bibNumber !== "-" ? u.bibNumber : "");
+    setFormBirthDate(u.birthDate && u.birthDate !== "-" ? u.birthDate : "");
     setFormUsername(u.username !== "-" ? u.username : "");
     setFormPassword("");
     setFormError("");
@@ -183,6 +296,7 @@ export default function ParticipantsTab({
         role: addRole,
         name: formName.trim(),
         bibNumber: formBib.trim(),
+        birthDate: formBirthDate.trim(),
         username: formUsername.trim(),
         password: formPassword,
         eventId: formEventId ? Number(formEventId) : undefined,
@@ -298,12 +412,19 @@ export default function ParticipantsTab({
               Import Peserta via CSV/Excel
             </h3>
             <p className="text-xs text-[#4B5563] mt-0.5 leading-relaxed">
-              Upload file CSV/Excel dengan kolom:{" "}
+              Upload file CSV/Excel khusus peserta dengan 3 kolom:{" "}
               <span className="font-bib text-brand font-bold">
                 Nama Lengkap
-              </span>{" "}
-              dan{" "}
-              <span className="font-bib text-brand font-bold">Nomor BIB</span>.
+              </span>
+              ,{" "}
+              <span className="font-bib text-brand font-bold">
+                Nomor BIB
+              </span>
+              , dan{" "}
+              <span className="font-bib text-brand font-bold">
+                Tanggal Lahir
+              </span>
+              .
             </p>
           </div>
         </div>
@@ -336,16 +457,14 @@ export default function ParticipantsTab({
             </Button>
           </motion.div>
           <Button
-            variant="ghost"
-            render={
-              <a href="#" onClick={(e) => e.preventDefault()}>
-                <Download className="w-4 h-4 mr-1.5" />
-                Template CSV
-              </a>
-            }
             id="download-template"
-            className="text-xs font-semibold text-[#4B5563] hover:text-brand px-4 h-11"
-          />
+            onClick={downloadCsvTemplate}
+            variant="ghost"
+            className="text-xs font-semibold text-[#4B5563] hover:text-brand px-4 h-11 border border-gray-200 hover:border-brand/40 rounded-xl"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            Template CSV
+          </Button>
           <input
             ref={csvRef}
             type="file"
@@ -480,6 +599,12 @@ export default function ParticipantsTab({
                         ? `@${u.username}`
                         : ""}
                   </p>
+                  {u.birthDate && u.birthDate !== "-" && (
+                    <p className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5 font-mono">
+                      <Calendar className="w-3 h-3 text-brand" />
+                      <span>{u.birthDate}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="text-right shrink-0 flex items-center gap-2">
                   <div className="flex flex-col items-end justify-center">
@@ -565,6 +690,9 @@ export default function ParticipantsTab({
                   BIB / Username
                 </th>
                 <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
+                  Tanggal Lahir
+                </th>
+                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
                   Role
                 </th>
                 <th className="text-right px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
@@ -575,12 +703,12 @@ export default function ParticipantsTab({
             <tbody className="divide-y divide-[#F3F4F6]">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
+                  <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
                     Tidak ada pengguna yang cocok dengan pencarian atau filter.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
+                paginatedUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors">
                   <td className="px-5 py-3.5 font-bold text-[#111827]">
                     {u.name}
@@ -595,6 +723,16 @@ export default function ParticipantsTab({
                       </span>
                     ) : (
                       `@${u.username}`
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5 text-xs">
+                    {u.birthDate && u.birthDate !== "-" ? (
+                      <span className="inline-flex items-center gap-1.5 text-gray-700 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg font-mono text-xs font-medium">
+                        <Calendar className="w-3.5 h-3.5 text-brand" />
+                        {u.birthDate}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs font-mono">-</span>
                     )}
                   </td>
                   <td className="px-5 py-3.5 text-xs">
@@ -657,6 +795,68 @@ export default function ParticipantsTab({
             </tbody>
           </table>
         </Card>
+
+        {/* Shadcn UI Pagination Bar */}
+        {filteredUsers.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 px-2">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>Tampilkan</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-8 px-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-brand"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>dari <strong>{filteredUsers.length}</strong> pengguna</span>
+            </div>
+
+            <Pagination className="w-auto mx-0">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .map((p, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    return (
+                      <React.Fragment key={p}>
+                        {prev && p - prev > 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            isActive={p === currentPage}
+                            onClick={() => setCurrentPage(p)}
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    );
+                  })}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
 
       {/* Dialog Modal: Tambah / Edit Pengguna */}
@@ -820,22 +1020,36 @@ export default function ParticipantsTab({
 
                 {/* Form Fields Khusus Peserta */}
                 {addRole === "user" && (
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
-                      Nomor BIB
-                    </label>
-                    <div className="relative">
-                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        type="text"
-                        required
-                        value={formBib}
-                        onChange={(e) => setFormBib(e.target.value)}
-                        placeholder="Contoh: 101, A101, atau A-101"
-                        className="pl-9 h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+                  <>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                        Nomor BIB
+                      </label>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          type="text"
+                          required
+                          value={formBib}
+                          onChange={(e) => setFormBib(e.target.value)}
+                          placeholder="Contoh: 101, A101, atau A-101"
+                          className="pl-9 h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                        Tanggal Lahir
+                      </label>
+                      <DatePicker
+                        value={formBirthDate}
+                        onChange={(val) => setFormBirthDate(val)}
+                        placeholder="Pilih Tanggal Lahir Peserta"
+                        variant="light"
                       />
                     </div>
-                  </div>
+                  </>
                 )}
 
                 {/* Form Fields Khusus Fotografer & Admin */}

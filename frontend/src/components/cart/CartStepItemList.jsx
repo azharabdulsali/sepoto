@@ -90,8 +90,11 @@ export default function CartStepItemList({
               key={photo.id}
               className="flex items-center justify-between text-xs"
             >
-              <span className="text-[#4B5563] truncate max-w-[65%]">
-                Foto #{photo.id}
+              <span
+                className="text-[#4B5563] truncate max-w-[65%]"
+                title={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
+              >
+                {photo.originalFilename || photo.original_filename || photo.title || photo.name || `Foto #${photo.id}`}
                 {photo.bibTags ? ` (BIB #${photo.bibTags})` : ""}
               </span>
               <span className="font-semibold text-[#111827]">

@@ -36,6 +36,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProtectedPhoto from "../ProtectedPhoto";
 import { useAuth } from "../../context/AuthContext";
@@ -55,6 +64,8 @@ export default function TransactionsTab({
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [loadingId, setLoadingId] = useState(null);
   const [actionConfirm, setActionConfirm] = useState(null);
   const [selectedDetailTx, setSelectedDetailTx] = useState(null);
@@ -107,6 +118,9 @@ export default function TransactionsTab({
 
     return matchFilter && (matchUserName || matchOrderNumber || matchBibNumber || matchTxId);
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-4">
@@ -269,88 +283,152 @@ export default function TransactionsTab({
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {filtered.map((t) => (
-            <Card
-              key={t.id}
-              onClick={() => setSelectedDetailTx(t)}
-              className="bg-white border-[#E5E7EB] rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-brand/40 transition-all flex flex-col justify-between cursor-pointer group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-gray-100">
-                  <span className="font-bib text-xs font-bold text-[#111827] group-hover:text-brand transition-colors">
-                    {t.orderNumber}
-                  </span>
-                  <StatusBadge status={t.status} />
-                </div>
-
-                <div className="py-3 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Pemesan:</span>
-                    <strong className="text-[#111827] font-semibold truncate max-w-[160px]">
-                      {t.userName}
-                    </strong>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Nomor BIB:</span>
-                    <Badge
-                      variant="secondary"
-                      className="font-bib text-[10px] bg-brand/10 text-brand border-0 px-2 py-0.5"
-                    >
-                      BIB #{t.bibNumber}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Jumlah Foto:</span>
-                    <span className="font-semibold text-[#111827]">
-                      {Array.isArray(t.items) ? t.items.length : t.items || 0} foto
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Waktu:</span>
-                    <span className="text-gray-600 text-[11px]">
-                      {t.createdAt}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between">
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {paginated.map((t) => (
+              <Card
+                key={t.id}
+                onClick={() => setSelectedDetailTx(t)}
+                className="bg-white border-[#E5E7EB] rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-brand/40 transition-all flex flex-col justify-between cursor-pointer group"
+              >
                 <div>
-                  <span className="text-[10px] text-gray-400 font-bib uppercase tracking-widest block">
-                    Total Bayar
-                  </span>
-                  <span className="font-bib font-bold text-base text-brand">
-                    {formatRupiah(t.total)}
-                  </span>
+                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-gray-100">
+                    <span className="font-bib text-xs font-bold text-[#111827] group-hover:text-brand transition-colors">
+                      {t.orderNumber}
+                    </span>
+                    <StatusBadge status={t.status} />
+                  </div>
+
+                  <div className="py-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Pemesan:</span>
+                      <strong className="text-[#111827] font-semibold truncate max-w-[160px]">
+                        {t.userName}
+                      </strong>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Nomor BIB:</span>
+                      <Badge
+                        variant="secondary"
+                        className="font-bib text-[10px] bg-brand/10 text-brand border-0 px-2 py-0.5"
+                      >
+                        BIB #{t.bibNumber}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Jumlah Foto:</span>
+                      <span className="font-semibold text-[#111827]">
+                        {Array.isArray(t.items) ? t.items.length : t.items || 0} foto
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Waktu:</span>
+                      <span className="text-gray-600 text-[11px]">
+                        {t.createdAt}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div
-                  className="flex items-center gap-1 text-xs font-semibold text-brand group-hover:translate-x-0.5 transition-transform"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedDetailTx(t);
-                  }}
-                >
-                  Detail
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bib uppercase tracking-widest block">
+                      Total Bayar
+                    </span>
+                    <span className="font-bib font-bold text-base text-brand">
+                      {formatRupiah(t.total)}
+                    </span>
+                  </div>
+
+                  <div
+                    className="flex items-center gap-1 text-xs font-semibold text-brand group-hover:translate-x-0.5 transition-transform"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDetailTx(t);
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
+                    Detail
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
                 </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Shadcn UI Pagination Bar */}
+          {filtered.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 px-2">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>Tampilkan</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="h-8 px-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:border-brand"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>dari <strong>{filtered.length}</strong> transaksi</span>
               </div>
-            </Card>
-          ))}
-        </div>
+
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                    .map((p, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      return (
+                        <React.Fragment key={p}>
+                          {prev && p - prev > 1 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                          <PaginationItem>
+                            <PaginationLink
+                              isActive={p === currentPage}
+                              onClick={() => setCurrentPage(p)}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        </React.Fragment>
+                      );
+                    })}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </>
       )}
 
       {/* Shadcn UI AlertDialog Konfirmasi Approve / Tolak */}

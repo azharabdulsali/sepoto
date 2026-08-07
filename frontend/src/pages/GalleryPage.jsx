@@ -402,13 +402,36 @@ export default function GalleryPage() {
     );
   }, [currentUser]);
 
-  const handleLoadMore = () => {
+  const observerTargetRef = React.useRef(null);
+
+  const handleLoadMore = React.useCallback(() => {
+    if (isBatchLoading) return;
     setIsBatchLoading(true);
     setTimeout(() => {
       setVisibleLimit((prev) => prev + PAGE_SIZE);
       setIsBatchLoading(false);
-    }, 400);
-  };
+    }, 300);
+  }, [isBatchLoading]);
+
+  // Infinite Scroll Trigger
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleLimit < filteredPhotos.length && !isBatchLoading) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(target);
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [visibleLimit, filteredPhotos.length, isBatchLoading, handleLoadMore]);
 
   return (
     <AppShell>
@@ -606,9 +629,9 @@ export default function GalleryPage() {
               </div>
             )}
 
-            {/* Tombol Load More untuk Meringankan Aplikasi */}
+            {/* Sentinel Element untuk Infinite Scroll */}
             {visibleLimit < filteredPhotos.length && (
-              <div className="mt-8 text-center">
+              <div ref={observerTargetRef} className="mt-8 text-center min-h-[60px] flex items-center justify-center">
                 <Button
                   id="load-more-photos-btn"
                   onClick={handleLoadMore}

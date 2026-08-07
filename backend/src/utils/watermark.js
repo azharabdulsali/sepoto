@@ -11,10 +11,10 @@ async function generateWatermark(inputBuffer) {
     const width = metadata.width || 1200;
     const height = metadata.height || 1600;
 
-    // Ukuran font & jarak grid proporsional sesuai dimensi gambar
-    const fontSize = Math.max(16, Math.round(Math.min(width, height) * 0.038));
-    const stepX = Math.round(width * 0.28);
-    const stepY = Math.round(height * 0.14);
+    // Ukuran font & jarak grid proporsional (font lebih kecil & grid lebih rapat)
+    const fontSize = Math.max(12, Math.round(Math.min(width, height) * 0.024));
+    const stepX = Math.round(width * 0.17);
+    const stepY = Math.round(height * 0.085);
 
     let textNodes = [];
 
@@ -46,13 +46,13 @@ async function generateWatermark(inputBuffer) {
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         <style>
           .watermark-text {
-            fill: rgba(255, 255, 255, 0.42);
+            fill: rgba(255, 255, 255, 0.45);
             stroke: rgba(0, 0, 0, 0.35);
-            stroke-width: 1.2px;
+            stroke-width: 1px;
             font-family: Arial, Helvetica, sans-serif;
             font-size: ${fontSize}px;
             font-weight: 900;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             paint-order: stroke fill;
           }
         </style>

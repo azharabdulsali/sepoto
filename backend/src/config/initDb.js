@@ -61,12 +61,13 @@ async function initDb() {
         username VARCHAR(100) UNIQUE,
         password_hash TEXT,
         bib_number VARCHAR(50),
+        birth_date VARCHAR(50),
         role VARCHAR(50) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Migrasi: Tambah kolom username & password_hash jika belum ada (backward-compatible)
+    // Migrasi: Tambah kolom username, password_hash, birth_date jika belum ada (backward-compatible)
     await query(`
       DO $$
       BEGIN
@@ -75,6 +76,9 @@ async function initDb() {
         END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password_hash') THEN
           ALTER TABLE users ADD COLUMN password_hash TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='birth_date') THEN
+          ALTER TABLE users ADD COLUMN birth_date VARCHAR(50);
         END IF;
       END
       $$;

@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import SepotoLogo from '../components/SepotoLogo';
@@ -33,9 +34,18 @@ export default function Login() {
   const navigate   = useNavigate();
   const location   = useLocation();
 
+  const [activeTab, setActiveTab] = useState('user'); // 'user' | 'admin'
+
+  // Form state for Peserta
+  const [fullName, setFullName]   = useState('');
+  const [bibNumber, setBibNumber] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+
+  // Form state for Admin & Photographer
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]       = useState('');
 
@@ -57,15 +67,27 @@ export default function Login() {
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setError('');
-    if (!username.trim() || !password.trim()) {
-      setError('Username dan Password wajib diisi.');
-      return;
+
+    let payload = {};
+    if (activeTab === 'user') {
+      if (!fullName.trim() || !bibNumber.trim() || !birthDate.trim()) {
+        setError('Nama Lengkap, Nomor BIB, dan Tanggal Lahir wajib diisi.');
+        return;
+      }
+      payload = { role: 'user', name: fullName.trim(), bibNumber: bibNumber.trim(), birthDate: birthDate.trim() };
+    } else {
+      if (!username.trim() || !password.trim()) {
+        setError('Username dan Password wajib diisi.');
+        return;
+      }
+      payload = { username: username.trim(), password: password.trim() };
     }
+
     setIsLoading(true);
     try {
-      const res = await api.loginUnified(username.trim(), password.trim());
+      const res = await api.loginUnified(payload);
       if (!res.success) {
-        setError(res.message || 'Username atau Password tidak valid.');
+        setError(res.message || 'Data login tidak valid. Coba lagi.');
         return;
       }
 
@@ -87,7 +109,11 @@ export default function Login() {
     setSelectingEventId(targetEventId);
     setError('');
     try {
-      const res = await api.loginUnified(username.trim(), password.trim(), targetEventId);
+      const payload = activeTab === 'user'
+        ? { role: 'user', name: fullName.trim(), bibNumber: bibNumber.trim(), birthDate: birthDate.trim(), eventId: targetEventId }
+        : { username: username.trim(), password: password.trim(), eventId: targetEventId };
+
+      const res = await api.loginUnified(payload);
       if (!res.success) {
         setError(res.message || 'Gagal masuk ke event ini. Coba lagi.');
         setShowEventDialog(false);
@@ -129,22 +155,50 @@ export default function Login() {
         </div>
 
         {/* Card Form */}
-        <Card className="bg-[#191C21]/95 backdrop-blur-xl border border-white/10 text-white shadow-2xl rounded-3xl overflow-hidden">
-          <CardHeader className="border-b border-white/5 pb-5 pt-6 px-6">
-            <div className="flex items-center justify-between">
+        <Card className="bg-[#191C21]/95 backdrop-blur-xl border border-white/10 text-white shadow-2xl rounded-3xl relative !overflow-visible">
+          <CardHeader className="border-b border-white/5 pb-4 pt-6 px-6">
+            <div className="flex items-center justify-between mb-2">
               <Badge className="font-bib text-[10px] tracking-widest bg-brand/10 text-brand border border-brand/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse mr-1.5" />
-                UNIVERSAL LOGIN
+                PORTAL LOGIN
               </Badge>
               <LogIn className="w-4 h-4 text-brand/60" />
             </div>
-            <div className="text-white text-xl font-bold mt-2">Masuk ke Sepoto</div>
+            <div className="text-white text-xl font-bold">Masuk ke Sepoto</div>
             <div className="text-gray-400 text-xs mt-1 leading-relaxed">
-              Peserta, Fotografer, maupun Admin — semua masuk di sini.
+              Silakan pilih kategori akun Anda untuk masuk.
             </div>
           </CardHeader>
 
-          <CardContent className="pt-6 px-6">
+          <CardContent className="pt-5 px-6">
+            {/* Tab Switcher */}
+            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-5">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('user'); setError(''); }}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                  activeTab === 'user'
+                    ? 'bg-brand text-white shadow-lg shadow-orange-600/30'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Peserta Event</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('admin'); setError(''); }}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                  activeTab === 'admin'
+                    ? 'bg-brand text-white shadow-lg shadow-orange-600/30'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Admin / Foto</span>
+              </button>
+            </div>
+
             {sessionExpired && (
               <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
                 <Alert className="bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-2xl p-3.5 shadow-sm flex items-start gap-2.5">
@@ -159,7 +213,7 @@ export default function Login() {
               </motion.div>
             )}
 
-            <form id="unified-login-form" onSubmit={handleLogin} className="space-y-4.5" noValidate>
+            <form id="unified-login-form" onSubmit={handleLogin} className="space-y-4" noValidate>
 
               {error && (
                 <motion.div
@@ -173,67 +227,151 @@ export default function Login() {
                 </motion.div>
               )}
 
-              {/* Username / Nama Lengkap */}
-              <div className="space-y-1.5">
-                <label htmlFor="login-username" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
-                  Username / Nama Lengkap
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
-                  <Input
-                    id="login-username"
-                    type="text"
-                    autoComplete="username"
-                    required
-                    value={username}
-                    onChange={(e) => { setUsername(e.target.value); setError(''); }}
-                    placeholder="admin / foto@email.com / Budi Santoso"
-                    disabled={isLoading}
-                    className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
-                  />
-                </div>
-              </div>
+              {/* ─── TAB 1: FORM PESERTA EVENT ─────────────────────────── */}
+              {activeTab === 'user' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4"
+                >
+                  {/* Nama Lengkap */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="login-fullname" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
+                      Nama Lengkap Peserta
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand/70 pointer-events-none z-10" />
+                      <Input
+                        id="login-fullname"
+                        type="text"
+                        required
+                        value={fullName}
+                        onChange={(e) => { setFullName(e.target.value); setError(''); }}
+                        placeholder="Contoh: Budi Santoso"
+                        disabled={isLoading}
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
+                      />
+                    </div>
+                  </div>
 
-              {/* Password / Nomor BIB */}
-              <div className="space-y-1.5">
-                <label htmlFor="login-password" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
-                  Password / Nomor BIB
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
-                  <Input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                    placeholder="••••••••"
-                    disabled={isLoading}
-                    className="pl-10 pr-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    disabled={isLoading}
-                    tabIndex={-1}
-                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none p-1 rounded-md z-10"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4 text-brand" />
-                    ) : (
-                      <Eye className="w-4 h-4 text-gray-400 hover:text-white" />
-                    )}
-                  </button>
-                </div>
-              </div>
+                  {/* Nomor BIB */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="login-bib" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
+                      Nomor BIB Peserta
+                    </label>
+                    <div className="relative">
+                      <Trophy className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand/70 pointer-events-none z-10" />
+                      <Input
+                        id="login-bib"
+                        type="text"
+                        required
+                        value={bibNumber}
+                        onChange={(e) => { setBibNumber(e.target.value); setError(''); }}
+                        placeholder="Contoh: 1001 atau BIB-05"
+                        disabled={isLoading}
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tanggal Lahir */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="login-birthdate" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
+                        Tanggal Lahir
+                      </label>
+                      <span className="text-[10px] text-gray-500">Pilih dari Kalender</span>
+                    </div>
+                    <DatePicker
+                      id="login-birthdate"
+                      value={birthDate}
+                      onChange={(val) => { setBirthDate(val); setError(''); }}
+                      placeholder="Pilih Tanggal Lahir"
+                      disabled={isLoading}
+                      variant="dark"
+                      position="top"
+                    />
+                   
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ─── TAB 2: FORM ADMIN & FOTOGRAFER ────────────────────── */}
+              {activeTab === 'admin' && (
+                <motion.div
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4"
+                >
+                  {/* Username */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="login-username" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
+                      Username Akun
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
+                      <Input
+                        id="login-username"
+                        type="text"
+                        autoComplete="username"
+                        required
+                        value={username}
+                        onChange={(e) => { setUsername(e.target.value); setError(''); }}
+                        placeholder="Masukkan username Anda"
+                        disabled={isLoading}
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="login-password" className="block text-[10px] font-bib uppercase tracking-widest text-gray-400">
+                      Password Akun
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        required
+                        value={password}
+                        onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                        placeholder="••••••••"
+                        disabled={isLoading}
+                        className="pl-10 pr-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 font-bib focus-visible:border-brand/60 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        disabled={isLoading}
+                        tabIndex={-1}
+                        aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none p-1 rounded-md z-10"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4 text-brand" />
+                        ) : (
+                          <Eye className="w-4 h-4 text-gray-400 hover:text-white" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
               <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
                 <Button
                   id="unified-login-submit"
                   type="submit"
-                  disabled={isLoading || !username.trim() || !password.trim()}
+                  disabled={
+                    isLoading ||
+                    (activeTab === 'user' && (!fullName.trim() || !bibNumber.trim() || !birthDate.trim())) ||
+                    (activeTab === 'admin' && (!username.trim() || !password.trim()))
+                  }
                   className="w-full h-12 bg-brand hover:bg-[#C2410C] text-white font-bold rounded-xl shadow-lg shadow-orange-600/25 gap-2 text-sm mt-2 transition-all"
                 >
                   {isLoading ? (
@@ -247,12 +385,15 @@ export default function Login() {
           </CardContent>
 
           <CardFooter className="flex-col gap-1.5 bg-white/[0.02] border-t border-white/5 py-4 px-6">
-            <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-              <strong className="text-gray-400">Peserta:</strong> Gunakan Nama Lengkap & Nomor BIB sebagai username & password.
-            </p>
-            <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-              <strong className="text-gray-400">Fotografer / Admin:</strong> Gunakan username & password akun Anda.
-            </p>
+            {activeTab === 'user' ? (
+              <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+                <strong className="text-brand">Peserta Event:</strong> Gunakan Nama Lengkap, Nomor BIB & Tanggal Lahir sesuai pendaftaran event Anda.
+              </p>
+            ) : (
+              <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+                <strong className="text-brand">Fotografer / Admin:</strong> Masuk menggunakan Username & Password terdaftar.
+              </p>
+            )}
           </CardFooter>
         </Card>
 

@@ -487,6 +487,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
                     <ProtectedPhoto
                       src={imgUrl}
                       alt={`Foto ${photo.id}`}
+                      loading="lazy"
                       className="w-full h-full"
                       imgClassName="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
                     />

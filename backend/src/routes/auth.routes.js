@@ -30,4 +30,7 @@ router.patch('/users/:id', verifyToken, requireRole('super_admin', 'admin'), aut
 // DELETE /api/auth/users/:id (Super Admin & Admin: Hapus user/fotografer)
 router.delete('/users/:id', verifyToken, requireRole('super_admin', 'admin'), authController.deleteUser);
 
+// POST /api/auth/users/import (Super Admin & Admin: Bulk import/update peserta via CSV/Excel)
+router.post('/users/import', verifyToken, requireRole('super_admin', 'admin'), authController.importParticipants);
+
 module.exports = router;
