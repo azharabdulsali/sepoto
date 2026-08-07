@@ -47,13 +47,37 @@ import PhotoPreviewModal from "./PhotoPreviewModal";
 
 export default function AdminPhotosTab({
   events = [],
+  photographers = [],
   selectedEventFilter = "all",
   onEventFilterChange,
 }) {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [photographerFilter, setPhotographerFilter] = useState("all");
   const [previewPhoto, setPreviewPhoto] = useState(null);
+
+  // Filter photographers based on selectedEventFilter (Cascading Filter)
+  const availablePhotographers = useMemo(() => {
+    if (!selectedEventFilter || selectedEventFilter === "all") {
+      return photographers;
+    }
+    return photographers.filter(
+      (p) => String(p.eventId) === String(selectedEventFilter),
+    );
+  }, [photographers, selectedEventFilter]);
+
+  // Reset photographer filter if current selection is not available in selected event
+  useEffect(() => {
+    if (
+      photographerFilter !== "all" &&
+      !availablePhotographers.some(
+        (p) => String(p.id) === String(photographerFilter),
+      )
+    ) {
+      setPhotographerFilter("all");
+    }
+  }, [selectedEventFilter, availablePhotographers, photographerFilter]);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -95,15 +119,21 @@ export default function AdminPhotosTab({
   }, [fetchPhotos]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return photos;
-    return photos.filter(
-      (p) =>
+    return photos.filter((p) => {
+      const matchPhotographer =
+        photographerFilter === "all" ||
+        String(p.photographerId) === String(photographerFilter);
+      const q = search.trim().toLowerCase();
+      if (!q) return matchPhotographer;
+
+      const matchSearch =
         (p.bibTags && p.bibTags.toLowerCase().includes(q)) ||
         (p.originalFilename && p.originalFilename.toLowerCase().includes(q)) ||
-        (p.photographerName && p.photographerName.toLowerCase().includes(q)),
-    );
-  }, [photos, search]);
+        (p.photographerName && p.photographerName.toLowerCase().includes(q));
+
+      return matchPhotographer && matchSearch;
+    });
+  }, [photos, search, photographerFilter]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filtered.length) {
@@ -353,7 +383,7 @@ export default function AdminPhotosTab({
                 onEventFilterChange && onEventFilterChange(val)
               }
             >
-              <SelectTrigger className="!h-11 w-48 sm:w-56 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
+              <SelectTrigger className="!h-11 w-44 sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
                 <SelectValue placeholder="Pilih Event...">
                   {selectedEventFilter === "all"
                     ? "Semua Event"
@@ -370,6 +400,36 @@ export default function AdminPhotosTab({
                   {events.map((ev) => (
                     <SelectItem key={ev.id} value={String(ev.id)}>
                       {ev.title}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Photographer Filter Select Dropdown */}
+          {availablePhotographers.length > 0 && (
+            <Select
+              value={photographerFilter}
+              onValueChange={setPhotographerFilter}
+            >
+              <SelectTrigger className="!h-11 w-44 sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
+                <SelectValue placeholder="Fotografer...">
+                  {photographerFilter === "all"
+                    ? "Semua Fotografer"
+                    : availablePhotographers.find(
+                        (p) => String(p.id) === String(photographerFilter),
+                      )?.name || "Fotografer..."}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                <SelectGroup>
+                  <SelectItem value="all">
+                    Semua Fotografer ({availablePhotographers.length})
+                  </SelectItem>
+                  {availablePhotographers.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
                     </SelectItem>
                   ))}
                 </SelectGroup>

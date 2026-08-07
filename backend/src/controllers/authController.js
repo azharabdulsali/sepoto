@@ -347,12 +347,12 @@ const createUserManual = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Nomor BIB wajib diisi untuk peserta.' });
       }
 
-      const checkBib = await query(
-        `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND role = 'user' AND event_id = $2`,
-        [bibNumber.trim(), finalEventId]
+      const checkDuplicate = await query(
+        `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND LOWER(TRIM(name)) = LOWER($2) AND role = 'user' AND event_id = $3`,
+        [bibNumber.trim(), name.trim(), finalEventId]
       );
-      if (checkBib.rows.length > 0) {
-        return res.status(400).json({ success: false, message: `Nomor BIB #${bibNumber.trim()} sudah terdaftar.` });
+      if (checkDuplicate.rows.length > 0) {
+        return res.status(400).json({ success: false, message: `Peserta "${name.trim()}" dengan Nomor BIB #${bibNumber.trim()} sudah terdaftar pada event ini.` });
       }
 
       const formattedBirthDate = birthDate && birthDate.trim() ? normalizeDate(birthDate.trim()) : null;
@@ -492,13 +492,16 @@ const updateUser = async (req, res) => {
       const newBib = bibNumber && bibNumber.trim() ? bibNumber.trim() : targetUser.bib_number;
       const newBirthDate = birthDate !== undefined ? (birthDate && birthDate.trim() ? normalizeDate(birthDate.trim()) : null) : targetUser.birth_date;
 
-      if (newBib.toLowerCase() !== (targetUser.bib_number || '').toLowerCase()) {
-        const checkBib = await query(
-          `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND role = 'user' AND event_id = $2 AND id != $3`,
-          [newBib, targetUser.event_id, id]
+      if (
+        newBib.toLowerCase() !== (targetUser.bib_number || '').toLowerCase() ||
+        newName.toLowerCase() !== (targetUser.name || '').toLowerCase()
+      ) {
+        const checkDuplicate = await query(
+          `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND LOWER(TRIM(name)) = LOWER($2) AND role = 'user' AND event_id = $3 AND id != $4`,
+          [newBib, newName, targetUser.event_id, id]
         );
-        if (checkBib.rows.length > 0) {
-          return res.status(400).json({ success: false, message: `Nomor BIB #${newBib} sudah terdaftar pada event ini.` });
+        if (checkDuplicate.rows.length > 0) {
+          return res.status(400).json({ success: false, message: `Peserta "${newName}" dengan Nomor BIB #${newBib} sudah terdaftar pada event ini.` });
         }
       }
 
@@ -572,7 +575,7 @@ const unifiedLogin = async (req, res) => {
 
       // Query database strictly matching bib_number and name (if name provided)
       let sql = `
-        SELECT u.*, e.title as event_name, e.event_date
+        SELECT u.*, e.title as event_name, e.event_date, e.is_active as event_is_active
         FROM users u
         LEFT JOIN events e ON u.event_id = e.id
         WHERE LOWER(TRIM(u.bib_number)) = LOWER($1) AND u.role = 'user'
@@ -606,8 +609,17 @@ const unifiedLogin = async (req, res) => {
         });
       }
 
+      // Saring hanya event yang aktif untuk peserta
+      const activeMatchedUsers = matchedUsersWithDate.filter((u) => u.event_is_active !== false);
+      if (activeMatchedUsers.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Event untuk peserta ini saat ini dalam status non-aktif / telah berakhir. Akses login peserta ditutup.',
+        });
+      }
+
       // If user had no birth_date set yet, automatically save this verified birth_date
-      for (const u of matchedUsersWithDate) {
+      for (const u of activeMatchedUsers) {
         if (!u.birth_date && trimmedBirthDate) {
           const norm = normalizeDate(trimmedBirthDate);
           await query('UPDATE users SET birth_date = $1 WHERE id = $2', [norm, u.id]);
@@ -615,26 +627,27 @@ const unifiedLogin = async (req, res) => {
         }
       }
 
-      // If participant with this Name + BIB + BirthDate exists in multiple events and no specific eventId is passed yet
-      if (matchedUsersWithDate.length > 1 && !eventId) {
-        const eventsList = matchedUsersWithDate.map((row) => ({
+      // If participant with this Name + BIB + BirthDate exists in multiple active events and no specific eventId is passed yet
+      if (activeMatchedUsers.length > 1 && !eventId) {
+        const eventsList = activeMatchedUsers.map((row) => ({
           eventId: row.event_id,
           eventName: row.event_name || `Event #${row.event_id}`,
           eventDate: row.event_date || null,
           userId: row.id,
           bibNumber: row.bib_number,
+          isActive: row.event_is_active ?? true,
         }));
         return res.json({
           success: true,
           selectEventRequired: true,
           events: eventsList,
-          user: { name: matchedUsersWithDate[0].name, bibNumber: matchedUsersWithDate[0].bib_number },
+          user: { name: activeMatchedUsers[0].name, bibNumber: activeMatchedUsers[0].bib_number },
         });
       }
 
-      let selectedUser = matchedUsersWithDate[0];
+      let selectedUser = activeMatchedUsers[0];
       if (eventId) {
-        const matched = matchedUsersWithDate.find((row) => Number(row.event_id) === Number(eventId));
+        const matched = activeMatchedUsers.find((row) => Number(row.event_id) === Number(eventId));
         if (matched) selectedUser = matched;
       }
 
@@ -844,10 +857,10 @@ const importParticipants = async (req, res) => {
 
       const birthDateNorm = normalizeDate(rawBirthDate);
 
-      // Check if participant exists for this event and bib_number
+      // Check if participant exists for this event matching both bib_number AND name
       const existing = await query(
-        `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND event_id = $2 AND role = 'user'`,
-        [bibNumber, targetEventId]
+        `SELECT id FROM users WHERE LOWER(TRIM(bib_number)) = LOWER($1) AND LOWER(TRIM(name)) = LOWER($2) AND event_id = $3 AND role = 'user'`,
+        [bibNumber, name, targetEventId]
       );
 
       if (existing.rows.length > 0) {

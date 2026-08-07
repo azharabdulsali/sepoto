@@ -32,6 +32,7 @@ import AppShell from "../components/AppShell";
 import ProtectedPhoto from "../components/ProtectedPhoto";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { buildWhatsAppUrl } from "../components/cart/cartUtils";
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat("id-ID", {
@@ -43,7 +44,7 @@ const formatRupiah = (v) =>
 const STATUS_MAP = {
   pending: {
     label: "Menunggu Verifikasi",
-    desc: "Pembayaran Anda sedang diverifikasi oleh Admin. Mohon tunggu.",
+    desc: "Pembayaran Anda sedang diverifikasi. Pesanan Anda sedang ditinjau ulang oleh Admin. Mohon tunggu.",
     icon: Clock,
     cls: "text-amber-700 bg-amber-50 border-amber-200",
   },
@@ -61,7 +62,7 @@ const STATUS_MAP = {
   },
 };
 
-function OrderCard({ order }) {
+function OrderCard({ order, currentUser, activeEvent }) {
   const [downloading, setDownloading] = useState(null);
   const [downloadSuccess, setDownloadSuccess] = useState(null);
   const [expanded, setExpanded] = useState(false);
@@ -323,6 +324,26 @@ function OrderCard({ order }) {
           )}
         </div>
 
+        {order.status === "pending" && (
+          <div className="px-4.5 pb-4 pt-2 border-t border-[#F1F5F9]">
+            <a
+              href={buildWhatsAppUrl({
+                orderNumber: order.orderNumber,
+                userName: currentUser?.name || "Peserta",
+                bibNumber: currentUser?.bibNumber || null,
+                items: order.photos || [],
+                total: order.total || 0,
+                waNumber: activeEvent?.whatsappNumber,
+              })}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs min-h-[44px] rounded-xl shadow-xs flex items-center justify-center gap-2 transition-colors px-4 py-2.5 text-center"
+            >
+              <span>Konfirmasi via WhatsApp</span>
+            </a>
+          </div>
+        )}
+
         {order.status === "rejected" && (
           <div className="px-4.5 pb-4 pt-2 border-t border-[#F1F5F9]">
             <p className="text-[11px] text-[#94A3B8] text-center">
@@ -422,13 +443,22 @@ function OrderCard({ order }) {
 export default function OrderHistory() {
   const { currentUser } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [activeEvent, setActiveEvent] = useState(null);
 
   useEffect(() => {
     async function loadOrders() {
       try {
-        const res = await api.getMyTransactions();
-        if (res.success && Array.isArray(res.transactions)) {
-          const formatted = res.transactions.map((tx) => ({
+        const [txRes, eventRes] = await Promise.all([
+          api.getMyTransactions(),
+          api.getActiveEvent(currentUser?.eventId),
+        ]);
+
+        if (eventRes.success && eventRes.event) {
+          setActiveEvent(eventRes.event);
+        }
+
+        if (txRes.success && Array.isArray(txRes.transactions)) {
+          const formatted = txRes.transactions.map((tx) => ({
             id: tx.id,
             orderNumber: tx.orderNumber,
             status: tx.status,
@@ -451,7 +481,7 @@ export default function OrderHistory() {
       }
     }
     loadOrders();
-  }, []);
+  }, [currentUser?.eventId]);
 
   const pending = orders.filter((o) => o.status === "pending").length;
   const approved = orders.filter((o) => o.status === "approved").length;
@@ -567,6 +597,7 @@ export default function OrderHistory() {
                 key={order.id}
                 order={order}
                 currentUser={currentUser}
+                activeEvent={activeEvent}
               />
             ))
           )}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   useReactTable,
@@ -74,6 +74,7 @@ import { StatusBadge } from "./StatusBadge";
 export default function OverviewTab({
   transactions = [],
   events = [],
+  photographers = [],
   selectedEventFilter = "all",
   onEventFilterChange,
   onUpdateStatus,
@@ -84,18 +85,61 @@ export default function OverviewTab({
   // Table Filters & States
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [photographerFilter, setPhotographerFilter] = useState("all");
   const [loadingId, setLoadingId] = useState(null);
   const [selectedDetailTx, setSelectedDetailTx] = useState(null);
   const [actionAlert, setActionAlert] = useState(null);
   const [actionConfirm, setActionConfirm] = useState(null);
 
+  // Filter photographers based on selectedEventFilter (Cascading Filter)
+  const availablePhotographers = useMemo(() => {
+    if (!selectedEventFilter || selectedEventFilter === "all") {
+      return photographers;
+    }
+    return photographers.filter(
+      (p) => String(p.eventId) === String(selectedEventFilter),
+    );
+  }, [photographers, selectedEventFilter]);
+
+  // Reset photographer filter if current selection is not available in selected event
+  useEffect(() => {
+    if (
+      photographerFilter !== "all" &&
+      !availablePhotographers.some(
+        (p) => String(p.id) === String(photographerFilter),
+      )
+    ) {
+      setPhotographerFilter("all");
+    }
+  }, [selectedEventFilter, availablePhotographers, photographerFilter]);
+
+  // Filter transactions by photographer
+  const filteredByPhotographer = useMemo(() => {
+    if (photographerFilter === "all") return transactions;
+    return transactions.filter(
+      (t) =>
+        Array.isArray(t.items) &&
+        t.items.some(
+          (item) => String(item.photographerId) === String(photographerFilter),
+        ),
+    );
+  }, [transactions, photographerFilter]);
+
   // Summary Metrics
-  const pending = transactions.filter((t) => t.status === "pending").length;
-  const approved = transactions.filter((t) => t.status === "approved").length;
-  const rejected = transactions.filter((t) => t.status === "rejected").length;
-  const totalRevenue = transactions
+  const pending = filteredByPhotographer.filter((t) => t.status === "pending").length;
+  const approved = filteredByPhotographer.filter((t) => t.status === "approved").length;
+  const rejected = filteredByPhotographer.filter((t) => t.status === "rejected").length;
+  const totalRevenue = filteredByPhotographer
     .filter((t) => t.status === "approved")
-    .reduce((s, t) => s + (t.total || 0), 0);
+    .reduce((s, t) => {
+      if (photographerFilter === "all") return s + (t.total || 0);
+      const photoSum = (t.items || [])
+        .filter(
+          (item) => String(item.photographerId) === String(photographerFilter),
+        )
+        .reduce((acc, item) => acc + Number(item.price || 0), 0);
+      return s + photoSum;
+    }, 0);
 
   const stats = [
     {
@@ -191,9 +235,9 @@ export default function OverviewTab({
     [selectedDetailTx, onUpdateStatus],
   );
 
-  // Data terfilter berdasarkan Status Dropdown & Global Search
+  // Data terfilter berdasarkan Status Dropdown & Global Search & Fotografer
   const filteredData = useMemo(() => {
-    return transactions.filter((t) => {
+    return filteredByPhotographer.filter((t) => {
       const matchStatus = statusFilter === "all" || t.status === statusFilter;
       const q = globalFilter.trim().toLowerCase();
       if (!q) return matchStatus;
@@ -204,7 +248,7 @@ export default function OverviewTab({
 
       return matchStatus && (matchOrder || matchName || matchBib);
     });
-  }, [transactions, statusFilter, globalFilter]);
+  }, [filteredByPhotographer, statusFilter, globalFilter]);
 
   // TanStack Table Column Definitions
   const columns = useMemo(
@@ -488,7 +532,7 @@ export default function OverviewTab({
 
             {/* Filter Status Select */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[140px] shrink-0 shadow-xs">
+              <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[130px] shrink-0 shadow-xs">
                 <SelectValue placeholder="Status...">
                   {statusFilter === "all"
                     ? "Semua Status"
@@ -508,6 +552,36 @@ export default function OverviewTab({
                 </SelectGroup>
               </SelectContent>
             </Select>
+
+            {/* Filter Fotografer Select */}
+            {availablePhotographers.length > 0 && (
+              <Select
+                value={photographerFilter}
+                onValueChange={setPhotographerFilter}
+              >
+                <SelectTrigger className="!h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium w-[160px] shrink-0 shadow-xs">
+                  <SelectValue placeholder="Fotografer...">
+                    {photographerFilter === "all"
+                      ? "Semua Fotografer"
+                      : availablePhotographers.find(
+                          (p) => String(p.id) === String(photographerFilter),
+                        )?.name || "Fotografer..."}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                  <SelectGroup>
+                    <SelectItem value="all">
+                      Semua Fotografer ({availablePhotographers.length})
+                    </SelectItem>
+                    {availablePhotographers.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 

@@ -39,6 +39,8 @@ export default function CartPage() {
   const [finalOrderNumber, setFinalOrderNumber] = useState(null);
   const [checkoutError, setCheckoutError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [purchasedItems, setPurchasedItems] = useState([]);
+  const [purchasedTotal, setPurchasedTotal] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -71,10 +73,20 @@ export default function CartPage() {
         orderNumber: finalOrderNumber || orderNumber,
         userName: currentUser?.name ?? "Peserta",
         bibNumber: currentUser?.bibNumber ?? null,
-        items,
-        total: totalPrice,
+        items: purchasedItems.length > 0 ? purchasedItems : items,
+        total: purchasedTotal > 0 ? purchasedTotal : totalPrice,
+        waNumber: activeEvent?.whatsappNumber,
       }),
-    [finalOrderNumber, orderNumber, currentUser, items, totalPrice],
+    [
+      finalOrderNumber,
+      orderNumber,
+      currentUser,
+      items,
+      totalPrice,
+      purchasedItems,
+      purchasedTotal,
+      activeEvent,
+    ],
   );
 
   // Step 1 -> Step 2
@@ -110,6 +122,8 @@ export default function CartPage() {
       // 2. Upload bukti pembayaran
       const proofRes = await api.uploadPaymentProof(txId, proofFile);
       if (proofRes.success) {
+        setPurchasedItems([...items]);
+        setPurchasedTotal(totalPrice);
         clearCart();
         setCheckoutStep("success");
       } else {

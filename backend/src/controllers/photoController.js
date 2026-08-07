@@ -405,6 +405,7 @@ const getAdminPhotos = async (req, res) => {
       price: Number(row.price || 0),
       bibTags: row.bib_tags,
       orientation: row.orientation || 'portrait',
+      photographerId: row.photographer_id,
       photographerName: row.photographer_name || 'Fotografer',
       eventId: row.event_id,
       eventTitle: row.event_title || 'Semua Event',

@@ -184,7 +184,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [demoBib, setDemoBib] = useState("");
   const [events, setEvents] = useState([]);
-  const [selectedInactiveEvent, setSelectedInactiveEvent] = useState(null);
   const [carouselApi, setCarouselApi] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [openFaq, setOpenFaq] = useState(null);
@@ -207,7 +206,11 @@ export default function LandingPage() {
       try {
         const res = await api.getAllEvents();
         if (res.success && res.events) {
-          setEvents(res.events);
+          // Saring hanya event yang berstatus aktif (isActive === true)
+          const activeEvents = res.events.filter(
+            (evt) => (evt.isActive ?? evt.is_active) === true
+          );
+          setEvents(activeEvents);
         }
       } catch (err) {
         console.error("Failed to load events on landing page:", err);
@@ -451,8 +454,7 @@ export default function LandingPage() {
                 Jelajahi Event Terdaftar
               </h2>
               <p className="text-xs sm:text-sm text-[#475569] mt-1">
-                Pilih event aktif untuk menemukan foto atau lihat galeri event
-                yang telah selesai.
+                Pilih event aktif untuk menemukan foto aksi maraton Anda.
               </p>
             </div>
 
@@ -475,7 +477,6 @@ export default function LandingPage() {
                   >
                     <CarouselContent>
                       {events.map((evt) => {
-                        const isActive = evt.isActive ?? evt.is_active;
                         const eventDateFormatted = formatDate(
                           evt.eventDate || evt.event_date,
                         );
@@ -496,13 +497,9 @@ export default function LandingPage() {
                               whileTap={{ scale: 0.98 }}
                               transition={{ duration: 0.2 }}
                               onClick={() => {
-                                if (isActive) {
-                                  navigate("/login", {
-                                    state: { selectedEventId: evt.id },
-                                  });
-                                } else {
-                                  setSelectedInactiveEvent(evt);
-                                }
+                                navigate("/login", {
+                                  state: { selectedEventId: evt.id },
+                                });
                               }}
                               className="w-full max-w-[340px] sm:max-w-md cursor-pointer"
                             >
@@ -526,16 +523,10 @@ export default function LandingPage() {
                                       <Badge className="bg-white/95 text-gray-800 font-semibold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md">
                                         Official Event
                                       </Badge>
-                                      {isActive ? (
-                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-600 text-white shadow-md px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider font-bold">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                          EVENT AKTIF
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-slate-900/90 text-gray-200 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider font-bold">
-                                          EVENT SELESAI
-                                        </Badge>
-                                      )}
+                                      <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-600 text-white shadow-md px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider font-bold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                        EVENT AKTIF
+                                      </Badge>
                                     </div>
                                   </div>
 
@@ -562,23 +553,11 @@ export default function LandingPage() {
 
                                 <div className="px-4 pb-4 sm:px-6 sm:pb-6">
                                   <Button
-                                    variant={isActive ? "default" : "outline"}
-                                    className={`w-full font-bold text-xs sm:text-sm min-h-[48px] rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 shadow-sm ${
-                                      isActive
-                                        ? "bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/20"
-                                        : "bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200"
-                                    }`}
+                                    variant="default"
+                                    className="w-full font-bold text-xs sm:text-sm min-h-[48px] rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 shadow-sm bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/20"
                                   >
-                                    <span>
-                                      {isActive
-                                        ? "Masuk Portal Event"
-                                        : "Lihat Informasi Event"}
-                                    </span>
-                                    {isActive ? (
-                                      <ChevronRight className="w-4 h-4 group-hover/card:translate-x-1 transition-transform" />
-                                    ) : (
-                                      <AlertCircle className="w-4 h-4 text-gray-400" />
-                                    )}
+                                    <span>Masuk Portal Event</span>
+                                    <ChevronRight className="w-4 h-4 group-hover/card:translate-x-1 transition-transform" />
                                   </Button>
                                 </div>
                               </Card>
@@ -610,10 +589,15 @@ export default function LandingPage() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-10 sm:py-12 bg-white rounded-2xl sm:rounded-3xl border border-dashed border-gray-200">
-                  <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-xs sm:text-sm font-semibold text-gray-600">
-                    Belum ada event terdaftar
+                <div className="text-center py-10 sm:py-12 bg-white rounded-2xl sm:rounded-3xl border border-dashed border-gray-200 p-6 max-w-md mx-auto shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-[#0F172A]">
+                    Belum Ada Event Aktif Saat Ini
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#475569] mt-1 leading-relaxed">
+                    Saat ini belum ada event maraton yang sedang berlangsung. Silakan cek kembali nanti atau hubungi pihak penyelenggara.
                   </p>
                 </div>
               )}
@@ -1037,67 +1021,6 @@ export default function LandingPage() {
                 className="flex-1 bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-11 rounded-xl shadow-md"
               >
                 Beli Foto
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ─── MODAL INFORMASI EVENT TIDAK AKTIF ────────────────────────────── */}
-        <Dialog
-          open={Boolean(selectedInactiveEvent)}
-          onOpenChange={(open) => {
-            if (!open) setSelectedInactiveEvent(null);
-          }}
-        >
-          <DialogContent className="bg-white border border-[#E2E8F0] rounded-3xl p-6 max-w-md shadow-2xl">
-            <DialogHeader>
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-3">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <DialogTitle className="text-xl font-bold text-[#0F172A]">
-                Event Telah Berakhir
-              </DialogTitle>
-              <DialogDescription className="text-xs text-[#475569] mt-1 leading-relaxed">
-                Event{" "}
-                <strong className="text-[#0F172A]">
-                  {selectedInactiveEvent?.title || selectedInactiveEvent?.name}
-                </strong>{" "}
-                saat ini dalam status non-aktif / telah selesai.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-2 text-xs space-y-2">
-              <div className="flex justify-between items-center text-slate-600">
-                <span>Tanggal Pelaksanaan:</span>
-                <span className="font-semibold text-slate-900">
-                  {selectedInactiveEvent?.eventDate ||
-                    selectedInactiveEvent?.event_date ||
-                    "-"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-slate-600">
-                <span>Status Event:</span>
-                <Badge
-                  variant="outline"
-                  className="bg-slate-200 text-slate-700 text-[10px]"
-                >
-                  SELESAI / NON-AKTIF
-                </Badge>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Aktivitas login dan unggah foto baru untuk event ini sudah
-              ditutup. Silakan hubungi panitia atau admin jika Anda memerlukan
-              bantuan lebih lanjut.
-            </p>
-
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={() => setSelectedInactiveEvent(null)}
-                className="w-full bg-[#0F172A] hover:bg-brand text-white font-bold text-xs h-11 rounded-xl shadow-md"
-              >
-                Saya Mengerti
               </Button>
             </div>
           </DialogContent>

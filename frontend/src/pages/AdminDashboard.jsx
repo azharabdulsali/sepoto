@@ -40,6 +40,8 @@ export default function AdminDashboard() {
       : "all",
   );
 
+  const [photographers, setPhotographers] = useState([]);
+
   const fetchEvents = useCallback(async () => {
     try {
       const res = await api.getAllEvents();
@@ -48,6 +50,18 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Fetch events error:", err);
+    }
+  }, []);
+
+  const fetchPhotographers = useCallback(async () => {
+    try {
+      const res = await api.getAllUsers("all");
+      if (res.success && Array.isArray(res.users)) {
+        const photoUsers = res.users.filter((u) => u.role === "photographer");
+        setPhotographers(photoUsers);
+      }
+    } catch (err) {
+      console.error("Fetch photographers error:", err);
     }
   }, []);
 
@@ -72,7 +86,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]);
+    fetchPhotographers();
+  }, [fetchEvents, fetchPhotographers]);
 
   useEffect(() => {
     fetchTransactions();
@@ -226,6 +241,7 @@ export default function AdminDashboard() {
               <OverviewTab
                 transactions={transactions}
                 events={events}
+                photographers={photographers}
                 selectedEventFilter={selectedEventFilter}
                 onEventFilterChange={(val) => setSelectedEventFilter(val)}
                 onUpdateStatus={handleUpdateStatus}
@@ -237,6 +253,7 @@ export default function AdminDashboard() {
                 loading={loadingTx}
                 onUpdateStatus={handleUpdateStatus}
                 events={events}
+                photographers={photographers}
                 selectedEventFilter={selectedEventFilter}
                 onEventFilterChange={(val) => setSelectedEventFilter(val)}
               />
@@ -244,6 +261,7 @@ export default function AdminDashboard() {
             {activeTab === "photos" && isSuperAdmin && (
               <AdminPhotosTab
                 events={events}
+                photographers={photographers}
                 selectedEventFilter={selectedEventFilter}
                 onEventFilterChange={(val) => setSelectedEventFilter(val)}
               />

@@ -153,7 +153,9 @@ const TRANSACTION_SELECT_SQL = `
           'photoId',          p.id,
           'watermarkedUrl',   p.watermarked_url,
           'originalFilename', p.original_filename,
-          'price',            COALESCE(ti.price_at_purchase, p.price, 0)
+          'price',            COALESCE(ti.price_at_purchase, p.price, 0),
+          'photographerId',   p.photographer_id,
+          'photographerName', ph.name
         ) ORDER BY ti.id
       ) FILTER (WHERE p.id IS NOT NULL),
       '[]'
@@ -163,6 +165,7 @@ const TRANSACTION_SELECT_SQL = `
   LEFT JOIN users ab ON t.approved_by_id = ab.id
   LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
   LEFT JOIN photos p ON p.id = ti.photo_id
+  LEFT JOIN users ph ON p.photographer_id = ph.id
 `;
 
 /**
@@ -265,30 +268,48 @@ const getUserTransactions = async (req, res) => {
 
 /**
  * PATCH /api/transactions/:id/status
- * Update status transaksi (Admin only: approve / reject)
+ * Update status transaksi (Admin: approve / reject, Super Admin: undo to pending)
  */
 const updateTransactionStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // 'approved' atau 'rejected'
+    const { status } = req.body; // 'approved', 'rejected', or 'pending'
     const adminUserId = req.user?.id || null;
+    const adminRole = req.user?.role || null;
 
     if (!['approved', 'rejected', 'pending'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Status transaksi tidak valid.' });
     }
 
+    // Hanya Super Admin yang diizinkan mengembalikan status transaksi ke 'pending' (Undo)
+    if (status === 'pending' && adminRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Akses ditolak. Hanya Super Admin yang diizinkan mengembalikan status pesanan ke Menunggu Verifikasi.',
+      });
+    }
+
+    // Jika di-undo ke pending, reset approved_by_id menjadi NULL
+    const approvedById = status === 'pending' ? null : adminUserId;
+
     const result = await query(
       'UPDATE transactions SET status = $1, approved_by_id = $2 WHERE id = $3 RETURNING *',
-      [status, adminUserId, id]
+      [status, approvedById, id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Transaksi tidak ditemukan.' });
     }
 
+    const statusMessageMap = {
+      approved: 'Status transaksi berhasil disetujui.',
+      rejected: 'Status transaksi berhasil ditolak.',
+      pending: 'Status transaksi berhasil dikembalikan ke Menunggu Verifikasi (Undo).',
+    };
+
     return res.json({
       success: true,
-      message: `Status transaksi berhasil diperbarui menjadi ${status}.`,
+      message: statusMessageMap[status] || `Status transaksi berhasil diperbarui menjadi ${status}.`,
       transaction: result.rows[0],
     });
   } catch (error) {

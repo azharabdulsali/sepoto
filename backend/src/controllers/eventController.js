@@ -42,6 +42,7 @@ const getActiveEvent = async (req, res) => {
         bannerUrl: event.banner_url || event.logo_url || null,
         logoUrl: event.logo_url || null,
         qrCodeUrl: event.qr_code_url,
+        whatsappNumber: event.whatsapp_number || '08214689756',
         isActive: event.is_active,
         createdAt: event.created_at,
       },
@@ -59,7 +60,7 @@ const getActiveEvent = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, eventDate, location, bannerUrl, logoUrl, qrCodeUrl, isActive } = req.body;
+    const { title, eventDate, location, bannerUrl, logoUrl, qrCodeUrl, whatsappNumber, isActive } = req.body;
 
     const fields = [];
     const values = [];
@@ -88,6 +89,10 @@ const updateEvent = async (req, res) => {
     if (qrCodeUrl) {
       fields.push(`qr_code_url = $${paramIndex++}`);
       values.push(qrCodeUrl);
+    }
+    if (whatsappNumber !== undefined) {
+      fields.push(`whatsapp_number = $${paramIndex++}`);
+      values.push(whatsappNumber);
     }
     if (typeof isActive === 'boolean' || isActive !== undefined) {
       fields.push(`is_active = $${paramIndex++}`);
@@ -242,6 +247,7 @@ const getAllEvents = async (req, res) => {
       bannerUrl: event.banner_url || event.logo_url || null,
       logoUrl: event.logo_url || null,
       qrCodeUrl: event.qr_code_url,
+      whatsappNumber: event.whatsapp_number || '08214689756',
       isActive: event.is_active,
       createdAt: event.created_at,
     }));
@@ -259,7 +265,7 @@ const getAllEvents = async (req, res) => {
  */
 const createEvent = async (req, res) => {
   try {
-    const { title, eventDate, location, bannerUrl, logoUrl, qrCodeUrl } = req.body;
+    const { title, eventDate, location, bannerUrl, logoUrl, qrCodeUrl, whatsappNumber } = req.body;
 
     if (!title || !title.trim() || !eventDate) {
       return res.status(400).json({ success: false, message: 'Nama Event dan Tanggal Event wajib diisi.' });
@@ -270,9 +276,17 @@ const createEvent = async (req, res) => {
       : 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SEPOTO_QRIS_DEFAULT';
 
     const result = await query(
-      `INSERT INTO events (title, event_date, location, banner_url, logo_url, qr_code_url, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING *`,
-      [title.trim(), eventDate, location ? location.trim() : null, bannerUrl || null, logoUrl || null, defaultQr]
+      `INSERT INTO events (title, event_date, location, banner_url, logo_url, qr_code_url, whatsapp_number, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE) RETURNING *`,
+      [
+        title.trim(),
+        eventDate,
+        location ? location.trim() : null,
+        bannerUrl || null,
+        logoUrl || null,
+        defaultQr,
+        whatsappNumber ? whatsappNumber.trim() : '08214689756',
+      ]
     );
 
     return res.json({

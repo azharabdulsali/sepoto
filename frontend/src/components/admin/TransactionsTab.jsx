@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -7,6 +7,7 @@ import {
   Camera,
   Eye,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,12 +58,14 @@ export default function TransactionsTab({
   loading = false,
   onUpdateStatus,
   events = [],
+  photographers = [],
   selectedEventFilter = "all",
   onEventFilterChange,
 }) {
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [filter, setFilter] = useState("all");
+  const [photographerFilter, setPhotographerFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -70,6 +73,28 @@ export default function TransactionsTab({
   const [actionConfirm, setActionConfirm] = useState(null);
   const [selectedDetailTx, setSelectedDetailTx] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+
+  // Filter photographers based on selectedEventFilter (Cascading Filter)
+  const availablePhotographers = useMemo(() => {
+    if (!selectedEventFilter || selectedEventFilter === "all") {
+      return photographers;
+    }
+    return photographers.filter(
+      (p) => String(p.eventId) === String(selectedEventFilter),
+    );
+  }, [photographers, selectedEventFilter]);
+
+  // Reset photographer filter if current selection is not available in selected event
+  useEffect(() => {
+    if (
+      photographerFilter !== "all" &&
+      !availablePhotographers.some(
+        (p) => String(p.id) === String(photographerFilter),
+      )
+    ) {
+      setPhotographerFilter("all");
+    }
+  }, [selectedEventFilter, availablePhotographers, photographerFilter]);
 
   // Action Feedback Alert (Approve / Reject)
   const [actionAlert, setActionAlert] = useState(null);
@@ -82,10 +107,25 @@ export default function TransactionsTab({
       if (res.success) {
         if (onUpdateStatus) onUpdateStatus(id, newStatus);
         const isApproved = newStatus === "approved";
+        const isPending = newStatus === "pending";
+
+        let titleText = "Pembayaran Ditolak!";
+        let messageText = `Transaksi ${item?.orderNumber || ""} milik ${item?.userName || "Peserta"} telah berhasil ditolak.`;
+        let alertType = "success";
+
+        if (isApproved) {
+          titleText = "Pembayaran Disetujui!";
+          messageText = `Transaksi ${item?.orderNumber || ""} milik ${item?.userName || "Peserta"} telah berhasil disetujui.`;
+        } else if (isPending) {
+          titleText = "Status Pesanan Dikembalikan!";
+          messageText = `Transaksi ${item?.orderNumber || ""} telah dikembalikan ke status Menunggu Verifikasi.`;
+          alertType = "success";
+        }
+
         setActionAlert({
-          type: "success",
-          title: isApproved ? "Pembayaran Disetujui!" : "Pembayaran Ditolak!",
-          message: `Transaksi ${item?.orderNumber || ""} milik ${item?.userName || "Peserta"} telah berhasil ${isApproved ? "disetujui" : "ditolak"}.`,
+          type: alertType,
+          title: titleText,
+          message: messageText,
         });
       } else {
         setActionAlert({
@@ -108,15 +148,25 @@ export default function TransactionsTab({
 
   const filtered = transactions.filter((t) => {
     const matchFilter = filter === "all" || t.status === filter;
+    const matchPhotographer =
+      photographerFilter === "all" ||
+      (Array.isArray(t.items) &&
+        t.items.some(
+          (item) => String(item.photographerId) === String(photographerFilter),
+        ));
     const q = search.trim().toLowerCase();
-    if (!q) return matchFilter;
+    if (!q) return matchFilter && matchPhotographer;
 
     const matchUserName = t.userName && t.userName.toLowerCase().includes(q);
     const matchOrderNumber = t.orderNumber && t.orderNumber.toLowerCase().includes(q);
     const matchBibNumber = t.bibNumber && String(t.bibNumber).toLowerCase().includes(q);
     const matchTxId = t.id && String(t.id).toLowerCase().includes(q);
 
-    return matchFilter && (matchUserName || matchOrderNumber || matchBibNumber || matchTxId);
+    return (
+      matchFilter &&
+      matchPhotographer &&
+      (matchUserName || matchOrderNumber || matchBibNumber || matchTxId)
+    );
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -224,7 +274,7 @@ export default function TransactionsTab({
         <Select value={filter} onValueChange={(val) => setFilter(val)}>
           <SelectTrigger
             id="payment-status-filter"
-            className="!h-11 w-full sm:w-44 border border-[#E5E7EB] rounded-xl px-4 text-sm bg-white font-medium text-[#111827] shadow-sm flex items-center justify-between shrink-0"
+            className="!h-11 w-full sm:w-40 border border-[#E5E7EB] rounded-xl px-4 text-sm bg-white font-medium text-[#111827] shadow-sm flex items-center justify-between shrink-0"
           >
             <SelectValue placeholder="Status...">
               {STATUS_LABELS[filter] || "Pilih Status..."}
@@ -239,6 +289,39 @@ export default function TransactionsTab({
             </SelectGroup>
           </SelectContent>
         </Select>
+
+        {/* Filter Fotografer Dropdown */}
+        {availablePhotographers.length > 0 && (
+          <Select
+            value={photographerFilter}
+            onValueChange={(val) => setPhotographerFilter(val)}
+          >
+            <SelectTrigger
+              id="payment-photographer-filter"
+              className="!h-11 w-full sm:w-48 border border-[#E5E7EB] rounded-xl px-4 text-sm bg-white font-medium text-[#111827] shadow-sm flex items-center justify-between shrink-0"
+            >
+              <SelectValue placeholder="Fotografer...">
+                {photographerFilter === "all"
+                  ? "Semua Fotografer"
+                  : availablePhotographers.find(
+                      (p) => String(p.id) === String(photographerFilter),
+                    )?.name || "Fotografer..."}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg z-50">
+              <SelectGroup>
+                <SelectItem value="all">
+                  Semua Fotografer ({availablePhotographers.length})
+                </SelectItem>
+                {availablePhotographers.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {loading ? (
@@ -441,11 +524,15 @@ export default function TransactionsTab({
             <AlertDialogTitle className="text-[#111827] font-bold">
               {actionConfirm?.type === "approve"
                 ? "Setujui Transaksi Pembayaran?"
+                : actionConfirm?.type === "undo"
+                ? "Kembalikan Status Pesanan (Undo)?"
                 : "Tolak Transaksi Pembayaran?"}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-[#4B5563] pt-1">
               {actionConfirm?.type === "approve"
                 ? `Apakah Anda yakin ingin menyetujui transaksi ${actionConfirm?.item?.orderNumber} milik ${actionConfirm?.item?.userName}?`
+                : actionConfirm?.type === "undo"
+                ? `Apakah Anda yakin ingin mengembalikan status pesanan ${actionConfirm?.item?.orderNumber} milik ${actionConfirm?.item?.userName} menjadi Menunggu Verifikasi?`
                 : `Apakah Anda yakin ingin menolak transaksi ${actionConfirm?.item?.orderNumber} milik ${actionConfirm?.item?.userName}?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -458,7 +545,11 @@ export default function TransactionsTab({
                 if (actionConfirm) {
                   const targetId = actionConfirm.item.id;
                   const targetStatus =
-                    actionConfirm.type === "approve" ? "approved" : "rejected";
+                    actionConfirm.type === "approve"
+                      ? "approved"
+                      : actionConfirm.type === "undo"
+                      ? "pending"
+                      : "rejected";
                   const targetItem = actionConfirm.item;
                   setActionConfirm(null);
                   updateStatus(targetId, targetStatus, targetItem);
@@ -467,11 +558,15 @@ export default function TransactionsTab({
               className={`rounded-xl text-xs font-bold text-white shadow-md ${
                 actionConfirm?.type === "approve"
                   ? "bg-green-600 hover:bg-green-700 shadow-green-600/20"
+                  : actionConfirm?.type === "undo"
+                  ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
                   : "bg-red-600 hover:bg-red-700 shadow-red-600/20"
               }`}
             >
               {actionConfirm?.type === "approve"
                 ? "Ya, Approve Pembayaran"
+                : actionConfirm?.type === "undo"
+                ? "Ya, Kembalikan ke Menunggu"
                 : "Ya, Tolak Pembayaran"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -483,12 +578,12 @@ export default function TransactionsTab({
         open={Boolean(selectedDetailTx)}
         onOpenChange={(open) => !open && setSelectedDetailTx(null)}
       >
-        <AlertDialogContent className="bg-white rounded-3xl border-[#E5E7EB] w-[92vw] max-w-lg p-0 overflow-hidden max-h-[90vh] flex flex-col shadow-2xl">
+        <AlertDialogContent size="custom" className="bg-white rounded-3xl border border-[#E5E7EB] w-[95vw] sm:w-[90vw] max-w-3xl p-0 overflow-hidden max-h-[92vh] flex flex-col shadow-2xl z-50">
           {/* Modal Header */}
-          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/60 shrink-0">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-[#111827]">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-base sm:text-lg font-bold text-[#111827]">
                   Rincian Pesanan
                 </h3>
                 <StatusBadge status={selectedDetailTx?.status} />
@@ -501,200 +596,205 @@ export default function TransactionsTab({
               onClick={() => setSelectedDetailTx(null)}
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-600"
+              className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-200/50"
             >
               <X className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Modal Scrollable Body */}
-          <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 scrollbar-thin">
-            {/* Informative Grid */}
-            <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-4 grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <span className="text-gray-400 font-medium block">
-                  Nama Pemesan
-                </span>
-                <strong className="text-[#111827] text-sm">
-                  {selectedDetailTx?.userName}
-                </strong>
-              </div>
-              <div>
-                <span className="text-gray-400 font-medium block">
-                  Nomor BIB Tag
-                </span>
-                <Badge
-                  variant="secondary"
-                  className="font-bib text-xs bg-brand/10 text-brand border-0 px-2 py-0.5 mt-0.5"
-                >
-                  BIB #{selectedDetailTx?.bibNumber}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-gray-400 font-medium block">
-                  Waktu Transaksi
-                </span>
-                <span className="text-[#111827] font-semibold">
-                  {selectedDetailTx?.createdAt}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 font-medium block">
-                  Total Pembayaran
-                </span>
-                <span className="text-brand font-bib font-bold text-sm">
-                  {formatRupiah(selectedDetailTx?.total)}
-                </span>
-              </div>
-            </div>
-
-            {/* Audit Info if Approved/Rejected */}
-            {selectedDetailTx?.status !== "pending" &&
-              selectedDetailTx?.approvedByName && (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs flex items-center justify-between">
-                  <span className="text-gray-500 font-medium">
-                    {selectedDetailTx?.status === "approved"
-                      ? "Disetujui oleh:"
-                      : "Ditolak oleh:"}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <strong className="text-[#111827]">
-                      {selectedDetailTx?.approvedByName}
+          {/* Modal Scrollable Body (Responsive 2-Column Grid on Desktop) */}
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1 scrollbar-thin">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+              {/* Kolom Kiri: Metadata & Bukti Pembayaran */}
+              <div className="space-y-4">
+                {/* Informative Grid */}
+                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-4 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-gray-400 font-medium block">
+                      Nama Pemesan
+                    </span>
+                    <strong className="text-[#111827] text-sm truncate block mt-0.5" title={selectedDetailTx?.userName}>
+                      {selectedDetailTx?.userName}
                     </strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block">
+                      Nomor BIB Tag
+                    </span>
                     <Badge
-                      variant="outline"
-                      className="text-[9px] px-2 py-0.5 font-bold"
+                      variant="secondary"
+                      className="font-bib text-xs bg-brand/10 text-brand border-0 px-2 py-0.5 mt-1 inline-block"
                     >
-                      {selectedDetailTx?.approvedByRole === "super_admin"
-                        ? "Super Admin"
-                        : "Event Admin"}
+                      BIB #{selectedDetailTx?.bibNumber}
                     </Badge>
                   </div>
-                </div>
-              )}
-
-            {/* Bukti Pembayaran */}
-            {selectedDetailTx?.paymentProofUrl ? (
-              <div>
-                <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2.5 flex items-center justify-between">
-                  <span>Bukti Pembayaran</span>
-                  <span className="text-[10px] text-brand font-normal normal-case">Klik foto untuk perbesar</span>
-                </h4>
-                <div
-                  onClick={() =>
-                    setPreviewImage({
-                      url: selectedDetailTx.paymentProofUrl,
-                      title: "Bukti Pembayaran",
-                      subtitle: `Order ${selectedDetailTx.orderNumber} • Pemesan: ${selectedDetailTx.userName}`,
-                    })
-                  }
-                  className="rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] shadow-xs cursor-pointer hover:border-brand transition-all group relative"
-                >
-                  <div className="relative max-h-56 overflow-hidden flex items-center justify-center bg-black/5">
-                    <img
-                      src={selectedDetailTx.paymentProofUrl}
-                      alt="Bukti pembayaran"
-                      className="w-full max-h-56 object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="text-white text-xs font-bold bg-brand px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" />
-                        Perbesar Bukti Bayar
-                      </span>
-                    </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block">
+                      Waktu Transaksi
+                    </span>
+                    <span className="text-[#111827] font-semibold block mt-0.5">
+                      {selectedDetailTx?.createdAt}
+                    </span>
                   </div>
-                  <div className="px-3 py-2 bg-green-50 border-t border-green-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-[11px] font-semibold text-green-700">Bukti pembayaran sudah diupload</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-brand flex items-center gap-1">
-                      <Eye className="w-3 h-3" /> Lihat Full
+                  <div>
+                    <span className="text-gray-400 font-medium block">
+                      Total Pembayaran
+                    </span>
+                    <span className="text-brand font-bib font-bold text-sm block mt-0.5">
+                      {formatRupiah(selectedDetailTx?.total)}
                     </span>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2.5">
-                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-[11px] text-amber-700 font-medium">Belum ada bukti pembayaran yang diupload</span>
-              </div>
-            )}
 
-            {/* Itemized Photo List */}
-            <div>
-              <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2.5 flex items-center justify-between">
-                <span>
-                  Foto Yang Dipesan (
-                  {Array.isArray(selectedDetailTx?.items)
-                    ? selectedDetailTx.items.length
-                    : 0}
-                  )
-                </span>
-                <span className="text-[10px] text-brand font-normal normal-case">Klik foto untuk perbesar</span>
-              </h4>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {Array.isArray(selectedDetailTx?.items) &&
-                  selectedDetailTx.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() =>
-                        item?.watermarkedUrl &&
-                        setPreviewImage({
-                          url: item.watermarkedUrl,
-                          title: item.originalFilename || `Foto #${item.photoId || idx + 1}`,
-                          subtitle: `Harga: ${formatRupiah(item.price || 0)}`,
-                        })
-                      }
-                      className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs cursor-pointer hover:border-brand hover:shadow-md transition-all group relative"
-                    >
-                      <div className="aspect-[4/5] bg-gray-100 relative overflow-hidden">
-                        {item?.watermarkedUrl ? (
-                          <>
-                            <ProtectedPhoto
-                              src={item.watermarkedUrl}
-                              alt={item.originalFilename || `Foto #${idx + 1}`}
-                              className="w-full h-full"
-                              imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
-                              <span className="text-white text-[10px] font-bold bg-brand px-2 py-1 rounded-lg shadow-md flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                Perbesar
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                            No Image
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-2 text-[11px]">
-                        <p
-                          className="font-semibold text-[#111827] truncate"
-                          title={item.originalFilename}
+                {/* Audit Info if Approved/Rejected */}
+                {selectedDetailTx?.status !== "pending" &&
+                  selectedDetailTx?.approvedByName && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs flex items-center justify-between">
+                      <span className="text-gray-500 font-medium">
+                        {selectedDetailTx?.status === "approved"
+                          ? "Disetujui oleh:"
+                          : "Ditolak oleh:"}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <strong className="text-[#111827]">
+                          {selectedDetailTx?.approvedByName}
+                        </strong>
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] px-2 py-0.5 font-bold"
                         >
-                          {item.originalFilename || `Foto #${item.photoId}`}
-                        </p>
-                        <p className="font-bib text-brand font-bold text-xs mt-0.5">
-                          {formatRupiah(item.price || 0)}
-                        </p>
+                          {selectedDetailTx?.approvedByRole === "super_admin"
+                            ? "Super Admin"
+                            : "Event Admin"}
+                        </Badge>
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                {/* Bukti Pembayaran */}
+                {selectedDetailTx?.paymentProofUrl ? (
+                  <div>
+                    <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2 flex items-center justify-between">
+                      <span>Bukti Pembayaran</span>
+                      <span className="text-[10px] text-brand font-normal normal-case">Klik foto untuk perbesar</span>
+                    </h4>
+                    <div
+                      onClick={() =>
+                        setPreviewImage({
+                          url: selectedDetailTx.paymentProofUrl,
+                          title: "Bukti Pembayaran",
+                          subtitle: `Order ${selectedDetailTx.orderNumber} • Pemesan: ${selectedDetailTx.userName}`,
+                        })
+                      }
+                      className="rounded-xl overflow-hidden border border-[#E5E7EB] bg-[#F9FAFB] shadow-xs cursor-pointer hover:border-brand transition-all group relative"
+                    >
+                      <div className="relative max-h-52 overflow-hidden flex items-center justify-center bg-black/5">
+                        <img
+                          src={selectedDetailTx.paymentProofUrl}
+                          alt="Bukti pembayaran"
+                          className="w-full max-h-52 object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="text-white text-xs font-bold bg-brand px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5" />
+                            Perbesar Bukti Bayar
+                          </span>
+                        </div>
+                      </div>
+                      <div className="px-3 py-2 bg-green-50 border-t border-green-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-3.5 h-3.5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span className="text-[11px] font-semibold text-green-700">Bukti pembayaran sudah diupload</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-brand flex items-center gap-1">
+                          <Eye className="w-3 h-3" /> Lihat Full
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2.5">
+                    <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-[11px] text-amber-700 font-medium">Belum ada bukti pembayaran yang diupload</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Kolom Kanan: Foto Yang Dipesan */}
+              <div>
+                <h4 className="text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold mb-2 flex items-center justify-between">
+                  <span>
+                    Foto Dipesan (
+                    {Array.isArray(selectedDetailTx?.items)
+                      ? selectedDetailTx.items.length
+                      : 0}
+                    )
+                  </span>
+                  <span className="text-[10px] text-brand font-normal normal-case">Klik foto untuk perbesar</span>
+                </h4>
+
+                <div className="grid grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1 scrollbar-thin">
+                  {Array.isArray(selectedDetailTx?.items) &&
+                    selectedDetailTx.items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() =>
+                          item?.watermarkedUrl &&
+                          setPreviewImage({
+                            url: item.watermarkedUrl,
+                            title: item.originalFilename || `Foto #${item.photoId || idx + 1}`,
+                            subtitle: `Harga: ${formatRupiah(item.price || 0)}`,
+                          })
+                        }
+                        className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-xs cursor-pointer hover:border-brand hover:shadow-md transition-all group relative"
+                      >
+                        <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                          {item?.watermarkedUrl ? (
+                            <>
+                              <ProtectedPhoto
+                                src={item.watermarkedUrl}
+                                alt={item.originalFilename || `Foto #${idx + 1}`}
+                                className="w-full h-full"
+                                imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-1">
+                                <span className="text-white text-[10px] font-bold bg-brand px-2 py-1 rounded-lg shadow-md flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  Perbesar
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                              No Image
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 text-[11px]">
+                          <p
+                            className="font-semibold text-[#111827] truncate"
+                            title={item.originalFilename}
+                          >
+                            {item.originalFilename || `Foto #${item.photoId}`}
+                          </p>
+                          <p className="font-bib text-brand font-bold text-xs mt-0.5">
+                            {formatRupiah(item.price || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Modal Footer Actions (Approve / Reject) */}
+          {/* Modal Footer Actions (Approve / Reject / Super Admin Undo) */}
           {selectedDetailTx?.status === "pending" && (
-            <div className="p-3 sm:p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
               <Button
                 onClick={() => {
                   setActionConfirm({
@@ -705,10 +805,10 @@ export default function TransactionsTab({
                 }}
                 disabled={loadingId === selectedDetailTx?.id}
                 variant="outline"
-                className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] sm:text-xs font-bold h-10 rounded-xl px-2 sm:px-4 flex items-center justify-center gap-1 sm:gap-1.5 min-w-0 shadow-xs"
+                className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold h-11 rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
               >
-                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Tolak Pembayaran</span>
+                <X className="w-4 h-4 shrink-0" />
+                <span>Tolak Pembayaran</span>
               </Button>
               <Button
                 onClick={() => {
@@ -719,10 +819,44 @@ export default function TransactionsTab({
                   setSelectedDetailTx(null);
                 }}
                 disabled={loadingId === selectedDetailTx?.id}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold h-10 rounded-xl shadow-sm px-2 sm:px-4 flex items-center justify-center gap-1 sm:gap-1.5 min-w-0"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold h-11 rounded-xl shadow-md flex items-center justify-center gap-1.5"
               >
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Approve Pembayaran</span>
+                <Check className="w-4 h-4 shrink-0" />
+                <span>Approve Pembayaran</span>
+              </Button>
+            </div>
+          )}
+
+          {selectedDetailTx?.status !== "pending" && isSuperAdmin && (
+            <div className="p-4 sm:p-5 border-t border-amber-200/80 bg-amber-50/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shrink-0 rounded-b-3xl">
+              <div className="text-xs sm:text-sm text-amber-950 font-medium leading-relaxed flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-amber-950 text-xs uppercase tracking-wider">Status Saat Ini:</span>
+                  <Badge className={`text-[10px] font-bold px-2 py-0.5 border-0 ${
+                    selectedDetailTx?.status === "approved"
+                      ? "bg-green-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}>
+                    {selectedDetailTx?.status === "approved" ? "DISETUJUI" : "DITOLAK"}
+                  </Badge>
+                </div>
+                <p className="text-amber-900/90 text-xs">
+                  Terjadi salah klik atau butuh verifikasi ulang? Super Admin dapat mengembalikan status pesanan ini ke <strong>Menunggu Verifikasi</strong>.
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setActionConfirm({
+                    type: "undo",
+                    item: selectedDetailTx,
+                  });
+                  setSelectedDetailTx(null);
+                }}
+                disabled={loadingId === selectedDetailTx?.id}
+                className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-11 px-5 rounded-xl shadow-md flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95"
+              >
+                <RotateCcw className="w-4 h-4 shrink-0" />
+                <span>Undo (Kembalikan ke Menunggu)</span>
               </Button>
             </div>
           )}

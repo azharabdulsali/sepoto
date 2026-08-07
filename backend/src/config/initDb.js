@@ -47,9 +47,14 @@ async function initDb() {
         event_date DATE NOT NULL,
         logo_url TEXT,
         qr_code_url TEXT NOT NULL,
+        whatsapp_number VARCHAR(50),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    await query(`
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50);
     `);
 
     // 2. Tabel users (dengan kolom username & password_hash untuk admin/fotografer)
@@ -98,12 +103,14 @@ async function initDb() {
       $$;
     `);
 
-    // Drop indeks lama (global) & buat Partial Unique Index per Event untuk Nomor BIB Peserta
+    // Drop indeks lama & buat Partial Unique Index per Event + BIB + Nama Peserta (Solusi 3: izinkan nomor BIB sama jika nama beda)
     await query(`DROP INDEX IF EXISTS public.idx_users_unique_bib CASCADE;`);
     await query(`DROP INDEX IF EXISTS idx_users_unique_bib CASCADE;`);
+    await query(`DROP INDEX IF EXISTS public.idx_users_unique_event_bib CASCADE;`);
+    await query(`DROP INDEX IF EXISTS idx_users_unique_event_bib CASCADE;`);
     await query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_event_bib 
-      ON users (event_id, bib_number) 
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_event_bib_name 
+      ON users (event_id, LOWER(TRIM(bib_number)), LOWER(TRIM(name))) 
       WHERE bib_number IS NOT NULL AND role = 'user';
     `);
 

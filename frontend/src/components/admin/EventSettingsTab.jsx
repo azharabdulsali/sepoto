@@ -10,6 +10,8 @@ import {
   UserPlus,
   MapPin,
   Image as ImageIcon,
+  Info,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
   const [newLocation, setNewLocation] = useState("");
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [newQr, setNewQr] = useState("");
+  const [newWhatsappNumber, setNewWhatsappNumber] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -48,6 +51,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
     location: "",
     bannerUrl: "",
     qrCodeUrl: "",
+    whatsappNumber: "",
     isActive: true,
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +81,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
             location: ev.location || "",
             bannerUrl: ev.bannerUrl || ev.logoUrl || "",
             qrCodeUrl: ev.qrCodeUrl || "",
+            whatsappNumber: ev.whatsappNumber || "08214689756",
             isActive: ev.isActive ?? true,
           });
         }
@@ -108,6 +113,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
         location: newLocation.trim(),
         bannerUrl: newBannerUrl.trim(),
         qrCodeUrl: newQr.trim(),
+        whatsappNumber: newWhatsappNumber.trim() || "08214689756",
       });
       if (res.success) {
         setIsCreateModalOpen(false);
@@ -116,6 +122,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
         setNewLocation("");
         setNewBannerUrl("");
         setNewQr("");
+        setNewWhatsappNumber("");
         if (onRefreshEvents) onRefreshEvents();
         alert(`Event "${newTitle.trim()}" berhasil dibuat!`);
       } else {
@@ -189,6 +196,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
         location: form.location,
         bannerUrl: form.bannerUrl,
         qrCodeUrl: form.qrCodeUrl,
+        whatsappNumber: form.whatsappNumber,
       });
       await api.toggleEventActive(selectedEventId, form.isActive);
       if (onRefreshEvents) onRefreshEvents();
@@ -337,6 +345,10 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
                     placeholder="Contoh: https://... (opsional)"
                     className="h-10 text-xs border-[#E5E7EB] rounded-xl"
                   />
+                  <div className="bg-orange-50/80 border border-orange-200/80 rounded-xl p-2.5 text-[11px] text-orange-950 flex items-start gap-2 mt-1">
+                    <Info className="w-3.5 h-3.5 text-brand shrink-0 mt-0.5" />
+                    <span>Rekomendasi Banner: Rasio <strong>16:9</strong> (1920×1080 px atau min. 1200×675 px), maks. 5MB.</span>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -350,6 +362,22 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
                     placeholder="Contoh: https://... (opsional)"
                     className="h-10 text-xs border-[#E5E7EB] rounded-xl"
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                    Nomor WhatsApp Konfirmasi Event
+                  </label>
+                  <Input
+                    type="text"
+                    value={newWhatsappNumber}
+                    onChange={(e) => setNewWhatsappNumber(e.target.value)}
+                    placeholder="Contoh: 08214689756"
+                    className="h-10 text-xs border-[#E5E7EB] rounded-xl"
+                  />
+                  <p className="text-[11px] text-gray-500">
+                    Nomor WA penerima konfirmasi pesanan event ini. (Default: 08214689756)
+                  </p>
                 </div>
 
                 <div className="flex gap-2.5 pt-2">
@@ -513,11 +541,53 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
               </div>
             </div>
 
-            {/* Gambar / Banner Event Upload Box */}
-            <div className="space-y-1.5 pt-1">
-              <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
-                Gambar / Banner Event (Opsional)
+            {/* Nomor WhatsApp Konfirmasi Event */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="event-whatsapp"
+                className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold"
+              >
+                Nomor WhatsApp Konfirmasi Event
               </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  id="event-whatsapp"
+                  type="text"
+                  value={form.whatsappNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, whatsappNumber: e.target.value }))}
+                  placeholder="Contoh: 08214689756"
+                  className="pl-9 h-11 border-[#E5E7EB] rounded-xl text-sm bg-white"
+                />
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Nomor WhatsApp admin yang menerima pesan konfirmasi pesanan event ini. (Default: 08214689756)
+              </p>
+            </div>
+
+            {/* Gambar / Banner Event Upload Box */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
+                  Gambar / Banner Event (Opsional)
+                </label>
+              </div>
+
+              {/* Informative Helper Card untuk Spesifikasi Banner Ideal */}
+              <div className="bg-orange-50/80 border border-orange-200/90 rounded-xl p-3 text-xs text-orange-950 flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-orange-950 text-[11px] uppercase tracking-wider">
+                    Ukuran & Dimensi Banner Ideal (Landing Page):
+                  </p>
+                  <ul className="text-[11px] text-orange-900/90 leading-relaxed space-y-0.5 list-disc list-inside">
+                    <li>Rasio Aspek: <strong>16:9</strong> (Landscape / Horisontal)</li>
+                    <li>Resolusi Disarankan: <strong>1920 × 1080 px</strong> (atau min. <strong>1200 × 675 px</strong>)</li>
+                    <li>Format Berkas: <strong>JPG, PNG, atau WebP</strong> (Maks. 5MB)</li>
+                  </ul>
+                </div>
+              </div>
+
               <input
                 type="file"
                 accept="image/*"
@@ -529,7 +599,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
 
               {form.bannerUrl ? (
                 <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-3.5 space-y-3">
-                  <div className="w-full h-36 rounded-xl overflow-hidden border border-[#E5E7EB] shadow-xs relative bg-black/5">
+                  <div className="w-full h-36 sm:h-40 rounded-xl overflow-hidden border border-[#E5E7EB] shadow-xs relative bg-black/5">
                     <img
                       src={form.bannerUrl}
                       alt="Banner Event"
@@ -575,7 +645,7 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
                         Upload Gambar / Banner Event
                       </p>
                       <p className="text-[11px] text-[#9CA3AF]">
-                        PNG, JPG, atau JPEG · Maks. 5MB
+                        Rasio 16:9 · PNG, JPG, atau WebP · Maks. 5MB
                       </p>
                     </>
                   )}

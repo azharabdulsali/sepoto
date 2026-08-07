@@ -260,6 +260,7 @@ export default function Login() {
                       <Input
                         id="login-bib"
                         type="text"
+                        inputMode="numeric"
                         required
                         value={bibNumber}
                         onChange={(e) => { setBibNumber(e.target.value); setError(''); }}
@@ -413,7 +414,9 @@ export default function Login() {
           </DialogHeader>
 
           <div className="mt-4 space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
-            {eventsList.map((item) => {
+            {eventsList
+              .filter((item) => item.isActive !== false && item.is_active !== false)
+              .map((item) => {
               const isSelecting = selectingEventId === item.eventId;
               return (
                 <button
