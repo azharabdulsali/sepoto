@@ -1,21 +1,26 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
-// Pages — Public
-import LandingPage          from './pages/LandingPage';
-import Login                from './pages/Login';
+// Pages — Public (Eagerly Loaded)
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login';
 
-// Pages — User Peserta
-import GalleryPage          from './pages/GalleryPage';
-import CartPage             from './pages/CartPage';
-import OrderHistory         from './pages/OrderHistory';
-
-// Pages — Dashboards
-import AdminDashboard       from './pages/AdminDashboard';
-import PhotographerDashboard from './pages/PhotographerDashboard';
+// Pages — Lazy Loaded Chunks
+const MaintenancePage = lazy(() => import('./pages/MaintenancePage'));
+const GalleryPage = lazy(() => import('./pages/GalleryPage'));
+const CartPage = lazy(() => import('./pages/CartPage'));
+const OrderHistory = lazy(() => import('./pages/OrderHistory'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const PhotographerDashboard = lazy(() => import('./pages/PhotographerDashboard'));
 
 import IdleTimeoutHandler from './components/IdleTimeoutHandler';
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 // ─── Protected Route Wrapper ──────────────────────────────────────────
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -47,80 +52,85 @@ export default function App() {
   return (
     <>
       <IdleTimeoutHandler />
-      <Routes>
-      {/* ─── Public Root: Landing Page / Public Dashboard ─── */}
-      <Route
-        path="/"
-        element={
-          isAuthenticated
-            ? getAuthenticatedRedirect()
-            : <LandingPage />
-        }
-      />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* ─── Public Maintenance Route ─── */}
+          <Route path="/maintenance" element={<MaintenancePage />} />
 
-      {/* ─── Unified Login Route ─── */}
-      <Route
-        path="/login"
-        element={
-          isAuthenticated
-            ? getAuthenticatedRedirect()
-            : <Login />
-        }
-      />
+          {/* ─── Public Root: Landing Page / Public Dashboard ─── */}
+          <Route
+            path="/"
+            element={
+              isAuthenticated
+                ? getAuthenticatedRedirect()
+                : <LandingPage />
+            }
+          />
 
-      {/* ─── Legacy login routes → redirect to unified /login ─── */}
-      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-      <Route path="/photographer/login" element={<Navigate to="/login" replace />} />
+          {/* ─── Unified Login Route ─── */}
+          <Route
+            path="/login"
+            element={
+              isAuthenticated
+                ? getAuthenticatedRedirect()
+                : <Login />
+            }
+          />
 
-      {/* ─── Protected: User Peserta ─── */}
-      <Route
-        path="/gallery"
-        element={
-          <ProtectedRoute allowedRoles={['user']}>
-            <GalleryPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cart"
-        element={
-          <ProtectedRoute allowedRoles={['user']}>
-            <CartPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/orders"
-        element={
-          <ProtectedRoute allowedRoles={['user']}>
-            <OrderHistory />
-          </ProtectedRoute>
-        }
-      />
+          {/* ─── Legacy login routes → redirect to unified /login ─── */}
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/photographer/login" element={<Navigate to="/login" replace />} />
 
-      {/* ─── Protected: Admin ─── */}
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+          {/* ─── Protected: User Peserta ─── */}
+          <Route
+            path="/gallery"
+            element={
+              <ProtectedRoute allowedRoles={['user']}>
+                <GalleryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cart"
+            element={
+              <ProtectedRoute allowedRoles={['user']}>
+                <CartPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute allowedRoles={['user']}>
+                <OrderHistory />
+              </ProtectedRoute>
+            }
+          />
 
-      {/* ─── Protected: Fotografer ─── */}
-      <Route
-        path="/photographer/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['photographer']}>
-            <PhotographerDashboard />
-          </ProtectedRoute>
-        }
-      />
+          {/* ─── Protected: Admin ─── */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-      {/* ─── 404 Fallback ─── */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          {/* ─── Protected: Fotografer ─── */}
+          <Route
+            path="/photographer/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['photographer']}>
+                <PhotographerDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ─── 404 Fallback ─── */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

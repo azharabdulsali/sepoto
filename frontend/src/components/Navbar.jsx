@@ -193,11 +193,11 @@ export default function Navbar() {
       {/* ─── Mobile Bottom Navigation Bar (user peserta saja) ──────── */}
       {isAuthenticated && isUser && (
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/95 backdrop-blur-md border-t border-[#E5E7EB]"
+          className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] shadow-lg"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           aria-label="Navigasi bawah"
         >
-          <div className="flex items-stretch">
+          <div className="flex items-stretch min-h-[56px]">
             {[
               { to: '/gallery',  label: 'Galeri',  Icon: Home },
               { to: '/orders',   label: 'Pesanan', Icon: ClipboardList },
@@ -214,21 +214,21 @@ export default function Navbar() {
                   key={to}
                   to={to}
                   id={`bottom-nav-${to.replace('/', '')}`}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 relative transition-colors ${
-                    active ? 'text-brand' : 'text-[#4B5563]'
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] relative transition-colors ${
+                    active ? 'text-brand font-bold' : 'text-[#475569]'
                   }`}
                   aria-current={active ? 'page' : undefined}
                   aria-label={label}
                 >
                   <div className="relative">
-                    <Icon className={`w-5 h-5 ${active ? 'text-brand' : 'text-[#4B5563]'}`} />
+                    <Icon className={`w-5 h-5 ${active ? 'text-brand' : 'text-[#475569]'}`} />
                     {badge && (
-                      <span className="absolute -top-1 -right-1.5 bg-brand text-white text-[9px] font-bold rounded-full min-w-[15px] min-h-[15px] flex items-center justify-center leading-none px-0.5">
+                      <span className="absolute -top-1 -right-1.5 bg-brand text-white text-[9px] font-bold rounded-full min-w-[16px] min-h-[16px] flex items-center justify-center leading-none px-0.5">
                         {badge > 99 ? '99+' : badge}
                       </span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-semibold ${active ? 'text-brand' : 'text-[#4B5563]'}`}>
+                  <span className={`text-[10px] ${active ? 'text-brand font-bold' : 'text-[#475569] font-medium'}`}>
                     {label}
                   </span>
                   {active && (
@@ -241,11 +241,11 @@ export default function Navbar() {
             <button
               onClick={triggerLogoutConfirm}
               id="bottom-nav-logout"
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[#4B5563]"
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[#475569] hover:text-red-600 transition-colors"
               aria-label="Keluar"
             >
               <LogOut className="w-5 h-5" />
-              <span className="text-[10px] font-semibold">Keluar</span>
+              <span className="text-[10px] font-medium">Keluar</span>
             </button>
           </div>
         </nav>

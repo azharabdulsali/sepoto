@@ -42,11 +42,11 @@ const formatRupiah = (amount) =>
   }).format(amount);
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.35, ease: "easeOut" },
+    transition: { duration: 0.3, ease: "easeOut" },
   },
 };
 
@@ -67,13 +67,13 @@ const PhotoCard = ({ photo, onPreview }) => {
   return (
     <motion.div
       variants={cardVariants}
-      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
       onClick={() => onPreview(photo)}
-      className="group relative bg-[#191C21] rounded-2xl overflow-hidden border border-white/5 hover:border-brand/40 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-orange-900/20 cursor-pointer"
+      className="group relative bg-[#1E293B] rounded-2xl overflow-hidden border border-slate-700/70 hover:border-brand/50 transition-all duration-300 shadow-sm hover:shadow-lg cursor-pointer"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-[#22262E]">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#0F172A]">
         {!loaded && (
-          <Skeleton className="absolute inset-0 w-full h-full bg-white/5 animate-pulse rounded-2xl z-0" />
+          <Skeleton className="absolute inset-0 w-full h-full bg-slate-800 animate-pulse rounded-2xl z-0" />
         )}
         <ProtectedPhoto
           src={photo.watermarkedUrl}
@@ -86,7 +86,7 @@ const PhotoCard = ({ photo, onPreview }) => {
 
         {photo.bibTags && (
           <div className="absolute top-2.5 left-2.5 z-10">
-            <Badge className="font-bib text-[10px] bg-brand text-white border-0 shadow-md px-2 py-0.5">
+            <Badge className="font-bib text-[10px] bg-brand text-white border-0 shadow-md px-2 py-0.5 font-bold">
               #{photo.bibTags}
             </Badge>
           </div>
@@ -99,14 +99,14 @@ const PhotoCard = ({ photo, onPreview }) => {
         </div>
 
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2 p-3 text-center">
-          <motion.div whileTap={{ scale: 0.9 }}>
+          <motion.div whileTap={{ scale: 0.95 }}>
             <Button
               id={`cart-toggle-${photo.id}`}
               onClick={handleCartClick}
               size="sm"
-              className={`rounded-full transition-all active:scale-95 shadow-xl font-bold ${
+              className={`rounded-full transition-all active:scale-95 shadow-lg font-bold min-h-[48px] px-5 ${
                 inCart
-                  ? "bg-white text-[#111827] hover:bg-red-50 hover:text-red-500"
+                  ? "bg-white text-[#0F172A] hover:bg-red-50 hover:text-red-500"
                   : "bg-brand text-white hover:bg-[#C2410C]"
               }`}
               aria-label={
@@ -129,9 +129,9 @@ const PhotoCard = ({ photo, onPreview }) => {
         </div>
       </div>
 
-      <div className="p-3.5 flex items-center justify-between gap-2 border-t border-white/5 bg-[#191C21]">
+      <div className="p-3.5 flex items-center justify-between gap-2 border-t border-slate-700/60 bg-[#1E293B]">
         <div className="min-w-0">
-          <p className="text-[11px] text-gray-400 font-medium truncate">
+          <p className="text-[11px] text-slate-300 font-medium truncate">
             {photo.photographerName || "Fotografer"}
           </p>
           <p className="font-bib text-sm font-bold text-brand mt-0.5">
@@ -144,10 +144,10 @@ const PhotoCard = ({ photo, onPreview }) => {
           onClick={handleCartClick}
           size="sm"
           variant="outline"
-          className={`h-9 px-3 rounded-xl border-white/10 text-xs font-bold shrink-0 transition-all ${
+          className={`h-9 px-3 rounded-xl border-slate-700 text-xs font-bold shrink-0 transition-all ${
             inCart
-              ? "bg-white text-[#111827] hover:bg-red-50 hover:text-red-500 border-white"
-              : "hover:border-brand/40 hover:bg-brand/10 text-gray-300 hover:text-white"
+              ? "bg-white text-[#0F172A] hover:bg-red-50 hover:text-red-500 border-white"
+              : "hover:border-brand/40 hover:bg-brand/10 text-slate-300 hover:text-white"
           }`}
         >
           {inCart ? (
@@ -168,11 +168,11 @@ function GallerySkeletonGrid({ count = 10 }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-[#191C21] rounded-2xl overflow-hidden border border-white/5 p-0 space-y-3 shadow-sm"
+          className="bg-[#1E293B] rounded-2xl overflow-hidden border border-slate-700/60 p-0 space-y-3 shadow-sm"
         >
-          <Skeleton className="aspect-[4/5] w-full bg-[#22262E] rounded-2xl animate-pulse" />
+          <Skeleton className="aspect-[4/5] w-full bg-slate-800 rounded-2xl animate-pulse" />
           <div className="px-3.5 pb-3 flex items-center justify-between gap-2">
-            <Skeleton className="h-3.5 w-24 bg-white/10 rounded-md" />
+            <Skeleton className="h-3.5 w-24 bg-slate-700/50 rounded-md" />
             <Skeleton className="h-4 w-12 bg-brand/20 rounded-md" />
           </div>
         </div>
@@ -201,31 +201,31 @@ const PhotoPreviewModal = ({ photo, onClose }) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        initial={{ scale: 0.95, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        exit={{ scale: 0.95, opacity: 0, y: 16 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className="relative max-w-2xl w-full bg-[#191C21] rounded-3xl overflow-hidden border border-white/10 shadow-2xl text-white flex flex-col max-h-[90vh]"
+        className="relative max-w-2xl w-full bg-[#1E293B] rounded-3xl overflow-hidden border border-slate-700 shadow-2xl text-white flex flex-col max-h-[90vh]"
       >
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between bg-slate-900/40">
           <div className="flex items-center gap-2.5 flex-wrap">
             <Camera className="w-4 h-4 text-brand" />
             <span className="text-sm font-bold truncate max-w-[180px] sm:max-w-xs">
               {photo.photographerName}
             </span>
             {photo.bibTags && (
-              <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
+              <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5 font-bold">
                 BIB #{photo.bibTags}
               </Badge>
             )}
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white transition-colors"
             aria-label="Tutup pratinjau"
           >
             <X className="w-5 h-5" />
@@ -241,9 +241,9 @@ const PhotoPreviewModal = ({ photo, onClose }) => {
           />
         </div>
 
-        <div className="p-4 sm:p-5 border-t border-white/10 bg-[#191C21] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-t border-slate-700 bg-[#1E293B] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bib uppercase tracking-widest text-gray-400">
+            <p className="text-[10px] font-bib uppercase tracking-widest text-slate-400 font-semibold">
               Harga Foto HD
             </p>
             <p className="font-bib text-xl font-bold text-brand">
@@ -255,9 +255,9 @@ const PhotoPreviewModal = ({ photo, onClose }) => {
             <Button
               id={`modal-cart-toggle-${photo.id}`}
               onClick={() => (inCart ? removeItem(photo.id) : addItem(photo))}
-              className={`flex-1 sm:flex-none h-12 px-6 rounded-2xl font-bold text-xs sm:text-sm shadow-lg transition-all ${
+              className={`flex-1 sm:flex-none min-h-[48px] px-6 rounded-2xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 ${
                 inCart
-                  ? "bg-white text-[#111827] hover:bg-red-50 hover:text-red-500"
+                  ? "bg-white text-[#0F172A] hover:bg-red-50 hover:text-red-500"
                   : "bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/30"
               }`}
             >
@@ -435,10 +435,10 @@ export default function GalleryPage() {
 
   return (
     <AppShell>
-      <div className="max-w-screen-xl mx-auto px-4 pb-40">
+      <div className="max-w-screen-xl mx-auto px-4 pb-40 font-sans antialiased">
         {currentUser?.availableEvents &&
           currentUser.availableEvents.length > 1 && (
-            <div className="mt-5 mb-2 p-4 bg-gradient-to-r from-[#191C21] via-[#22262E] to-[#191C21] text-white rounded-3xl border border-brand/30 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="mt-5 mb-2 p-4 bg-[#1E293B] text-white rounded-3xl border border-slate-700 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-brand/20 text-brand border border-brand/30 flex items-center justify-center shrink-0">
                   <Trophy className="w-5 h-5" />
@@ -448,11 +448,11 @@ export default function GalleryPage() {
                     <p className="text-xs font-bold text-white">
                       Terdaftar di {currentUser.availableEvents.length} Event
                     </p>
-                    <Badge className="font-bib text-[9px] bg-brand text-white border-0 px-2 py-0.2">
+                    <Badge className="font-bib text-[9px] bg-brand text-white border-0 px-2 py-0.2 font-bold">
                       MULTI-EVENT
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-[11px] text-slate-300 mt-0.5">
                     Pilih event untuk menampilkan galeri foto event tersebut:
                   </p>
                 </div>
@@ -463,19 +463,19 @@ export default function GalleryPage() {
                   value={String(currentUser.eventId)}
                   onValueChange={(val) => handleSwitchEvent(Number(val))}
                 >
-                  <SelectTrigger className="w-full sm:w-auto h-11 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-2xl px-4 border-white/20 focus:ring-brand">
+                  <SelectTrigger className="w-full sm:w-auto h-11 bg-slate-900/60 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl px-4 border-slate-700 focus:ring-brand">
                     <SelectValue>
                       {currentActiveEventObj
                         ? `${currentActiveEventObj.eventName} (BIB #${currentActiveEventObj.bibNumber})`
                         : activeEvent?.title || "Pilih Event"}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="bg-[#191C21] border border-white/10 text-white rounded-2xl p-1 z-50">
+                  <SelectContent className="bg-[#1E293B] border border-slate-700 text-white rounded-2xl p-1 z-50">
                     {currentUser.availableEvents.map((evt) => (
                       <SelectItem
                         key={evt.eventId}
                         value={String(evt.eventId)}
-                        className="hover:bg-brand/20 text-xs py-2 px-3 rounded-xl cursor-pointer text-white focus:bg-brand/20 focus:text-white"
+                        className="hover:bg-brand/20 text-xs py-2.5 px-3 rounded-xl cursor-pointer text-white focus:bg-brand/20 focus:text-white"
                       >
                         {evt.eventName} (BIB #{evt.bibNumber})
                       </SelectItem>
@@ -489,19 +489,19 @@ export default function GalleryPage() {
         <div className="py-6 md:py-8">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tracking-tight">
                 {activeEvent?.title || "Galeri Foto Event"}
               </h1>
               {currentUser?.name && (
-                <p className="text-sm text-[#4B5563] mt-1 flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm text-[#475569] mt-1 flex items-center gap-1.5 flex-wrap">
                   <span>Selamat datang,</span>
-                  <span className="font-semibold text-[#111827]">
+                  <span className="font-semibold text-[#0F172A]">
                     {currentUser.name}
                   </span>
                   {currentUser.bibNumber && (
                     <Badge
                       variant="outline"
-                      className="font-bib text-brand border-brand/20 bg-brand/10 px-2 py-0.5"
+                      className="font-bib text-brand border-brand/30 bg-brand/10 px-2 py-0.5 font-bold"
                     >
                       BIB #{currentUser.bibNumber}
                     </Badge>
@@ -509,28 +509,28 @@ export default function GalleryPage() {
                 </p>
               )}
             </div>
-            <div className="text-right shrink-0 bg-white border border-[#E5E7EB] rounded-2xl px-4 py-2 shadow-sm">
-              <p className="text-2xl font-bold text-[#111827] font-bib">
+            <div className="text-right shrink-0 bg-white border border-[#E2E8F0] rounded-2xl px-4 py-2 shadow-xs">
+              <p className="text-2xl font-extrabold text-[#0F172A] font-bib">
                 {pricedPhotos.length}
               </p>
-              <p className="text-[11px] text-[#4B5563]">foto dijual</p>
+              <p className="text-[11px] text-[#475569] font-medium">foto dijual</p>
             </div>
           </div>
         </div>
 
-        <div className="sticky top-14 md:top-16 z-40 bg-white/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-[#E5E7EB] mb-6">
+        <div className="sticky top-14 md:top-16 z-40 bg-white/95 backdrop-blur-md py-3 -mx-4 px-4 border-b border-[#E2E8F0] mb-6">
           <div className="flex gap-2">
-            <InputGroup className="h-11 bg-white border-[#E5E7EB] rounded-xl flex-1">
+            <InputGroup className="h-12 bg-white border-[#E2E8F0] rounded-xl flex-1">
               <InputGroupAddon align="inline-start">
-                <Search className="w-4 h-4 text-[#4B5563]" />
+                <Search className="w-4 h-4 text-[#94A3B8]" />
               </InputGroupAddon>
               <InputGroupInput
                 id="gallery-search-bib"
                 type="text"
                 value={searchBib}
                 onChange={(e) => setSearchBib(e.target.value)}
-                placeholder="Cari Nomor BIB (misal: 101, A101, A-101)..."
-                className="text-sm font-bib text-[#111827]"
+                placeholder="Cari Nomor BIB (misal: 101, 36, 2424)..."
+                className="text-sm font-bib text-[#0F172A]"
               />
               {searchBib && (
                 <InputGroupAddon align="inline-end">
@@ -538,7 +538,7 @@ export default function GalleryPage() {
                     onClick={() => setSearchBib("")}
                     title="Bersihkan pencarian"
                   >
-                    <X className="w-4 h-4 text-[#4B5563] hover:text-[#111827]" />
+                    <X className="w-4 h-4 text-[#64748B] hover:text-[#0F172A]" />
                   </InputGroupButton>
                 </InputGroupAddon>
               )}
@@ -548,7 +548,7 @@ export default function GalleryPage() {
               id="gallery-filter-btn"
               variant="outline"
               size="default"
-              className="h-11 border-[#E5E7EB] rounded-xl text-[#4B5563] hover:border-brand/40 hover:text-brand bg-white font-semibold"
+              className="h-12 border-[#E2E8F0] rounded-xl text-[#475569] hover:border-brand/40 hover:text-brand bg-white font-semibold min-h-[48px] px-4"
               aria-label="Filter foto"
             >
               <SlidersHorizontal className="w-4 h-4 mr-1.5" />
@@ -560,7 +560,7 @@ export default function GalleryPage() {
             <motion.p
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-xs text-[#4B5563] mt-2 font-medium"
+              className="text-xs text-[#475569] mt-2 font-medium"
             >
               {filteredPhotos.length > 0
                 ? `${filteredPhotos.length} foto ditemukan untuk BIB "${searchBib}"`
@@ -574,12 +574,12 @@ export default function GalleryPage() {
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-3">
               <Camera className="w-4 h-4 text-brand" />
-              <h2 className="text-sm font-bold text-[#111827]">
+              <h2 className="text-sm font-bold text-[#0F172A]">
                 Foto Anda (BIB #{currentUser.bibNumber})
               </h2>
               <Badge
                 variant="secondary"
-                className="font-bib bg-brand/10 text-brand text-[10px] px-2 py-0.5"
+                className="font-bib bg-brand/10 text-brand text-[10px] px-2 py-0.5 font-bold"
               >
                 {userPhotoCount} foto
               </Badge>
@@ -591,12 +591,12 @@ export default function GalleryPage() {
         {isLoading ? (
           <GallerySkeletonGrid count={10} />
         ) : displayedPhotos.length === 0 ? (
-          <Card className="p-12 text-center bg-white border border-[#E5E7EB] rounded-3xl shadow-xs my-6">
-            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-[#111827]">
+          <Card className="p-12 text-center bg-white border border-[#E2E8F0] rounded-3xl shadow-xs my-6">
+            <Camera className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-[#0F172A]">
               Belum Ada Foto Galeri
             </h3>
-            <p className="text-xs text-[#4B5563] mt-1 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs text-[#475569] mt-1 max-w-md mx-auto leading-relaxed">
               {searchBib
                 ? `Tidak ditemukan foto untuk Nomor BIB #${searchBib}. Pastikan nomor BIB sesuai.`
                 : "Belum ada foto yang diunggah oleh fotografer untuk event ini."}
@@ -637,12 +637,12 @@ export default function GalleryPage() {
                   onClick={handleLoadMore}
                   disabled={isBatchLoading}
                   variant="outline"
-                  className="h-11 px-8 rounded-2xl border-[#E5E7EB] hover:border-brand/40 text-xs font-bold text-[#111827] bg-white shadow-sm"
+                  className="h-11 px-8 rounded-2xl border-[#E2E8F0] hover:border-brand/40 text-xs font-bold text-[#0F172A] bg-white shadow-xs"
                 >
                   {isBatchLoading ? (
                     <span className="flex items-center gap-2">
                       <Skeleton className="w-3.5 h-3.5 rounded-full bg-brand animate-ping" />
-                      <span>Memuat Foto Berikutnya...</span>
+                      <span>Memuat Foto...</span>
                     </span>
                   ) : (
                     `Tampilkan Lebih Banyak Foto (${filteredPhotos.length - visibleLimit} Tersisa)`
@@ -656,17 +656,17 @@ export default function GalleryPage() {
         {/* Empty state */}
         {filteredPhotos.length === 0 && (
           <div className="py-16 text-center">
-            <p className="text-base font-bold text-[#111827]">
+            <p className="text-base font-bold text-[#0F172A]">
               Foto Tidak Ditemukan
             </p>
-            <p className="text-sm text-[#4B5563] mt-1">
+            <p className="text-sm text-[#475569] mt-1">
               Coba kata kunci BIB yang berbeda atau hapus filter pencarian.
             </p>
           </div>
         )}
       </div>
 
-      {/* Lightbox Modal Preview (Jika foto dipilih) */}
+      {/* Lightbox Modal Preview */}
       <AnimatePresence>
         {previewPhoto && (
           <PhotoPreviewModal
@@ -676,7 +676,7 @@ export default function GalleryPage() {
         )}
       </AnimatePresence>
 
-      {/* Sticky Cart Bar (Framer Motion AnimatePresence) */}
+      {/* Sticky Cart Bar */}
       <AnimatePresence>
         {itemCount > 0 && (
           <motion.div
@@ -691,11 +691,11 @@ export default function GalleryPage() {
           >
             {/* Mobile */}
             <div className="max-w-lg mx-auto sm:hidden">
-              <div className="bg-[#191C21]/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/40 px-4 py-3 flex items-center gap-2.5 text-white">
+              <div className="bg-[#1E293B]/95 backdrop-blur-md rounded-2xl border border-slate-700/80 shadow-2xl px-4 py-3 flex items-center gap-2.5 text-white">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">
                     {itemCount} foto ·{" "}
-                    <span className="text-brand font-bold">
+                    <span className="text-brand font-bold font-bib">
                       {formattedTotal}
                     </span>
                   </p>
@@ -705,7 +705,7 @@ export default function GalleryPage() {
                   onClick={clearCart}
                   variant="ghost"
                   size="icon"
-                  className="w-9 h-9 border border-white/10 text-gray-400 hover:text-red-400 shrink-0 rounded-xl"
+                  className="w-9 h-9 border border-slate-700 text-slate-300 hover:text-red-400 shrink-0 rounded-xl"
                   aria-label="Kosongkan keranjang"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -714,7 +714,7 @@ export default function GalleryPage() {
                   <Button
                     id="cart-checkout-btn-mobile"
                     onClick={() => navigate("/cart")}
-                    className="bg-brand hover:bg-[#C2410C] text-white font-bold text-sm px-4 h-9 rounded-xl shrink-0 shadow-lg shadow-orange-600/30"
+                    className="bg-brand hover:bg-[#C2410C] text-white font-bold text-xs px-4 h-9 rounded-xl shrink-0 shadow-md min-h-[40px]"
                   >
                     <ShoppingCart className="w-4 h-4 mr-1" />
                     <span>Checkout</span>
@@ -728,9 +728,9 @@ export default function GalleryPage() {
               className="hidden sm:block max-w-lg mx-auto"
               style={{ bottom: 0 }}
             >
-              <div className="bg-[#191C21]/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/30 p-4 flex items-center gap-3 text-white">
+              <div className="bg-[#1E293B]/95 backdrop-blur-md rounded-2xl border border-slate-700/80 shadow-2xl p-4 flex items-center gap-3 text-white">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">
+                  <p className="text-xs text-slate-300">
                     {itemCount} foto dipilih
                   </p>
                   <p className="text-brand font-bib text-sm font-bold">
@@ -742,7 +742,7 @@ export default function GalleryPage() {
                   onClick={clearCart}
                   variant="ghost"
                   size="icon"
-                  className="w-10 h-10 border border-white/10 text-gray-400 hover:text-red-400 rounded-xl"
+                  className="w-10 h-10 border border-slate-700 text-slate-300 hover:text-red-400 rounded-xl"
                   aria-label="Kosongkan keranjang"
                 >
                   <X className="w-4 h-4" />
@@ -754,7 +754,7 @@ export default function GalleryPage() {
                   <Button
                     id="cart-checkout-btn"
                     onClick={() => navigate("/cart")}
-                    className="bg-brand hover:bg-[#C2410C] text-white font-bold text-sm px-6 h-11 rounded-xl shadow-xl shadow-orange-600/30"
+                    className="bg-brand hover:bg-[#C2410C] text-white font-bold text-sm px-6 h-11 rounded-xl shadow-lg shadow-orange-600/30"
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     <span>Checkout Sekarang</span>

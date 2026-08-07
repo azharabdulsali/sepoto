@@ -115,11 +115,23 @@ async function initDb() {
         photographer_id INT REFERENCES users(id) ON DELETE CASCADE,
         original_url TEXT NOT NULL,
         watermarked_url TEXT NOT NULL,
+        original_filename VARCHAR(255),
         price DECIMAL(10, 2) DEFAULT 0.00,
         bib_tags VARCHAR(255),
         orientation VARCHAR(20) DEFAULT 'portrait',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Migrasi: Tambah kolom original_filename jika belum ada
+    await query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='photos' AND column_name='original_filename') THEN
+          ALTER TABLE photos ADD COLUMN original_filename VARCHAR(255);
+        END IF;
+      END
+      $$;
     `);
 
     // 4. Tabel transactions
@@ -180,17 +192,24 @@ async function initDb() {
       `);
       const defaultEventId = eventInsert.rows[0].id;
 
-      // Hash passwords
-      const adminPasswordHash = await bcrypt.hash('password', SALT_ROUNDS);
-      const photographerPasswordHash = await bcrypt.hash('foto123', SALT_ROUNDS);
+      // Hash passwords (bisa di-override lewat ENV saat deployment awal)
+      const rawAdminPass = process.env.INITIAL_ADMIN_PASSWORD || 'password';
+      const rawPhotoPass = process.env.INITIAL_PHOTOGRAPHER_PASSWORD || 'foto123';
 
-      // Seed Super Admin (username: admin, password: password)
+      if (!process.env.INITIAL_ADMIN_PASSWORD && process.env.NODE_ENV === 'production') {
+        console.warn('⚠️ PRODUKSI: INITIAL_ADMIN_PASSWORD tidak di-set! Menggunakan password default "password". Harap ubah setelah login!');
+      }
+
+      const adminPasswordHash = await bcrypt.hash(rawAdminPass, SALT_ROUNDS);
+      const photographerPasswordHash = await bcrypt.hash(rawPhotoPass, SALT_ROUNDS);
+
+      // Seed Super Admin (username: admin)
       await query(
         `INSERT INTO users (event_id, name, username, password_hash, bib_number, role) VALUES ($1, $2, $3, $4, $5, $6)`,
         [null, 'Super Admin', 'admin', adminPasswordHash, null, 'super_admin']
       );
 
-      // Seed Photographer (username: fotografer, password: foto123)
+      // Seed Photographer (username: fotografer)
       await query(
         `INSERT INTO users (event_id, name, username, password_hash, bib_number, role) VALUES ($1, $2, $3, $4, $5, $6)`,
         [defaultEventId, 'Reza Fotografer', 'fotografer', photographerPasswordHash, null, 'photographer']
@@ -202,7 +221,7 @@ async function initDb() {
         [defaultEventId, 'Budi Santoso', '101', 'user', 'Sari Dewi', '102']
       );
 
-      console.log('🌱 Default event and initial users seeded (admin/password, fotografer/foto123)!');
+      console.log('🌱 Default event and initial users seeded successfully!');
     }
 
     // Pastikan Super Admin default (username: admin) punya password_hash jika belum ada

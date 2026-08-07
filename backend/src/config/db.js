@@ -14,21 +14,6 @@ const pool = new Pool(
       }
 );
 
-pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL Database');
-  // Auto-migration untuk kolom original_filename pada tabel photos
-  pool.query('ALTER TABLE photos ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255);')
-    .catch((err) => console.error('Migration Column Warning:', err.message));
-
-  // Auto-migration untuk Unique Index (event_id, bib_number) per event
-  pool.query(`
-    DROP INDEX IF EXISTS idx_users_unique_bib CASCADE;
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_event_bib 
-    ON users (event_id, bib_number) 
-    WHERE bib_number IS NOT NULL AND role = 'user';
-  `).catch((err) => console.error('Migration Index Warning:', err.message));
-});
-
 pool.on('error', (err) => {
   console.error('❌ Unexpected Error on Idle PostgreSQL Client:', err);
 });

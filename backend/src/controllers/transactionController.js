@@ -349,8 +349,8 @@ const getDownloadUrl = async (req, res) => {
       downloadUrl = await getPresignedDownloadUrl(key, 300, fileName);
     } catch (err) {
       console.warn('Presigned R2 URL failed, fallback to Express Proxy:', err);
-      const port = process.env.PORT || 5000;
-      downloadUrl = `http://localhost:${port}/api/photos/file/${key}?download=1`;
+      const baseUrl = process.env.BACKEND_URL ? process.env.BACKEND_URL.replace(/\/$/, '') : `http://localhost:${process.env.PORT || 5000}`;
+      downloadUrl = `${baseUrl}/api/photos/file/${key}?download=1`;
     }
 
     return res.json({

@@ -88,11 +88,53 @@ const uploadLimiter = rateLimit({
 
 // ─── Health-Check Route ──────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
+  const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
   res.json({
     status: 'OK',
     app: 'Sepoto Backend API',
     env: NODE_ENV,
+    maintenance: isMaintenance,
     timestamp: new Date().toISOString(),
+  });
+});
+
+// ─── Maintenance Mode Middleware (Role-Aware Bypass) ─────────────────────
+const jwt = require('jsonwebtoken');
+
+app.use((req, res, next) => {
+  const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
+  if (!isMaintenance) return next();
+
+  // 1. Health check & Admin Login bypass
+  if (
+    req.path.startsWith('/api/health') ||
+    req.path.startsWith('/api/auth/login-admin')
+  ) {
+    return next();
+  }
+
+  // 2. Token role-based bypass (Super Admin, Event Admin, Photographer)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (
+        decoded &&
+        ['super_admin', 'admin', 'photographer'].includes(decoded.role)
+      ) {
+        return next(); // Disetujui bypass maintenance untuk admin/fotografer
+      }
+    } catch (_err) {
+      // Token tidak valid / expired, lanjukan ke blok 503 maintenance
+    }
+  }
+
+  return res.status(503).json({
+    success: false,
+    maintenance: true,
+    message:
+      'Sistem Sepoto sedang dalam pemeliharaan rutin. Akses peserta umum sementara ditutup.',
   });
 });
 

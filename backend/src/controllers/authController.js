@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sepoto_jwt_secret_key_2026_CHANGE_THIS';
+const JWT_SECRET = process.env.JWT_SECRET || 'sepoto_jwt_secret_key_2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const SALT_ROUNDS = 12;
 

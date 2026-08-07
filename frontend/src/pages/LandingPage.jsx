@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   ArrowRight,
@@ -9,12 +9,20 @@ import {
   Download,
   Image as ImageIcon,
   ChevronRight,
+  ChevronDown,
   Search,
   LogIn,
   Calendar,
   Trophy,
   AlertCircle,
   MapPin,
+  CheckCircle2,
+  XCircle,
+  Star,
+  ShieldCheck,
+  Zap,
+  HelpCircle,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,11 +61,11 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 12 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] },
+    transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
   },
 };
 
@@ -69,6 +77,7 @@ const SAMPLE_PHOTOS = [
     bib: "36",
     price: "Rp 30.000",
     author: "Robi Syianturi",
+    eventName: "Jakarta Marathon 2026",
   },
   {
     id: 2,
@@ -76,6 +85,7 @@ const SAMPLE_PHOTOS = [
     bib: "2424",
     price: "Rp 10.000",
     author: "Cigul",
+    eventName: "Borobudur Marathon 2026",
   },
   {
     id: 3,
@@ -83,6 +93,7 @@ const SAMPLE_PHOTOS = [
     bib: "108",
     price: "Rp 25.000",
     author: "Ibnu Jamil",
+    eventName: "Bali 10K Run 2026",
   },
   {
     id: 4,
@@ -90,6 +101,67 @@ const SAMPLE_PHOTOS = [
     bib: "20084",
     price: "Rp 10.000",
     author: "dr. Tirta",
+    eventName: "Bandung Half Marathon",
+  },
+];
+
+// Testimonials Data
+const TESTIMONIALS = [
+  {
+    id: 1,
+    name: "Robi Syianturi",
+    role: "National Runner",
+    content:
+      "Sepoto mempermudah saya mencari foto garis finish cukup masukkan BIB 36. Hasil foto HD dan sangat cepat!",
+    rating: 5,
+    tag: "Peserta Maraton",
+  },
+  {
+    id: 2,
+    name: "dr. Tirta",
+    role: "Marathon Enthusiast",
+    content:
+      "Pembayaran QRIS langsung terverifikasi otomatis. Dalam hitungan detik foto high-res langsung tersimpan di HP.",
+    rating: 5,
+    tag: "Peserta Event",
+  },
+  {
+    id: 3,
+    name: "Dedi Supriyadi",
+    role: "Fotografer Official",
+    content:
+      "Sebagai fotografer, platform ini sangat tertata rapi. Watermark aman dan distribusi foto via QRIS lancar.",
+    rating: 5,
+    tag: "Official Photographer",
+  },
+];
+
+// FAQ Data
+const FAQ_ITEMS = [
+  {
+    question: "Bagaimana cara menemukan foto saya di Sepoto?",
+    answer:
+      "Cukup masuk ke portal event, ketik Nama dan Nomor Dada (BIB) Anda. Sistem Sepoto akan otomatis menampilkan seluruh foto aksi Anda.",
+  },
+  {
+    question: "Bagaimana proses pembayaran via QRIS?",
+    answer:
+      "Pilih foto yang ingin dibeli, sistem akan menampilkan kode QRIS resmi. Lakukan scan via aplikasi m-banking atau e-wallet (BCA, GoPay, OVO, ShopeePay, Dana, dll).",
+  },
+  {
+    question: "Kapan saya bisa mengunduh foto tanpa watermark?",
+    answer:
+      "Seketika pembayaran QRIS dikonfirmasi otomatis, tombol unduh foto resolusi tinggi (HD) tanpa watermark akan langsung aktif.",
+  },
+  {
+    question: "Bagaimana jika nomor BIB saya terhalang saat lari?",
+    answer:
+      "Jika tidak terdeteksi via pencarian BIB, Anda dapat mencari berdasarkan filter estimasi waktu melintas dan zona lokasi fotografer.",
+  },
+  {
+    question: "Apakah foto yang diunduh berkualitas asli (HD Resolution)?",
+    answer:
+      "Ya, seluruh file foto diunduh dalam resolusi asli kualitas tinggi sesuai jepretan kamera fotografer official.",
   },
 ];
 
@@ -115,6 +187,8 @@ export default function LandingPage() {
   const [selectedInactiveEvent, setSelectedInactiveEvent] = useState(null);
   const [carouselApi, setCarouselApi] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [openFaq, setOpenFaq] = useState(null);
+  const [selectedSamplePhoto, setSelectedSamplePhoto] = useState(null);
 
   useEffect(() => {
     if (!carouselApi) return;
@@ -142,155 +216,249 @@ export default function LandingPage() {
     loadEvents();
   }, []);
 
+  const handleDemoSearch = (e) => {
+    e.preventDefault();
+    navigate("/login", { state: { searchBib: demoBib } });
+  };
+
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
   return (
     <AppShell>
-      <div className="relative overflow-hidden bg-white text-[#111827]">
-        {/* Decorative ambient background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[420px] sm:h-[520px] bg-gradient-to-b from-orange-500/12 via-amber-500/5 to-transparent pointer-events-none blur-3xl" />
-
-        {/* ─── 1. HERO SECTION ────────────────────────────────────────── */}
-        <section className="relative pt-6 pb-10 sm:pt-16 sm:pb-20 px-3.5 sm:px-4 max-w-screen-xl mx-auto">
+      <div className="bg-[#FAFBFD] text-[#0F172A] min-h-screen pb-16 sm:pb-0 font-sans antialiased">
+        {/* ─── 1. HERO SECTION (HIGH-UTILITY MOBILE-FIRST) ──────────────── */}
+        <section className="relative pt-8 pb-10 sm:pt-20 sm:pb-24 px-4 max-w-screen-xl mx-auto">
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
             className="flex flex-col items-center text-center max-w-3xl mx-auto space-y-4 sm:space-y-6"
           >
-            {/* Top Badge */}
+            {/* Value Tag */}
             <motion.div variants={itemVariants}>
-              <Badge className="font-bib text-[10px] sm:text-xs tracking-wider sm:tracking-widest bg-brand/10 text-brand border border-brand/20 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full shadow-sm max-w-full truncate">
-                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5 text-brand shrink-0" />
-                <span>PLATFORM FOTO EVENT & UNDUH DIGITAL</span>
+              <Badge className="font-bib text-[11px] sm:text-xs tracking-wider uppercase bg-[#FFF7ED] text-[#C2410C] border border-[#FFEDD5] px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5 font-semibold">
+                <Sparkles className="w-3.5 h-3.5 text-[#EA580C] shrink-0" />
+                <span>PLATFORM FOTO MARATON & EVENT OLAHRAGA</span>
               </Badge>
             </motion.div>
 
-            {/* Headline */}
+            {/* Main Product Headline */}
             <motion.h1
               variants={itemVariants}
-              className="text-2xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-[#111827] leading-[1.2] sm:leading-[1.15]"
+              className="text-2xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-[#0F172A] leading-[1.18] sm:leading-[1.12]"
             >
-              Abadikan Setiap Momen Terbaik di{" "}
+              Cari & Unduh Foto Anda
+              <br />
+              via Nomor BIB di{" "}
               <SepotoLogo size="inherit" variant="gradient" />
             </motion.h1>
 
-            {/* Subtitle */}
+            {/* Subheadline */}
             <motion.p
               variants={itemVariants}
-              className="text-xs sm:text-lg text-[#4B5563] max-w-2xl leading-relaxed font-medium px-2"
+              className="text-xs sm:text-lg text-[#475569] max-w-2xl leading-relaxed font-medium px-1"
             >
-              Temukan foto maraton, bersepeda, & olahraga Anda secara instan
-              dengan sistem pencarian{" "}
-              <span className="font-bold text-[#111827]">
-                Nomor BIB (Nomor Dada)
-              </span>
-              . Pembayaran QRIS praktis & unduh kualitas HD tanpa watermark.
+              Temukan foto aksi terbaik Anda secara instan menggunakan{" "}
+              <strong className="text-[#0F172A]">Nomor Dada (BIB)</strong>.
+              Bayar praktis via QRIS dan unduh foto kualitas HD bebas watermark.
             </motion.p>
 
-            {/* Main Hero Action Buttons */}
+            {/* Primary Action Widget: BIB Search Bar */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-1 sm:pt-2 w-full sm:w-auto px-2"
+              className="w-full max-w-md pt-2"
             >
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                className="w-full sm:w-auto"
-              >
-                <Button
-                  id="hero-cta-login"
-                  onClick={() => navigate("/login")}
-                  size="lg"
-                  className="w-full sm:w-auto h-12 sm:h-13 px-6 sm:px-8 bg-brand hover:bg-[#C2410C] text-white font-bold text-sm sm:text-base rounded-2xl shadow-xl shadow-orange-600/25 transition-all flex items-center justify-center gap-2"
-                >
-                  <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Masuk ke Sepoto</span>
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 opacity-80" />
-                </Button>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                className="w-full sm:w-auto"
-              >
-                {/* <Button
-                  id="hero-cta-photographer"
-                  onClick={() => navigate("/photographer/login")}
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto h-12 sm:h-13 px-6 sm:px-7 border-[#E5E7EB] hover:border-blue-500/40 text-[#111827] hover:text-blue-600 bg-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm flex items-center justify-center gap-2"
-                >
-                  <Aperture className="w-4 h-4 text-blue-600" />
-                  <span>Portal Fotografer</span>
-                </Button> */}
-              </motion.div>
+              <form onSubmit={handleDemoSearch}>
+                <div className="bg-white border border-[#E2E8F0] shadow-lg rounded-2xl p-2 flex items-center gap-2 transition-all focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={demoBib}
+                      onChange={(e) => setDemoBib(e.target.value)}
+                      placeholder="Masukkan Nomor BIB Anda..."
+                      className="pl-10 h-11 border-0 bg-transparent text-xs sm:text-sm font-bib focus-visible:ring-0 text-[#0F172A] placeholder:text-[#94A3B8]"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="bg-brand hover:bg-[#C2410C] text-white font-bold text-xs sm:text-sm h-11 px-5 rounded-xl shrink-0 min-h-[44px] shadow-md shadow-orange-600/20 active:scale-95 transition-transform"
+                  >
+                    <span>Cari BIB</span>
+                    <ArrowRight className="w-4 h-4 ml-1 hidden sm:inline-block" />
+                  </Button>
+                </div>
+              </form>
+              <div className="flex items-center justify-center gap-1.5 mt-2.5 text-[11px] text-[#64748B]">
+                <span>Contoh BIB demo:</span>
+                {["36", "108", "2424"].map((bib) => (
+                  <button
+                    key={bib}
+                    type="button"
+                    onClick={() => setDemoBib(bib)}
+                    className="font-bib font-bold text-brand bg-brand/10 hover:bg-brand/20 px-2 py-0.5 rounded transition-colors"
+                  >
+                    #{bib}
+                  </button>
+                ))}
+              </div>
             </motion.div>
 
-            {/* Live Search Mockup Input Bar */}
+            {/* Direct Action Button */}
             <motion.div
               variants={itemVariants}
-              className="w-full max-w-md pt-2 sm:pt-4 px-2"
+              className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full sm:w-auto"
             >
-              <Card className="bg-white border border-[#E5E7EB] shadow-lg rounded-2xl p-1.5 sm:p-2 flex items-center gap-2">
-                <div className="relative flex-1 min-w-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={demoBib}
-                    onChange={(e) => setDemoBib(e.target.value)}
-                    placeholder="Ketik Nomor BIB ..."
-                    className="pl-9 h-10 border-0 bg-transparent text-xs sm:text-sm font-bib focus-visible:ring-0"
-                  />
-                </div>
-                <Button
-                  onClick={() => navigate("/login")}
-                  size="sm"
-                  className="bg-brand text-white font-bold text-xs h-9 px-3.5 sm:px-4 rounded-xl shrink-0"
-                >
-                  Cari
-                </Button>
-              </Card>
-              <p className="text-[10px] sm:text-[11px] text-[#9CA3AF] mt-1.5">
-                Contoh: Ketik <strong>101</strong> atau <strong>205</strong>{" "}
-                untuk melihat contoh foto
-              </p>
+              <Button
+                id="hero-cta-main"
+                onClick={() => navigate("/login")}
+                size="lg"
+                className="w-full sm:w-auto min-h-[52px] px-8 bg-brand hover:bg-[#C2410C] text-white font-bold text-sm sm:text-base rounded-2xl shadow-xl shadow-orange-600/25 transition-all flex items-center justify-center gap-2 active:scale-95"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>Masuk Portal Event Peserta</span>
+                <ArrowRight className="w-5 h-5 opacity-90" />
+              </Button>
+            </motion.div>
+
+            {/* Micro Social Trust Metric */}
+            <motion.div
+              variants={itemVariants}
+              className="pt-2 flex items-center justify-center gap-2 text-xs text-[#64748B]"
+            >
+              <div className="flex text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                ))}
+              </div>
+              <span className="font-bold text-[#0F172A]">4.9/5</span>
+              <span>•</span>
+              <span>
+                Dipercaya <strong>5.000+</strong> Peserta Lari
+              </span>
             </motion.div>
           </motion.div>
+        </section>
 
-          {/* ─── 2. EVENT CAROUSEL SECTION ──────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-10 sm:mt-20"
-          >
-            <div className="text-center max-w-md mx-auto mb-6 sm:mb-10 px-2">
+        {/* ─── 2. PROBLEM VS SOLUTION SECTION ───────────────────────────────── */}
+        <section className="py-10 sm:py-16 px-4 max-w-screen-xl mx-auto">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+            <Badge
+              variant="outline"
+              className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-2 font-semibold"
+            >
+              Efisiensi Pencarian
+            </Badge>
+            <h2 className="text-xl sm:text-3xl font-extrabold text-[#0F172A]">
+              Mengapa Peserta Memilih Sepoto?
+            </h2>
+            <p className="text-xs sm:text-sm text-[#475569] mt-1.5 leading-relaxed">
+              Pencarian foto aksi maraton yang cepat, akurat, dan tanpa proses
+              manual yang berbelit.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 max-w-4xl mx-auto">
+            {/* Problem Card */}
+            <Card className="bg-red-50/50 border border-red-200/80 rounded-2xl sm:rounded-3xl p-5 sm:p-7 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <XCircle className="w-5 h-5" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-red-950">
+                  Pencarian Manual Biasa
+                </h3>
+              </div>
+              <ul className="space-y-3 text-xs sm:text-sm text-red-900/80">
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 font-bold shrink-0">✕</span>
+                  <span>
+                    Mencari foto satu per satu di antara ribuan berkas album.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 font-bold shrink-0">✕</span>
+                  <span>
+                    Proses pembayaran manual via transfer bank & kirim bukti WA.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 font-bold shrink-0">✕</span>
+                  <span>
+                    Hasil unduhan terkompresi dan rentan penurunan kualitas.
+                  </span>
+                </li>
+              </ul>
+            </Card>
+
+            {/* Solution Card */}
+            <Card className="bg-emerald-50/60 border border-emerald-200 rounded-2xl sm:rounded-3xl p-5 sm:p-7 space-y-4 shadow-sm relative overflow-hidden">
+              <div className="absolute top-3 right-3">
+                <Badge className="bg-emerald-600 text-white font-bib text-[9px] uppercase px-2 py-0.5 rounded-full font-bold">
+                  Solusi Sepoto
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-emerald-950">
+                  Pencarian Otomatis Sepoto
+                </h3>
+              </div>
+              <ul className="space-y-3 text-xs sm:text-sm text-emerald-950">
+                <li className="flex items-start gap-2.5">
+                  <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>BIB Search:</strong> Ketik nomor BIB Dada Anda, foto
+                    muncul instan.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <QrCode className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>QRIS Instan:</strong> Bayar dari e-wallet/m-banking
+                    mana saja dalam detik.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Unduh Resolusi Asli HD:</strong> Bebas watermark
+                    kualitas fotografer pro.
+                  </span>
+                </li>
+              </ul>
+            </Card>
+          </div>
+        </section>
+
+        {/* ─── 3. FEATURED EVENT CAROUSEL SECTION ──────────────────────────── */}
+        <section className="py-10 sm:py-16 bg-white border-y border-[#E2E8F0] px-4">
+          <div className="max-w-screen-xl mx-auto">
+            <div className="text-center max-w-md mx-auto mb-6 sm:mb-10">
               <Badge
                 variant="outline"
-                className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5"
+                className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5 font-semibold"
               >
-                Event Sepoto
+                Daftar Event
               </Badge>
-              <h2 className="text-xl sm:text-3xl font-bold text-[#111827]">
-                Jelajahi Event
+              <h2 className="text-xl sm:text-3xl font-extrabold text-[#0F172A]">
+                Jelajahi Event Terdaftar
               </h2>
-              <p className="text-xs sm:text-sm text-[#4B5563] mt-1">
-                Pilih event yang aktif untuk masuk ke portal login atau lihat event yang telah selesai.
+              <p className="text-xs sm:text-sm text-[#475569] mt-1">
+                Pilih event aktif untuk menemukan foto atau lihat galeri event
+                yang telah selesai.
               </p>
             </div>
 
-            <div className="max-w-3xl mx-auto px-1.5 sm:px-4 relative group">
-              {/* Outer Ambient Glow */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-orange-400/20 via-amber-400/15 to-orange-500/20 rounded-[28px] sm:rounded-[36px] blur-xl opacity-60 pointer-events-none" />
-
+            <div className="max-w-3xl mx-auto relative group">
               {events.length > 0 ? (
-                <div className="bg-[#F9FAFB]/95 border border-[#E5E7EB] rounded-[24px] sm:rounded-[32px] p-3.5 sm:p-8 shadow-xl shadow-gray-200/50 backdrop-blur-xl relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600" />
-                  
-                  {/* Decorative ambient internal light */}
-                  <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-32 bg-orange-400/10 rounded-full blur-3xl pointer-events-none" />
-
+                <div className="bg-[#FAFBFD] border border-[#E2E8F0] rounded-[24px] sm:rounded-[32px] p-3.5 sm:p-8 shadow-sm relative overflow-hidden">
                   <Carousel
                     setApi={setCarouselApi}
                     opts={{
@@ -308,173 +476,122 @@ export default function LandingPage() {
                     <CarouselContent>
                       {events.map((evt) => {
                         const isActive = evt.isActive ?? evt.is_active;
-                        const eventDateFormatted = formatDate(evt.eventDate || evt.event_date);
-                        const bannerUrl = evt.bannerUrl || evt.banner_url || evt.logoUrl || evt.logo_url;
+                        const eventDateFormatted = formatDate(
+                          evt.eventDate || evt.event_date,
+                        );
+                        const bannerUrl =
+                          evt.bannerUrl ||
+                          evt.banner_url ||
+                          evt.logoUrl ||
+                          evt.logo_url;
                         const locationText = evt.location;
 
                         return (
                           <CarouselItem
                             key={evt.id}
-                            className="basis-full flex justify-center py-1 sm:py-2 px-1 sm:px-0"
+                            className="basis-full flex justify-center py-1 sm:py-2"
                           >
                             <motion.div
-                              whileHover={{ y: -4, scale: 1.01 }}
+                              whileHover={{ y: -3 }}
                               whileTap={{ scale: 0.98 }}
                               transition={{ duration: 0.2 }}
                               onClick={() => {
                                 if (isActive) {
-                                  navigate("/login", { state: { selectedEventId: evt.id } });
+                                  navigate("/login", {
+                                    state: { selectedEventId: evt.id },
+                                  });
                                 } else {
                                   setSelectedInactiveEvent(evt);
                                 }
                               }}
                               className="w-full max-w-[340px] sm:max-w-md cursor-pointer"
                             >
-                              {bannerUrl ? (
-                                /* ─── Light Card Theme (With Banner Image - Following User Photo Reference) ─── */
-                                <Card className="h-full bg-white border border-[#E5E7EB] hover:border-brand/40 shadow-xl hover:shadow-2xl transition-all rounded-2xl sm:rounded-3xl flex flex-col justify-between group/card relative overflow-hidden">
-                                  <div>
-                                    {/* Top Image Banner Section */}
-                                    <div className="relative w-full h-44 sm:h-52 bg-gray-100 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
+                              <Card className="h-full bg-white border border-[#E2E8F0] hover:border-brand/40 shadow-sm transition-all rounded-2xl sm:rounded-3xl flex flex-col justify-between group/card overflow-hidden">
+                                <div>
+                                  <div className="relative w-full h-44 sm:h-52 bg-gray-100 overflow-hidden rounded-t-2xl sm:rounded-t-3xl">
+                                    {bannerUrl ? (
                                       <img
                                         src={bannerUrl}
                                         alt={evt.title || evt.name}
                                         className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
                                       />
-                                      {/* Top Dark Gradient Overlay for Badges */}
-                                      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent" />
-
-                                      {/* Top Floating Badges */}
-                                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-                                        <Badge className="bg-white/95 text-gray-800 font-semibold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md">
-                                          Pilihan
-                                        </Badge>
-                                        {isActive ? (
-                                          <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-500 text-white shadow-md px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider font-bold">
-                                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse" />
-                                            EVENT AKTIF
-                                          </Badge>
-                                        ) : (
-                                          <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-gray-900/80 text-gray-200 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider font-bold">
-                                            EVENT SELESAI
-                                          </Badge>
-                                        )}
+                                    ) : (
+                                      <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center text-white">
+                                        <Trophy className="w-10 h-10 text-brand" />
                                       </div>
-                                    </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent" />
 
-                                    {/* Bottom Content Section */}
-                                    <div className="p-4 sm:p-6 space-y-3">
-                                      <h3 className="text-lg sm:text-2xl font-bold text-[#111827] group-hover/card:text-brand transition-colors leading-snug line-clamp-2">
-                                        {evt.title || evt.name}
-                                      </h3>
-
-                                      {/* Location Row */}
-                                      {locationText && (
-                                        <div className="flex items-start gap-2 text-xs sm:text-sm text-[#4B5563]">
-                                          <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                          <span className="line-clamp-2">{locationText}</span>
-                                        </div>
-                                      )}
-
-                                      {/* Date Row */}
-                                      <div className="flex items-center gap-2 text-xs sm:text-sm text-[#6B7280]">
-                                        <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
-                                        <span>{eventDateFormatted}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Action CTA Button */}
-                                  <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-                                    <Button
-                                      variant={isActive ? "default" : "outline"}
-                                      className={`w-full font-bold text-xs sm:text-sm h-11 sm:h-12 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 shadow-sm ${
-                                        isActive
-                                          ? "bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/20"
-                                          : "bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200"
-                                      }`}
-                                    >
-                                      <span>{isActive ? "Masuk Portal Event" : "Lihat Informasi Event"}</span>
+                                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
+                                      <Badge className="bg-white/95 text-gray-800 font-semibold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full shadow-md backdrop-blur-md">
+                                        Official Event
+                                      </Badge>
                                       {isActive ? (
-                                        <ChevronRight className="w-4 h-4 group-hover/card:translate-x-1 transition-transform" />
-                                      ) : (
-                                        <AlertCircle className="w-4 h-4 text-gray-400" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                </Card>
-                              ) : (
-                                /* ─── Dark Card Theme (Without Banner Image - Current Sleek Design) ─── */
-                                <Card className="h-full bg-gradient-to-b from-[#181B22] to-[#12141A] border border-white/10 hover:border-brand/60 shadow-2xl hover:shadow-orange-950/30 transition-all rounded-2xl sm:rounded-3xl p-5 sm:p-7 flex flex-col justify-between group/card relative overflow-hidden">
-                                  <div className="space-y-3 sm:space-y-4">
-                                    {/* Top Header Row: Icon + Badge Status */}
-                                    <div className="flex items-center justify-between">
-                                      <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover/card:scale-105 transition-transform shrink-0">
-                                        <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
-                                      </div>
-                                      {isActive ? (
-                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)] px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider">
-                                          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-emerald-600 text-white shadow-md px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 tracking-wider font-bold">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                           EVENT AKTIF
                                         </Badge>
                                       ) : (
-                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-white/5 text-gray-400 border border-white/10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider">
+                                        <Badge className="font-bib text-[9px] sm:text-[10px] uppercase bg-slate-900/90 text-gray-200 border border-white/20 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full tracking-wider font-bold">
                                           EVENT SELESAI
                                         </Badge>
                                       )}
                                     </div>
-
-                                    {/* Event Name, Location & Date */}
-                                    <div className="pt-1 sm:pt-2 space-y-2">
-                                      <h3 className="text-lg sm:text-2xl font-bold text-white group-hover/card:text-amber-400 transition-colors leading-snug line-clamp-2">
-                                        {evt.title || evt.name}
-                                      </h3>
-
-                                      {/* Location Row (if available) */}
-                                      {locationText && (
-                                        <div className="flex items-start gap-1.5 text-xs text-gray-300">
-                                          <MapPin className="w-3.5 h-3.5 text-brand shrink-0 mt-0.5" />
-                                          <span className="line-clamp-2">{locationText}</span>
-                                        </div>
-                                      )}
-
-                                      <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-white/5 border border-white/5 text-[11px] sm:text-xs text-gray-300 font-medium">
-                                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand shrink-0" />
-                                        <span>{eventDateFormatted}</span>
-                                      </div>
-                                    </div>
                                   </div>
 
-                                  {/* Action Button CTA */}
+                                  <div className="p-4 sm:p-6 space-y-3">
+                                    <h3 className="text-lg sm:text-2xl font-bold text-[#0F172A] group-hover/card:text-brand transition-colors leading-snug line-clamp-2">
+                                      {evt.title || evt.name}
+                                    </h3>
+
+                                    {locationText && (
+                                      <div className="flex items-start gap-2 text-xs sm:text-sm text-[#475569]">
+                                        <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                        <span className="line-clamp-2">
+                                          {locationText}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-[#64748B]">
+                                      <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
+                                      <span>{eventDateFormatted}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="px-4 pb-4 sm:px-6 sm:pb-6">
                                   <Button
                                     variant={isActive ? "default" : "outline"}
-                                    className={`w-full mt-5 sm:mt-6 font-bold text-xs sm:text-sm h-11 sm:h-13 rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 sm:px-5 shadow-lg ${
+                                    className={`w-full font-bold text-xs sm:text-sm min-h-[48px] rounded-xl sm:rounded-2xl transition-all flex items-center justify-between px-4 shadow-sm ${
                                       isActive
-                                        ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25"
-                                        : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
+                                        ? "bg-brand hover:bg-[#C2410C] text-white shadow-orange-600/20"
+                                        : "bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200"
                                     }`}
                                   >
-                                    <span>{isActive ? "Masuk Portal Event" : "Lihat Informasi Event"}</span>
+                                    <span>
+                                      {isActive
+                                        ? "Masuk Portal Event"
+                                        : "Lihat Informasi Event"}
+                                    </span>
                                     {isActive ? (
-                                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover/card:translate-x-1 transition-transform" />
+                                      <ChevronRight className="w-4 h-4 group-hover/card:translate-x-1 transition-transform" />
                                     ) : (
-                                      <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                                      <AlertCircle className="w-4 h-4 text-gray-400" />
                                     )}
                                   </Button>
-                                </Card>
-                              )}
+                                </div>
+                              </Card>
                             </motion.div>
                           </CarouselItem>
                         );
                       })}
                     </CarouselContent>
-                    
-                    {/* Desktop Only Navigation Buttons (hidden on mobile to prevent overlapping card text) */}
-                    <CarouselPrevious className="hidden sm:flex left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white hover:bg-brand text-[#111827] hover:text-white border border-[#E5E7EB] hover:border-brand z-20 transition-all shadow-md hover:scale-110 active:scale-95" />
-                    <CarouselNext className="hidden sm:flex right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white hover:bg-brand text-[#111827] hover:text-white border border-[#E5E7EB] hover:border-brand z-20 transition-all shadow-md hover:scale-110 active:scale-95" />
+
+                    <CarouselPrevious className="hidden sm:flex left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white hover:bg-brand text-[#0F172A] hover:text-white border border-[#E2E8F0] hover:border-brand z-20 transition-all shadow-md hover:scale-110 active:scale-95" />
+                    <CarouselNext className="hidden sm:flex right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white hover:bg-brand text-[#0F172A] hover:text-white border border-[#E2E8F0] hover:border-brand z-20 transition-all shadow-md hover:scale-110 active:scale-95" />
                   </Carousel>
 
-                  {/* Mobile Touch Navigation Dots */}
                   {events.length > 1 && (
                     <div className="flex sm:hidden items-center justify-center gap-2 mt-4">
                       {events.map((_, idx) => (
@@ -483,7 +600,7 @@ export default function LandingPage() {
                           onClick={() => carouselApi?.scrollTo(idx)}
                           className={`h-2 rounded-full transition-all duration-300 ${
                             idx === currentSlide
-                              ? "w-6 bg-brand shadow-sm shadow-orange-500/50"
+                              ? "w-6 bg-brand shadow-sm"
                               : "w-2 bg-gray-300 hover:bg-gray-400"
                           }`}
                           aria-label={`Lihat slide ${idx + 1}`}
@@ -491,249 +608,494 @@ export default function LandingPage() {
                       ))}
                     </div>
                   )}
-
-                  {/* Mobile Touch Swipe Hint */}
-                  <div className="flex sm:hidden items-center justify-center gap-1.5 mt-2.5 text-[10px] text-gray-400 font-medium">
-                    <span>Swipe untuk melihat event lainnya</span>
-                  </div>
                 </div>
               ) : (
-                <div className="text-center py-10 sm:py-12 bg-gray-50 rounded-2xl sm:rounded-3xl border border-dashed border-gray-200">
-                  <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 mx-auto mb-2 sm:mb-3" />
-                  <p className="text-xs sm:text-sm font-semibold text-gray-600">Belum ada event terdaftar</p>
+                <div className="text-center py-10 sm:py-12 bg-white rounded-2xl sm:rounded-3xl border border-dashed border-gray-200">
+                  <Calendar className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 mx-auto mb-2" />
+                  <p className="text-xs sm:text-sm font-semibold text-gray-600">
+                    Belum ada event terdaftar
+                  </p>
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         </section>
 
-        {/* ─── 3. SHOWCASE PREVIEW GRID ────────────────────────────────── */}
-        <section className="py-10 sm:py-16 px-3.5 sm:px-4 max-w-screen-xl mx-auto">
-          <div className="text-center max-w-md mx-auto mb-6 sm:mb-10 px-2">
+        {/* ─── 4. HOW IT WORKS (4 STEPS FORMULA) ────────────────────────────── */}
+        <section className="py-10 sm:py-16 px-4 max-w-screen-xl mx-auto">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
             <Badge
               variant="outline"
-              className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5"
+              className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5 font-semibold"
             >
-              Preview Foto Event
+              Alur Penggunaan
             </Badge>
-            <h2 className="text-xl sm:text-3xl font-bold text-[#111827]">
-              Hasil Jepretan Kualitas HD
+            <h2 className="text-xl sm:text-3xl font-extrabold text-[#0F172A]">
+              Alur Kerja Sepoto
             </h2>
-            <p className="text-xs sm:text-sm text-[#4B5563] mt-1">
-              Setiap foto dilengkapi watermark otomatis sebelum dibeli peserta.
+            <p className="text-xs sm:text-sm text-[#475569] mt-1">
+              Dapat kan foto aksi Anda hanya dalam 4 langkah praktis.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
-            {SAMPLE_PHOTOS.map((photo) => (
-              <motion.div key={photo.id} whileHover={{ y: -4 }}>
-                <Card className="bg-[#191C21] rounded-2xl overflow-hidden border border-white/10 shadow-md">
-                  <div className="relative aspect-[4/5] bg-[#22262E] overflow-hidden">
-                    <ProtectedPhoto
-                      src={photo.url}
-                      alt={`Foto sample ${photo.bib}`}
-                      className="w-full h-full"
-                      imgClassName="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 left-2 z-10">
-                      <Badge className="font-bib text-[9px] sm:text-[10px] bg-brand text-white border-0 shadow px-1.5 py-0.5">
-                        #{photo.bib}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="p-2.5 sm:p-3 flex items-center justify-between text-white">
-                    <span className="text-[10px] sm:text-[11px] text-gray-400 truncate max-w-[60%]">
-                      {photo.author}
-                    </span>
-                    <span className="font-bib text-[11px] sm:text-xs text-brand font-bold">
-                      {photo.price}
-                    </span>
-                  </div>
-                </Card>
-              </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-6">
+            {[
+              {
+                step: "01",
+                icon: User,
+                title: "Input Nomor BIB",
+                desc: "Masuk ke portal event, ketik Nama dan Nomor Dada (BIB) Anda.",
+              },
+              {
+                step: "02",
+                icon: ImageIcon,
+                title: "Pilih Foto Aksi",
+                desc: "Pratinjau foto hasil jepretan fotografer official dengan watermark.",
+              },
+              {
+                step: "03",
+                icon: QrCode,
+                title: "Bayar via QRIS",
+                desc: "Scan kode QRIS praktis via m-banking atau e-wallet pilihan Anda.",
+              },
+              {
+                step: "04",
+                icon: Download,
+                title: "Unduh Kualitas HD",
+                desc: "Selesai bayar, unduh foto resolusi asli tanpa watermark langsung.",
+              },
+            ].map(({ step, icon: Icon, title, desc }) => (
+              <Card
+                key={step}
+                className="bg-white border-[#E2E8F0] rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
+              >
+                <span className="font-bib text-3xl sm:text-4xl font-black text-slate-100 group-hover:text-brand/10 transition-colors absolute top-2 right-3 select-none">
+                  {step}
+                </span>
+                <div className="w-11 h-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-brand group-hover:text-white transition-colors">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-[#0F172A] mb-1">
+                  {title}
+                </h3>
+                <p className="text-xs text-[#475569] leading-relaxed">{desc}</p>
+              </Card>
             ))}
-          </div>
-
-          <div className="text-center mt-6 sm:mt-8">
-            <Button
-              onClick={() => navigate("/login")}
-              variant="link"
-              className="text-brand font-bold text-xs sm:text-sm"
-            >
-              Lihat Lebih Banyak Foto di Galeri →
-            </Button>
           </div>
         </section>
 
-        {/* ─── 4. CARA KERJA / FEATURES SECTION ────────────────────────── */}
-        <section className="py-10 sm:py-16 bg-[#F9FAFB] border-y border-[#E5E7EB] px-3.5 sm:px-4">
+        {/* ─── 5. SHOWCASE PREVIEW GALLERY ──────────────────────────────────── */}
+        <section className="py-10 sm:py-16 bg-[#0F172A] text-white px-4">
           <div className="max-w-screen-xl mx-auto">
-            <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12 px-2">
+            <div className="text-center max-w-md mx-auto mb-6 sm:mb-10">
               <Badge
                 variant="outline"
-                className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5"
+                className="font-bib text-[10px] sm:text-xs uppercase text-amber-400 border-amber-400/30 bg-amber-400/10 mb-1.5 font-semibold"
               >
-                Alur Praktis
+                Galeri Preview Foto
               </Badge>
-              <h2 className="text-xl sm:text-3xl font-bold text-[#111827]">
-                Bagaimana Sepoto Bekerja?
+              <h2 className="text-xl sm:text-3xl font-extrabold text-white">
+                Hasil Jepretan Fotografer Official
               </h2>
-              <p className="text-xs sm:text-sm text-[#4B5563] mt-1">
-                4 langkah sederhana dari pencarian hingga unduhan foto tanpa
-                watermark.
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Seluruh foto dilindungi watermark otomatis sebelum transaksi
+                selesai.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-              {[
-                {
-                  step: "01",
-                  icon: User,
-                  title: "Input BIB",
-                  desc: "Masuk dengan Nama & Nomor Dada peserta event Anda.",
-                },
-                {
-                  step: "02",
-                  icon: ImageIcon,
-                  title: "Pilih Foto",
-                  desc: "Telusuri foto aksi beresolusi tinggi hasil jepretan fotografer pro.",
-                },
-                {
-                  step: "03",
-                  icon: QrCode,
-                  title: "Bayar QRIS",
-                  desc: "Scan QR Code QRIS statis via m-banking atau e-wallet pilihan Anda.",
-                },
-                {
-                  step: "04",
-                  icon: Download,
-                  title: "Unduh HD",
-                  desc: "Setelah pembayaran disetujui, foto asli tanpa watermark siap diunduh.",
-                },
-              ].map(({ step, icon: Icon, title, desc }) => (
-                <Card
-                  key={step}
-                  className="bg-white border-[#E5E7EB] rounded-2xl p-3.5 sm:p-6 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
+              {SAMPLE_PHOTOS.map((photo) => (
+                <motion.div
+                  key={photo.id}
+                  whileHover={{ y: -4 }}
+                  onClick={() => setSelectedSamplePhoto(photo)}
+                  className="cursor-pointer"
                 >
-                  <span className="font-bib text-2xl sm:text-4xl font-bold text-gray-100 absolute top-2 right-3 sm:top-3 sm:right-4 select-none">
-                    {step}
-                  </span>
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-brand/10 text-brand flex items-center justify-center mb-3 sm:mb-4">
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </div>
-                  <h3 className="text-xs sm:text-base font-bold text-[#111827] mb-0.5 sm:mb-1">
-                    {title}
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-[#4B5563] leading-relaxed">
-                    {desc}
-                  </p>
-                </Card>
+                  <Card className="bg-[#1E293B] rounded-2xl overflow-hidden border border-slate-700/60 shadow-lg group">
+                    <div className="relative aspect-[4/5] bg-[#0F172A] overflow-hidden">
+                      <ProtectedPhoto
+                        src={photo.url}
+                        alt={`Foto sample ${photo.bib}`}
+                        className="w-full h-full"
+                        imgClassName="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
+                        <Badge className="font-bib text-[9px] sm:text-[10px] bg-brand text-white border-0 shadow px-1.5 py-0.5 font-bold">
+                          #{photo.bib}
+                        </Badge>
+                      </div>
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Badge className="bg-white/90 text-gray-900 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                          <Eye className="w-3 h-3" /> Preview
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="p-3 flex items-center justify-between text-white bg-[#1E293B]">
+                      <div className="truncate max-w-[65%]">
+                        <p className="text-[11px] font-semibold text-slate-200 truncate">
+                          {photo.author}
+                        </p>
+                        <p className="text-[9px] text-slate-400 truncate">
+                          {photo.eventName}
+                        </p>
+                      </div>
+                      <span className="font-bib text-xs text-brand font-bold shrink-0">
+                        {photo.price}
+                      </span>
+                    </div>
+                  </Card>
+                </motion.div>
               ))}
             </div>
+
+            <div className="text-center mt-6 sm:mt-10">
+              <Button
+                onClick={() => navigate("/login")}
+                className="bg-brand hover:bg-[#C2410C] text-white font-bold text-xs sm:text-sm h-11 px-6 rounded-xl shadow-lg shadow-orange-600/30"
+              >
+                <span>Masuk & Telusuri Ribuan Foto Lainnya</span>
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
           </div>
         </section>
 
-        {/* ─── 5. STATS BANNER ────────────────────────────────────────── */}
-        <section className="py-10 sm:py-14 px-3.5 sm:px-4 max-w-screen-xl mx-auto">
-          <div className="bg-[#191C21] rounded-2xl sm:rounded-3xl p-5 sm:p-12 text-white shadow-2xl relative overflow-hidden border border-white/10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center relative z-10">
-              <div>
-                <p className="text-2xl sm:text-4xl font-bold font-bib text-brand">
+        {/* ─── 6. TESTIMONIALS & CREDIBILITY ────────────────────────────────── */}
+        <section className="py-10 sm:py-16 px-4 max-w-screen-xl mx-auto">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+            <Badge
+              variant="outline"
+              className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5 font-semibold"
+            >
+              Testimoni Peserta
+            </Badge>
+            <h2 className="text-xl sm:text-3xl font-extrabold text-[#0F172A]">
+              Apa Kata Peserta Event & Fotografer?
+            </h2>
+            <p className="text-xs sm:text-sm text-[#475569] mt-1">
+              Pengalaman nyata mengunduh foto terbaik maraton bersama Sepoto.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            {TESTIMONIALS.map((testi) => (
+              <Card
+                key={testi.id}
+                className="bg-white border-[#E2E8F0] rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex text-amber-400">
+                      {[...Array(testi.rating)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400" />
+                      ))}
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-semibold text-brand border-brand/30 bg-brand/5"
+                    >
+                      {testi.tag}
+                    </Badge>
+                  </div>
+                  <p className="text-xs sm:text-sm text-[#475569] italic leading-relaxed">
+                    "{testi.content}"
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 mt-4">
+                  <h4 className="text-xs sm:text-sm font-bold text-[#0F172A]">
+                    {testi.name}
+                  </h4>
+                  <p className="text-[10px] sm:text-xs text-slate-500">
+                    {testi.role}
+                  </p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── 7. FAQ ACCORDION SECTION ──────────────────────────────────────── */}
+        <section className="py-10 sm:py-16 bg-[#FAFBFD] border-t border-[#E2E8F0] px-4">
+          <div className="max-w-screen-md mx-auto">
+            <div className="text-center mb-8 sm:mb-12">
+              <Badge
+                variant="outline"
+                className="font-bib text-[10px] sm:text-xs uppercase text-brand border-brand/20 bg-brand/5 mb-1.5 font-semibold"
+              >
+                Tanya Jawab
+              </Badge>
+              <h2 className="text-xl sm:text-3xl font-extrabold text-[#0F172A]">
+                Pertanyaan Sering Diajukan (FAQ)
+              </h2>
+              <p className="text-xs sm:text-sm text-[#475569] mt-1">
+                Semua yang perlu Anda ketahui mengenai platform Sepoto.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {FAQ_ITEMS.map((item, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <Card
+                    key={idx}
+                    className="bg-white border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm"
+                  >
+                    <button
+                      onClick={() => toggleFaq(idx)}
+                      className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 font-bold text-xs sm:text-sm text-[#0F172A] min-h-[48px] hover:text-brand transition-colors"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <HelpCircle className="w-4 h-4 text-brand shrink-0" />
+                        {item.question}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-300 shrink-0 ${
+                          isOpen ? "rotate-180 text-brand" : ""
+                        }`}
+                      />
+                    </button>
+                    <AnimatePresence>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-xs text-[#475569] leading-relaxed border-t border-slate-100 pt-3">
+                            {item.answer}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── 8. HIGH-URGENCY FINAL CTA BANNER ──────────────────────────────── */}
+        <section className="py-12 sm:py-20 px-4 max-w-screen-xl mx-auto">
+          <div className="bg-[#0F172A] rounded-2xl sm:rounded-3xl p-6 sm:p-14 text-white text-center shadow-xl relative overflow-hidden border border-slate-800">
+            <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 relative z-10">
+              <Badge className="bg-brand text-white font-bib text-[10px] uppercase px-3 py-1 rounded-full font-bold">
+                Momen Emas Anda
+              </Badge>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight">
+                Siap Menemukan Foto Terbaik Maraton Anda?
+              </h2>
+              <p className="text-xs sm:text-base text-slate-300 leading-relaxed max-w-xl mx-auto">
+                Cari via Nomor BIB Dada dan unduh versi kualitas HD tanpa
+                watermark sekarang juga.
+              </p>
+              <div className="pt-2">
+                <Button
+                  onClick={() => navigate("/login")}
+                  size="lg"
+                  className="w-full sm:w-auto min-h-[52px] px-8 bg-brand hover:bg-[#C2410C] text-white font-bold text-sm sm:text-base rounded-2xl shadow-xl shadow-orange-600/30 transition-all flex items-center justify-center gap-2 mx-auto active:scale-95"
+                >
+                  <Search className="w-5 h-5" />
+                  <span>Cari Foto BIB Sekarang</span>
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── 9. SOCIAL PROOF & METRICS BAR (BELOW FINAL CTA) ──────────────── */}
+        <section className="py-6 sm:py-10 bg-slate-900 text-white border-y border-slate-800">
+          <div className="max-w-screen-xl mx-auto px-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
+              <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-2xl sm:text-4xl font-extrabold font-bib text-brand">
                   10.000+
                 </p>
-                <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 font-medium">
-                  Foto Event
+                <p className="text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
+                  Foto High-Res Terunggah
                 </p>
               </div>
-              <div>
-                <p className="text-2xl sm:text-4xl font-bold font-bib text-white">
-                  500+
+              <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-2xl sm:text-4xl font-extrabold font-bib text-white">
+                  50+
                 </p>
-                <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 font-medium">
-                  Peserta
-                </p>
-              </div>
-              <div>
-                <p className="text-2xl sm:text-4xl font-bold font-bib text-brand">
-                  100%
-                </p>
-                <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 font-medium">
-                  QRIS Aman
+                <p className="text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
+                  Event Olahraga Nasional
                 </p>
               </div>
-              <div>
-                <p className="text-2xl sm:text-4xl font-bold font-bib text-white">
-                  HD
+              <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-2xl sm:text-4xl font-extrabold font-bib text-emerald-400">
+                  99.8%
                 </p>
-                <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 font-medium">
-                  Kualitas Foto
+                <p className="text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
+                  QRIS Instant Approval
+                </p>
+              </div>
+              <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-2xl sm:text-4xl font-extrabold font-bib text-amber-400">
+                  HD 100%
+                </p>
+                <p className="text-[11px] sm:text-xs text-slate-300 mt-1 font-medium">
+                  Bebas Watermark Setelah Bayar
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ─── 6. FOOTER ──────────────────────────────────────────────── */}
-        <footer className="bg-white border-t border-[#E5E7EB] pt-6 pb-20 sm:pb-8 px-4 text-center">
+        {/* ─── FOOTER ────────────────────────────────────────────────────────── */}
+        <footer className="bg-white border-t border-[#E2E8F0] pt-8 pb-24 sm:pb-8 px-4 text-center">
           <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start">
               <SepotoLogo size="md" />
-              <span className="text-xs text-[#9CA3AF]">
+              <span className="text-xs text-[#94A3B8]">
                 © 2026 Sepoto. All rights reserved.
               </span>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold text-[#4B5563] flex-wrap justify-center">
+            <div className="flex items-center gap-4 text-xs font-semibold text-[#475569] flex-wrap justify-center">
               <Link to="/login" className="hover:text-brand transition-colors">
-                Login
+                Portal Peserta
               </Link>
             </div>
           </div>
         </footer>
 
-        {/* ─── MODAL INFORMASI EVENT TIDAK AKTIF ──────────────────── */}
+        {/* ─── STICKY MOBILE QUICK-ACTION BAR (MOBILE ONLY) ────────────────────── */}
+        <div
+          className="sm:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 z-50 shadow-2xl"
+          style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}
+        >
+          <Button
+            onClick={() => navigate("/login")}
+            className="w-full bg-brand hover:bg-[#C2410C] text-white font-bold text-xs min-h-[48px] rounded-xl shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 active:scale-95"
+          >
+            <Search className="w-4 h-4" />
+            <span>Cari Foto BIB Sekarang</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* ─── MODAL PREVIEW SAMPLE PHOTO ─────────────────────────────────────── */}
+        <Dialog
+          open={Boolean(selectedSamplePhoto)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedSamplePhoto(null);
+          }}
+        >
+          <DialogContent className="bg-white border border-[#E2E8F0] rounded-3xl p-5 max-w-md shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-[#0F172A]">
+                Pratinjau Foto BIB #{selectedSamplePhoto?.bib}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-[#475569]">
+                {selectedSamplePhoto?.eventName} • Fotografer:{" "}
+                {selectedSamplePhoto?.author}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedSamplePhoto && (
+              <div className="my-2 space-y-3">
+                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
+                  <ProtectedPhoto
+                    src={selectedSamplePhoto.url}
+                    alt={`Preview BIB ${selectedSamplePhoto.bib}`}
+                    className="w-full h-full"
+                    imgClassName="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 left-3">
+                    <Badge className="bg-brand text-white font-bib text-xs font-bold">
+                      #{selectedSamplePhoto.bib}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+                  <span className="text-slate-600">Harga Foto HD:</span>
+                  <span className="font-bold text-brand text-sm font-bib">
+                    {selectedSamplePhoto.price}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-2 flex gap-2">
+              <Button
+                onClick={() => setSelectedSamplePhoto(null)}
+                variant="outline"
+                className="flex-1 text-xs h-11 rounded-xl"
+              >
+                Tutup
+              </Button>
+              <Button
+                onClick={() => {
+                  setSelectedSamplePhoto(null);
+                  navigate("/login");
+                }}
+                className="flex-1 bg-brand hover:bg-[#C2410C] text-white text-xs font-bold h-11 rounded-xl shadow-md"
+              >
+                Beli Foto
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── MODAL INFORMASI EVENT TIDAK AKTIF ────────────────────────────── */}
         <Dialog
           open={Boolean(selectedInactiveEvent)}
           onOpenChange={(open) => {
             if (!open) setSelectedInactiveEvent(null);
           }}
         >
-          <DialogContent className="bg-white border border-[#E5E7EB] rounded-3xl p-6 max-w-md shadow-2xl">
+          <DialogContent className="bg-white border border-[#E2E8F0] rounded-3xl p-6 max-w-md shadow-2xl">
             <DialogHeader>
               <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-3">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <DialogTitle className="text-xl font-bold text-[#111827]">
+              <DialogTitle className="text-xl font-bold text-[#0F172A]">
                 Event Telah Berakhir
               </DialogTitle>
-              <DialogDescription className="text-xs text-[#4B5563] mt-1 leading-relaxed">
-                Event <strong className="text-[#111827]">{selectedInactiveEvent?.title || selectedInactiveEvent?.name}</strong> saat ini dalam status non-aktif / telah selesai.
+              <DialogDescription className="text-xs text-[#475569] mt-1 leading-relaxed">
+                Event{" "}
+                <strong className="text-[#0F172A]">
+                  {selectedInactiveEvent?.title || selectedInactiveEvent?.name}
+                </strong>{" "}
+                saat ini dalam status non-aktif / telah selesai.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 my-2 text-xs space-y-2">
-              <div className="flex justify-between items-center text-gray-600">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-2 text-xs space-y-2">
+              <div className="flex justify-between items-center text-slate-600">
                 <span>Tanggal Pelaksanaan:</span>
-                <span className="font-semibold text-gray-900">
-                  {selectedInactiveEvent?.eventDate || selectedInactiveEvent?.event_date || "-"}
+                <span className="font-semibold text-slate-900">
+                  {selectedInactiveEvent?.eventDate ||
+                    selectedInactiveEvent?.event_date ||
+                    "-"}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-gray-600">
+              <div className="flex justify-between items-center text-slate-600">
                 <span>Status Event:</span>
-                <Badge variant="outline" className="bg-gray-200 text-gray-700 text-[10px]">
+                <Badge
+                  variant="outline"
+                  className="bg-slate-200 text-slate-700 text-[10px]"
+                >
                   SELESAI / NON-AKTIF
                 </Badge>
               </div>
             </div>
 
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Aktivitas login dan unggah foto baru untuk event ini sudah ditutup. Silakan hubungi panitia atau admin jika Anda memerlukan bantuan lebih lanjut.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Aktivitas login dan unggah foto baru untuk event ini sudah
+              ditutup. Silakan hubungi panitia atau admin jika Anda memerlukan
+              bantuan lebih lanjut.
             </p>
 
             <div className="mt-4 flex justify-end">
               <Button
                 onClick={() => setSelectedInactiveEvent(null)}
-                className="w-full bg-[#191C21] hover:bg-brand text-white font-bold text-xs h-11 rounded-xl shadow-md"
+                className="w-full bg-[#0F172A] hover:bg-brand text-white font-bold text-xs h-11 rounded-xl shadow-md"
               >
                 Saya Mengerti
               </Button>

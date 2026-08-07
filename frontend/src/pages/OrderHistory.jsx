@@ -33,48 +33,12 @@ import ProtectedPhoto from "../components/ProtectedPhoto";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 
-const WA_ADMIN_NUMBER = "6281234567890";
-
 const formatRupiah = (v) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(v ?? 0);
-
-const buildWhatsAppUrl = ({
-  orderNumber,
-  userName,
-  bibNumber,
-  items = [],
-  total = 0,
-}) => {
-  const photoList = items
-    .map(
-      (item, idx) =>
-        `  ${idx + 1}. Foto ID #${item.id} (BIB: ${item.bibTags ?? "Umum"}) — ${formatRupiah(item.price)}`,
-    )
-    .join("\n");
-
-  const message = [
-    `🎉 *Konfirmasi Pembayaran Sepoto*`,
-    ``,
-    `📋 *Nomor Order:* ${orderNumber}`,
-    `👤 *Nama:* ${userName}`,
-    bibNumber ? `🏷️ *BIB:* #${bibNumber}` : "",
-    ``,
-    `📸 *Daftar Foto yang Dibeli:*`,
-    photoList,
-    ``,
-    `💰 *Total Pembayaran:* ${formatRupiah(total)}`,
-    ``,
-    `_Bukti transfer telah dikirim. Mohon diverifikasi. Terima kasih!_`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  return `https://wa.me/${WA_ADMIN_NUMBER}?text=${encodeURIComponent(message)}`;
-};
 
 const STATUS_MAP = {
   pending: {
@@ -87,7 +51,7 @@ const STATUS_MAP = {
     label: "Disetujui — Siap Diunduh",
     desc: "Pembayaran disetujui! Klik tombol unduh untuk mendapatkan foto asli resolusi tinggi.",
     icon: CheckCircle2,
-    cls: "text-green-700 bg-green-50 border-green-200",
+    cls: "text-emerald-700 bg-emerald-50 border-emerald-200",
   },
   rejected: {
     label: "Ditolak",
@@ -97,7 +61,7 @@ const STATUS_MAP = {
   },
 };
 
-function OrderCard({ order, currentUser }) {
+function OrderCard({ order }) {
   const [downloading, setDownloading] = useState(null);
   const [downloadSuccess, setDownloadSuccess] = useState(null);
   const [expanded, setExpanded] = useState(false);
@@ -156,32 +120,24 @@ function OrderCard({ order, currentUser }) {
     }
   };
 
-  const waUrl = buildWhatsAppUrl({
-    orderNumber: order.orderNumber,
-    userName: currentUser?.name ?? "Peserta",
-    bibNumber: currentUser?.bibNumber ?? null,
-    items: order.photos,
-    total: order.total,
-  });
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="bg-white border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+      <Card className="bg-white border-[#E2E8F0] rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all">
         {/* Header Order */}
-        <div className="px-4.5 pt-4.5 pb-3.5 border-b border-[#F3F4F6]">
+        <div className="px-4.5 pt-4.5 pb-3.5 border-b border-[#F1F5F9]">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <Package className="w-4 h-4 text-brand shrink-0" />
-                <span className="font-bib text-xs text-[#111827] font-bold">
+                <span className="font-bib text-xs text-[#0F172A] font-bold">
                   {order.orderNumber}
                 </span>
               </div>
-              <p className="text-xs text-[#9CA3AF]">
+              <p className="text-xs text-[#64748B]">
                 {order.createdAt} · {order.photos.length} foto
               </p>
             </div>
@@ -205,22 +161,22 @@ function OrderCard({ order, currentUser }) {
           </div>
         </div>
 
-        {/* Shadcn UI Alert Unduhan Berhasil */}
+        {/* Alert Unduhan Berhasil */}
         {downloadSuccess && (
           <div className="px-4.5 pt-3">
-            <Alert className="bg-green-50 border border-green-200 text-green-900 rounded-2xl p-3.5 shadow-sm flex items-start gap-3">
-              <CheckCircle2 className="w-4.5 h-4.5 text-green-600 shrink-0 mt-0.5" />
+            <Alert className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-3.5 shadow-xs flex items-start gap-3">
+              <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <AlertTitle className="text-xs font-bold text-green-900 flex items-center gap-2">
+                <AlertTitle className="text-xs font-bold text-emerald-900 flex items-center gap-2">
                   <span>Unduhan Foto Berhasil!</span>
                   <Badge
                     variant="outline"
-                    className="text-[9px] font-bib bg-green-100 text-green-800 border-green-300"
+                    className="text-[9px] font-bib bg-emerald-100 text-emerald-800 border-emerald-300 font-bold"
                   >
-                    Original
+                    Original HD
                   </Badge>
                 </AlertTitle>
-                <AlertDescription className="text-[11px] text-green-700 leading-relaxed mt-0.5">
+                <AlertDescription className="text-[11px] text-emerald-700 leading-relaxed mt-0.5">
                   Berkas lampiran{" "}
                   <strong className="font-bib">
                     {downloadSuccess.fileName}
@@ -243,12 +199,12 @@ function OrderCard({ order, currentUser }) {
                   key={photo.id}
                   size="default"
                   orientation="horizontal"
-                  className="w-full bg-[#F9FAFB] border-[#E5E7EB] rounded-xl p-2"
+                  className="w-full bg-[#FAFBFD] border-[#E2E8F0] rounded-xl p-2"
                 >
                   <AttachmentMedia
                     variant="image"
                     onClick={() => setPreviewPhoto(photo)}
-                    className="w-12 h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer relative group/img"
+                    className="w-12 h-14 rounded-lg overflow-hidden shrink-0 cursor-pointer relative group/img bg-[#0F172A]"
                   >
                     <ProtectedPhoto
                       src={
@@ -270,7 +226,7 @@ function OrderCard({ order, currentUser }) {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <AttachmentTitle
                           onClick={() => setPreviewPhoto(photo)}
-                          className="text-xs font-bold text-[#111827] cursor-pointer hover:text-brand transition-colors"
+                          className="text-xs font-bold text-[#0F172A] cursor-pointer hover:text-brand transition-colors"
                           title={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
                         >
                           {photo.originalFilename || photo.original_filename || photo.title || photo.name || `Foto #${photo.id}`}
@@ -278,7 +234,7 @@ function OrderCard({ order, currentUser }) {
                         {photo.bibTags && (
                           <Badge
                             variant="secondary"
-                            className="font-bib text-[9px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-md"
+                            className="font-bib text-[9px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-md font-bold"
                           >
                             BIB #{photo.bibTags}
                           </Badge>
@@ -289,13 +245,13 @@ function OrderCard({ order, currentUser }) {
                       </span>
                     </div>
 
-                    <AttachmentDescription className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bib mt-1">
+                    <AttachmentDescription className="flex items-center gap-1.5 text-[10px] text-[#64748B] font-bib mt-1">
                       <Paperclip className="w-3 h-3 text-brand shrink-0" />
                       <span className="truncate">
                         {photo.originalFilename || `IMG_${photo.id}.jpg`}
                       </span>
                       <span>·</span>
-                      <span className="text-gray-400 font-medium">
+                      <span className="text-[#94A3B8] font-medium">
                         {order.status === "approved"
                           ? "Original HD"
                           : "Watermarked"}
@@ -314,7 +270,7 @@ function OrderCard({ order, currentUser }) {
                           disabled={downloading !== null}
                           variant="ghost"
                           size="sm"
-                          className="shrink-0 text-xs font-bold text-brand hover:text-[#C2410C] hover:bg-orange-50 h-8 px-2.5 rounded-lg"
+                          className="shrink-0 text-xs font-bold text-brand hover:text-[#C2410C] hover:bg-orange-50 h-8 px-2.5 rounded-lg min-h-[36px]"
                         >
                           {downloading === photo.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -338,7 +294,7 @@ function OrderCard({ order, currentUser }) {
               variant="ghost"
               size="sm"
               onClick={() => setExpanded((v) => !v)}
-              className="mt-2 text-xs text-[#4B5563] hover:text-brand px-0 h-auto font-medium"
+              className="mt-2 text-xs text-[#475569] hover:text-brand px-0 h-auto font-medium"
             >
               <ChevronRight
                 className={`w-3.5 h-3.5 mr-1 transition-transform ${expanded ? "rotate-90" : ""}`}
@@ -348,58 +304,28 @@ function OrderCard({ order, currentUser }) {
                 : `Lihat ${order.photos.length - 2} foto lainnya`}
             </Button>
           )}
-        </div>
 
-        {/* Action Footer per Status */}
-        {order.status === "pending" && (
-          <div className="px-4.5 pb-4 pt-2 border-t border-[#F3F4F6]">
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full h-11 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 px-4 transition-all"
-            >
-              <svg
-                className="w-4 h-4 fill-current shrink-0"
-                viewBox="0 0 24 24"
-              >
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-              </svg>
-              <span>Konfirmasi via WhatsApp</span>
-            </a>
-          </div>
-        )}
-
-        {order.status === "approved" && (
-          <div className="px-4.5 pb-4.5 pt-2 border-t border-[#F3F4F6]">
-            <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
+          {/* Unduh Semua Foto (ZIP) */}
+          {order.status === "approved" && order.photos.length > 1 && (
+            <div className="mt-3 pt-3 border-t border-[#F1F5F9]">
               <Button
-                id={`download-all-${order.id}`}
                 onClick={handleDownloadAll}
                 disabled={downloading !== null}
-                className="w-full h-11 bg-[#191C21] hover:bg-[#22262E] text-white text-xs font-bold rounded-xl shadow-md"
+                className="w-full bg-[#0F172A] hover:bg-brand text-white font-bold text-xs min-h-[44px] rounded-xl shadow-xs flex items-center justify-center gap-2"
               >
                 {downloading === "all" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    <span>Mengompres & menyiapkan file .ZIP...</span>
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin" /><span>Membuat Berkas ZIP...</span></>
                 ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    <span>
-                      Unduh Paket .ZIP ({order.photos.length} Foto HD)
-                    </span>
-                  </>
+                  <><Download className="w-4 h-4" /><span>Unduh Semua Foto (ZIP)</span></>
                 )}
               </Button>
-            </motion.div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {order.status === "rejected" && (
-          <div className="px-4.5 pb-4 pt-2 border-t border-[#F3F4F6]">
-            <p className="text-[11px] text-[#9CA3AF] text-center">
+          <div className="px-4.5 pb-4 pt-2 border-t border-[#F1F5F9]">
+            <p className="text-[11px] text-[#94A3B8] text-center">
               Pesanan ditolak. Silakan hubungi panitia event untuk klarifikasi.
             </p>
           </div>
@@ -414,38 +340,38 @@ function OrderCard({ order, currentUser }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setPreviewPhoto(null)}
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-2xl w-full bg-[#191C21] rounded-3xl overflow-hidden border border-white/10 shadow-2xl text-white flex flex-col max-h-[90vh]"
+              className="relative max-w-2xl w-full bg-[#1E293B] rounded-3xl overflow-hidden border border-slate-700 shadow-2xl text-white flex flex-col max-h-[90vh]"
             >
               {/* Header Modal */}
-              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+              <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between bg-slate-900/40">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <Camera className="w-4 h-4 text-brand" />
                   <span className="text-sm font-bold">
                     Pratinjau Foto Pesanan
                   </span>
                   {previewPhoto.bibTags && (
-                    <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
+                    <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5 font-bold">
                       BIB #{previewPhoto.bibTags}
                     </Badge>
                   )}
                   <Badge
                     variant="outline"
-                    className="font-bib text-[10px] bg-white/10 text-white border-white/20"
+                    className="font-bib text-[10px] bg-slate-800 text-[#CBD5E1] border-slate-700"
                   >
                     ID #{previewPhoto.id}
                   </Badge>
                 </div>
                 <button
                   onClick={() => setPreviewPhoto(null)}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-white transition-colors"
                   aria-label="Tutup pratinjau"
                 >
                   <X className="w-5 h-5" />
@@ -467,9 +393,9 @@ function OrderCard({ order, currentUser }) {
               </div>
 
               {/* Footer */}
-              <div className="p-4 sm:p-5 border-t border-white/10 bg-[#191C21] flex items-center justify-between gap-3">
+              <div className="p-4 sm:p-5 border-t border-slate-700 bg-[#1E293B] flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bib uppercase tracking-widest text-gray-400">
+                  <p className="text-[10px] font-bib uppercase tracking-widest text-slate-400 font-semibold">
                     Harga Foto
                   </p>
                   <p className="font-bib text-xl font-bold text-brand">
@@ -480,7 +406,7 @@ function OrderCard({ order, currentUser }) {
                 <Button
                   variant="outline"
                   onClick={() => setPreviewPhoto(null)}
-                  className="h-11 px-6 rounded-xl border-white/20 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-bold shrink-0"
+                  className="h-11 px-6 rounded-xl border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-bold shrink-0 min-h-[44px]"
                 >
                   Tutup
                 </Button>
@@ -535,35 +461,32 @@ export default function OrderHistory() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-lg mx-auto px-4 pb-12"
+        transition={{ duration: 0.35 }}
+        className="max-w-lg mx-auto px-4 pb-12 font-sans antialiased"
       >
         {/* Header */}
         <div className="py-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            render={
-              <Link to="/gallery" id="orders-back-to-gallery">
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Kembali ke Galeri
-              </Link>
-            }
-            className="mb-3 px-0 text-xs text-[#4B5563] hover:text-[#111827] h-auto"
-          />
+          <Link
+            to="/gallery"
+            id="orders-back-to-gallery"
+            className="inline-flex items-center text-xs text-[#475569] hover:text-[#0F172A] mb-3 font-semibold transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            <span>Kembali ke Galeri</span>
+          </Link>
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#111827] tracking-tight">
+              <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
                 Riwayat Pesanan
               </h1>
               {currentUser && (
-                <p className="text-sm text-[#4B5563] mt-1 flex items-center gap-1.5">
+                <p className="text-sm text-[#475569] mt-1 flex items-center gap-1.5">
                   <span>{currentUser.name}</span>
                   {currentUser.bibNumber && (
                     <Badge
                       variant="outline"
-                      className="font-bib text-brand border-brand/20 bg-brand/10 px-2 py-0.5"
+                      className="font-bib text-brand border-brand/30 bg-brand/10 px-2 py-0.5 font-bold"
                     >
                       BIB #{currentUser.bibNumber}
                     </Badge>
@@ -571,11 +494,11 @@ export default function OrderHistory() {
                 </p>
               )}
             </div>
-            <div className="text-right shrink-0 bg-white border border-[#E5E7EB] rounded-2xl px-3.5 py-1.5 shadow-sm">
-              <p className="text-xl font-bold text-[#111827] font-bib">
+            <div className="text-right shrink-0 bg-white border border-[#E2E8F0] rounded-2xl px-3.5 py-1.5 shadow-xs">
+              <p className="text-xl font-extrabold text-[#0F172A] font-bib">
                 {orders.length}
               </p>
-              <p className="text-[10px] text-[#4B5563]">pesanan</p>
+              <p className="text-[10px] text-[#475569] font-medium">pesanan</p>
             </div>
           </div>
         </div>
@@ -591,7 +514,7 @@ export default function OrderHistory() {
             {
               label: "Approved",
               count: approved,
-              cls: "bg-green-50 border-green-200 text-green-700",
+              cls: "bg-emerald-50 border-emerald-200 text-emerald-700",
             },
             {
               label: "Total",
@@ -601,10 +524,10 @@ export default function OrderHistory() {
           ].map(({ label, count, cls }) => (
             <Card
               key={label}
-              className={`p-3 text-center rounded-2xl border shadow-sm ${cls}`}
+              className={`p-3 text-center rounded-2xl border shadow-xs ${cls}`}
             >
-              <p className="text-xl font-bold font-bib">{count}</p>
-              <p className="text-[11px] font-semibold">{label}</p>
+              <p className="text-xl font-extrabold font-bib">{count}</p>
+              <p className="text-[11px] font-bold">{label}</p>
             </Card>
           ))}
         </div>
@@ -612,11 +535,11 @@ export default function OrderHistory() {
         {/* Banner Ready */}
         {approved > 0 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-2.5 bg-green-50 border border-green-200 text-green-800 text-xs font-medium px-4 py-3 rounded-2xl mb-5"
+            className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium px-4 py-3 rounded-2xl mb-5"
           >
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
             <span>
               <strong>{approved} pesanan</strong> sudah disetujui dan foto HD
               siap diunduh!
@@ -627,17 +550,16 @@ export default function OrderHistory() {
         {/* Orders List */}
         <div className="space-y-4">
           {orders.length === 0 ? (
-            <div className="text-center py-16">
-              <ShoppingBag className="w-12 h-12 text-[#D1D5DB] mx-auto mb-3" />
-              <p className="font-bold text-[#111827]">Belum Ada Pesanan</p>
-              <p className="text-xs text-[#4B5563] mt-1 mb-4">
+            <div className="text-center py-16 bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-xs">
+              <ShoppingBag className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
+              <p className="font-extrabold text-[#0F172A]">Belum Ada Pesanan</p>
+              <p className="text-xs text-[#475569] mt-1 mb-4">
                 Pilih foto di galeri dan lakukan checkout.
               </p>
-              <Button
-                variant="link"
-                render={<Link to="/gallery">Ke Galeri Foto →</Link>}
-                className="text-brand font-bold text-xs"
-              />
+              <Link to="/gallery" className="text-brand font-bold text-xs inline-flex items-center gap-1 hover:underline">
+                <span>Ke Galeri Foto</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           ) : (
             orders.map((order) => (

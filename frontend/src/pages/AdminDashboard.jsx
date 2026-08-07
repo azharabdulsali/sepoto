@@ -118,12 +118,12 @@ export default function AdminDashboard() {
 
   return (
     <AppShell>
-      <div className="max-w-screen-lg mx-auto px-4 pb-12">
-        <div className="py-6 md:py-8 border-b border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="max-w-screen-lg mx-auto px-4 pb-12 font-sans antialiased">
+        <div className="py-6 md:py-8 border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <Badge
               variant="outline"
-              className={`inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest px-3 py-1 rounded-full mb-2 ${
+              className={`inline-flex items-center gap-1.5 text-[10px] font-bib uppercase tracking-widest px-3 py-1 rounded-full mb-2 font-semibold ${
                 isSuperAdmin
                   ? "text-purple-700 bg-purple-50 border-purple-200"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -132,22 +132,22 @@ export default function AdminDashboard() {
               <LayoutDashboard className="w-3.5 h-3.5" />
               {isSuperAdmin ? "Super Admin" : "Event Admin"}
             </Badge>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#111827] tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tracking-tight">
               Admin Dashboard
             </h1>
-            <p className="text-sm text-[#4B5563] mt-1">
+            <p className="text-sm text-[#475569] mt-1">
               Selamat datang,{" "}
-              <span className="font-semibold text-[#111827]">
+              <span className="font-semibold text-[#0F172A]">
                 {currentUser?.name}
               </span>
             </p>
           </div>
 
-          {/* Global Event Scoping Filter (Super Admin & Event Admin) */}
-          <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-3 flex items-center gap-3">
+          {/* Global Event Scoping Filter */}
+          <div className="bg-[#FAFBFD] border border-[#E2E8F0] rounded-2xl p-3 flex items-center gap-3 shadow-xs">
             <Settings className="w-4 h-4 text-brand shrink-0" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-bib uppercase tracking-wider text-gray-500 font-bold">
+              <span className="text-[10px] font-bib uppercase tracking-wider text-slate-500 font-bold">
                 Event Terpilih:
               </span>
               {isSuperAdmin ? (
@@ -155,7 +155,7 @@ export default function AdminDashboard() {
                   value={String(selectedEventFilter)}
                   onValueChange={(val) => setSelectedEventFilter(val)}
                 >
-                  <SelectTrigger className="!h-8 border-0 bg-transparent p-0 text-xs font-bold text-[#111827] shadow-none focus:ring-0">
+                  <SelectTrigger className="!h-8 border-0 bg-transparent p-0 text-xs font-bold text-[#0F172A] shadow-none focus:ring-0">
                     <SelectValue placeholder="Pilih Event...">
                       {selectedEventFilter === "all"
                         ? "Semua Event"
@@ -164,7 +164,7 @@ export default function AdminDashboard() {
                           )?.title || "Pilih Event..."}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-[#E5E7EB] rounded-xl shadow-lg z-50">
+                  <SelectContent className="bg-white border-[#E2E8F0] rounded-xl shadow-lg z-50">
                     <SelectGroup>
                       <SelectItem value="all">
                         Semua Event ({events.length})
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
 
         <div className="mt-5 mb-6">
           <div
-            className={`grid gap-1 p-1 bg-[#F3F4F6] rounded-2xl w-full ${isSuperAdmin ? "grid-cols-5" : "grid-cols-4"}`}
+            className={`flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#F1F5F9] rounded-2xl w-full sm:grid ${isSuperAdmin ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}
           >
             {tabs.map(({ id, label, icon: Icon }) => (
               <Button
@@ -196,16 +196,16 @@ export default function AdminDashboard() {
                 id={`admin-tab-${id}`}
                 variant="ghost"
                 onClick={() => setActiveTab(id)}
-                className={`relative flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 h-10 rounded-xl text-[11px] sm:text-sm font-bold transition-all truncate w-full ${
+                className={`relative flex items-center justify-center gap-1.5 px-3 sm:px-4 h-12 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 sm:shrink min-h-[48px] ${
                   activeTab === id
-                    ? "bg-white text-[#111827] shadow-sm"
-                    : "text-[#4B5563] hover:text-[#111827]"
+                    ? "bg-white text-[#0F172A] shadow-xs"
+                    : "text-[#475569] hover:text-[#0F172A]"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">{label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap sm:truncate">{label}</span>
                 {id === "payments" && pendingCount > 0 && (
-                  <Badge className="bg-red-500 text-white text-[9px] font-bold w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full p-0 flex items-center justify-center border-0 shrink-0">
+                  <Badge className="bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full p-0 flex items-center justify-center border-0 shrink-0">
                     {pendingCount}
                   </Badge>
                 )}
@@ -217,10 +217,10 @@ export default function AdminDashboard() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
           >
             {activeTab === "overview" && (
               <OverviewTab

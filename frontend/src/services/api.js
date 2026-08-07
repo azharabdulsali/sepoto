@@ -26,6 +26,17 @@ export async function fetchApi(endpoint, options = {}) {
       ...options,
     });
     const data = await res.json();
+
+    if (res.status === 503 && data.maintenance) {
+      if (
+        typeof window !== 'undefined' &&
+        !window.location.pathname.startsWith('/maintenance') &&
+        !window.location.pathname.startsWith('/login')
+      ) {
+        window.location.href = '/maintenance';
+      }
+    }
+
     return data;
   } catch (error) {
     console.error(`API Error on ${endpoint}:`, error);

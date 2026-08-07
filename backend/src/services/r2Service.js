@@ -38,8 +38,8 @@ async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
     if (PUBLIC_DOMAIN && !PUBLIC_DOMAIN.includes('r2.dev')) {
       return `${PUBLIC_DOMAIN.replace(/\/$/, '')}/${key}`;
     }
-    const port = process.env.PORT || 5000;
-    return `http://localhost:${port}/api/photos/file/${key}`;
+    const baseUrl = process.env.BACKEND_URL ? process.env.BACKEND_URL.replace(/\/$/, '') : `http://localhost:${process.env.PORT || 5000}`;
+    return `${baseUrl}/api/photos/file/${key}`;
   } catch (error) {
     console.error('❌ Cloudflare R2 Upload Error:', error);
     throw error;
