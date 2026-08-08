@@ -33,7 +33,10 @@ async function generateWatermark(inputBuffer) {
         const posY = Math.round(y);
         textNodes.push(`
           <g transform="rotate(-35, ${posX}, ${posY})">
-            <text x="${posX}" y="${posY}" text-anchor="middle" dominant-baseline="middle" class="watermark-text">
+            <text x="${posX}" y="${posY}" text-anchor="middle" dominant-baseline="middle"
+              fill="#ffffff" fill-opacity="0.6"
+              stroke="#000000" stroke-opacity="0.45" stroke-width="1.2"
+              font-family="sans-serif" font-size="${fontSize}" font-weight="bold" letter-spacing="0.5">
               sepoto.project
             </text>
           </g>
@@ -42,23 +45,9 @@ async function generateWatermark(inputBuffer) {
       rowIndex++;
     }
 
-    // SVG Watermark Overlay berulang dengan outline halus & transparansi presisi
+    // SVG Watermark Overlay berulang dengan inline attributes untuk kompatibilitas 100% librsvg/Sharp
     const svgOverlay = `
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-        <style>
-          .watermark-text {
-            fill: #ffffff;
-            fill-opacity: 0.5;
-            stroke: #000000;
-            stroke-opacity: 0.4;
-            stroke-width: 1.2px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: ${fontSize}px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            paint-order: stroke fill;
-          }
-        </style>
         ${textNodes.join('\n')}
       </svg>
     `;
