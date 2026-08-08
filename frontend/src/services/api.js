@@ -130,6 +130,12 @@ export const api = {
       method: 'DELETE',
     }),
 
+  bulkDeleteUsers: (ids) =>
+    fetchApi('/auth/users/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+
   importParticipants: (data) =>
     fetchApi('/auth/users/import', {
       method: 'POST',

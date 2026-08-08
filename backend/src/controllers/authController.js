@@ -453,6 +453,69 @@ const deleteUser = async (req, res) => {
 };
 
 /**
+ * POST /api/auth/users/bulk-delete
+ * Super Admin / Admin: Hapus masal pengguna
+ */
+const bulkDeleteUsers = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'Tidak ada ID pengguna yang dipilih.' });
+    }
+
+    const currentUserId = req.user?.id ? Number(req.user.id) : null;
+
+    // Ambil detail target pengguna dari DB
+    const usersRes = await query(
+      `SELECT id, role, event_id FROM users WHERE id = ANY($1::int[])`,
+      [ids]
+    );
+
+    let adminEventId = null;
+    if (req.user && req.user.role === 'admin') {
+      adminEventId = req.user.eventId
+        || (await query('SELECT event_id FROM users WHERE id = $1', [req.user.id])).rows[0]?.event_id;
+    }
+
+    // Filter ID mana saja yang aman untuk dihapus
+    const validIdsToDelete = usersRes.rows
+      .filter((u) => {
+        const uId = Number(u.id);
+        // Jangan hapus akun sendiri
+        if (currentUserId && uId === currentUserId) return false;
+        // Jangan hapus Super Admin
+        if (u.role === 'super_admin') return false;
+        // Jika Event Admin: tidak boleh hapus admin lain & harus event miliknya
+        if (req.user?.role === 'admin') {
+          if (u.role === 'admin') return false;
+          if (Number(u.event_id) !== Number(adminEventId)) return false;
+        }
+        return true;
+      })
+      .map((u) => Number(u.id));
+
+    if (validIdsToDelete.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tidak ada pengguna valid yang dapat dihapus (akun sendiri & Super Admin dilindungi).',
+      });
+    }
+
+    await query(`DELETE FROM users WHERE id = ANY($1::int[])`, [validIdsToDelete]);
+
+    return res.json({
+      success: true,
+      message: `${validIdsToDelete.length} pengguna berhasil dihapus.`,
+      deletedCount: validIdsToDelete.length,
+    });
+  } catch (error) {
+    console.error('Bulk Delete Users Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal menghapus masal pengguna.' });
+  }
+};
+
+/**
  * PATCH /api/auth/users/:id
  * Super Admin / Admin: Edit data pengguna (Peserta, Fotografer, atau Akun Sendiri)
  */
@@ -904,5 +967,6 @@ module.exports = {
   createUserManual,
   updateUser,
   deleteUser,
+  bulkDeleteUsers,
   importParticipants,
 };

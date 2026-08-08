@@ -17,11 +17,13 @@ import {
   Settings,
   Search,
   Calendar,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -106,6 +108,77 @@ export default function ParticipantsTab({
   // Delete User State
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+
+  // Bulk Delete State
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Check if a user account can be deleted
+  const isUserDeletable = useCallback(
+    (user) => {
+      if (!user || !user.id) return false;
+      if (currentUser && Number(user.id) === Number(currentUser.id)) return false;
+      if (user.role === "super_admin") return false;
+      if (currentUser?.role === "admin" && user.role === "admin") return false;
+      return true;
+    },
+    [currentUser]
+  );
+
+  const deletableOnPage = paginatedUsers.filter(isUserDeletable);
+  const isAllPageSelected =
+    deletableOnPage.length > 0 &&
+    deletableOnPage.every((u) => selectedUserIds.includes(u.id));
+
+  const toggleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      const pageIds = deletableOnPage.map((u) => u.id);
+      setSelectedUserIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      const pageIds = deletableOnPage.map((u) => u.id);
+      setSelectedUserIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const toggleSelectUser = (id) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedUserIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      const res = await api.bulkDeleteUsers(selectedUserIds);
+      if (res.success) {
+        setActionAlert({
+          type: "success",
+          title: "Berhasil Menghapus Masal!",
+          message: res.message || `${res.deletedCount || selectedUserIds.length} pengguna berhasil dihapus.`,
+        });
+        setSelectedUserIds([]);
+        loadUsers();
+      } else {
+        setActionAlert({
+          type: "error",
+          title: "Gagal Menghapus",
+          message: res.message || "Gagal menghapus masal pengguna.",
+        });
+      }
+    } catch (err) {
+      console.error("Bulk delete error:", err);
+      setActionAlert({
+        type: "error",
+        title: "Kesalahan Server",
+        message: "Terjadi kesalahan server saat menghapus masal pengguna.",
+      });
+    } finally {
+      setIsBulkDeleting(false);
+      setShowBulkDeleteModal(false);
+    }
+  };
 
   const loadUsers = useCallback(async () => {
     try {
@@ -584,6 +657,13 @@ export default function ParticipantsTab({
                 key={u.id}
                 className="bg-white border-[#E5E7EB] rounded-2xl px-3.5 py-3 flex flex-row items-center gap-3 shadow-sm"
               >
+                <div className="shrink-0 flex items-center">
+                  <Checkbox
+                    checked={selectedUserIds.includes(u.id)}
+                    disabled={!isUserDeletable(u)}
+                    onCheckedChange={() => toggleSelectUser(u.id)}
+                  />
+                </div>
                 <div className="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center shrink-0">
                   <span className="text-xs font-bold text-brand">{i + 1}</span>
                 </div>
@@ -681,6 +761,13 @@ export default function ParticipantsTab({
             <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                  <th className="w-12 px-3 py-3.5 text-center">
+                    <Checkbox
+                      checked={isAllPageSelected}
+                      onCheckedChange={toggleSelectAllPage}
+                      title="Pilih Semua di Halaman Ini"
+                    />
+                  </th>
                   <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold min-w-[180px]">
                     Nama Lengkap
                   </th>
@@ -704,13 +791,20 @@ export default function ParticipantsTab({
               <tbody className="divide-y divide-[#F3F4F6]">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
+                    <td colSpan={7} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
                       Tidak ada pengguna yang cocok dengan pencarian atau filter.
                     </td>
                   </tr>
                 ) : (
                   paginatedUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors group">
+                    <td className="w-12 px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedUserIds.includes(u.id)}
+                        disabled={!isUserDeletable(u)}
+                        onCheckedChange={() => toggleSelectUser(u.id)}
+                      />
+                    </td>
                     <td className="px-5 py-3.5 font-bold text-[#111827] max-w-[200px] truncate" title={u.name}>
                       {u.name}
                     </td>
@@ -1158,6 +1252,89 @@ export default function ParticipantsTab({
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 "Ya, Hapus"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedUserIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#111827] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-gray-800"
+          >
+            <div className="flex items-center gap-2">
+              <span className="bg-brand text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                {selectedUserIds.length}
+              </span>
+              <span className="text-xs font-medium text-gray-300">Pengguna Dipilih</span>
+            </div>
+            <div className="h-4 w-px bg-gray-700" />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedUserIds([])}
+                className="text-xs text-gray-300 hover:text-white hover:bg-gray-800 h-8 rounded-xl"
+              >
+                Batal Pilih
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowBulkDeleteModal(true)}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold h-8 px-3.5 rounded-xl shadow-sm"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Hapus ({selectedUserIds.length})
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Dialog Konfirmasi Hapus Masal */}
+      <AlertDialog open={showBulkDeleteModal} onOpenChange={setShowBulkDeleteModal}>
+        <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] shadow-2xl max-w-md">
+          <AlertDialogHeader className="items-center text-center sm:text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+            </div>
+            <AlertDialogTitle className="text-lg font-bold text-[#111827]">
+              Konfirmasi Hapus Masal
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-600 mt-1 text-center">
+              Apakah Anda yakin ingin menghapus{" "}
+              <strong className="text-red-600 font-bold">{selectedUserIds.length} pengguna</strong> yang dipilih?
+              <br />
+              <span className="text-[11px] text-gray-500 mt-2 block">
+                Seluruh data akun dan riwayat peserta yang dihapus akan terhapus secara permanen dari sistem.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center gap-2 mt-4">
+            <AlertDialogCancel
+              onClick={() => setShowBulkDeleteModal(false)}
+              className="rounded-xl text-xs font-semibold h-9 px-4 border-[#E5E7EB]"
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold h-9 px-5 rounded-xl"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  Menghapus...
+                </>
+              ) : (
+                `Ya, Hapus (${selectedUserIds.length})`
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
