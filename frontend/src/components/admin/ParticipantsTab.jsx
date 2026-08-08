@@ -677,123 +677,125 @@ export default function ParticipantsTab({
 
         {/* Desktop View */}
         <Card className="hidden sm:block bg-white border-[#E5E7EB] rounded-2xl overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
-                  Nama Lengkap
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
-                  Event
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
-                  BIB / Username
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
-                  Tanggal Lahir
-                </th>
-                <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
-                  Role
-                </th>
-                <th className="text-right px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F3F4F6]">
-              {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
-                    Tidak ada pengguna yang cocok dengan pencarian atau filter.
-                  </td>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-sm min-w-[700px]">
+              <thead>
+                <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                  <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold min-w-[180px]">
+                    Nama Lengkap
+                  </th>
+                  <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold min-w-[140px]">
+                    Event
+                  </th>
+                  <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold min-w-[160px]">
+                    BIB / Username
+                  </th>
+                  <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold whitespace-nowrap">
+                    Tanggal Lahir
+                  </th>
+                  <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold whitespace-nowrap">
+                    Role
+                  </th>
+                  <th className="text-right px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold whitespace-nowrap sticky right-0 bg-[#F9FAFB] z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
+                    Action
+                  </th>
                 </tr>
-              ) : (
-                paginatedUsers.map((u) => (
-                <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors">
-                  <td className="px-5 py-3.5 font-bold text-[#111827]">
-                    {u.name}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-[#4B5563]">
-                    {u.eventTitle || "Semua Event"}
-                  </td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-gray-600">
-                    {u.role === "user" ? (
-                      <span className="font-bib text-brand font-bold text-sm">
-                        #{u.bibNumber}
-                      </span>
-                    ) : (
-                      `@${u.username}`
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs">
-                    {u.birthDate && u.birthDate !== "-" ? (
-                      <span className="inline-flex items-center gap-1.5 text-gray-700 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg font-mono text-xs font-medium">
-                        <Calendar className="w-3.5 h-3.5 text-brand" />
-                        {u.birthDate}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 italic text-xs font-mono">-</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs">
-                    <Badge
-                      variant="outline"
-                      className={`font-semibold capitalize px-2.5 py-0.5 rounded-full ${
-                        u.role === "super_admin"
-                          ? "bg-purple-50 text-purple-700 border-purple-200"
-                          : u.role === "admin"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : u.role === "photographer"
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      }`}
-                    >
-                      {u.role === "super_admin"
-                        ? "Super Admin"
-                        : u.role === "admin"
-                          ? "Event Admin"
-                          : u.role === "photographer"
-                            ? "Fotografer"
-                            : "Peserta"}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {(isSuperAdmin ||
-                        u.id === currentUser?.id ||
-                        (u.role !== "admin" && u.role !== "super_admin")) && (
-                        <Button
-                          id={`edit-user-${u.id}`}
-                          onClick={() => openEditModal(u)}
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-xl"
-                          title="Edit Pengguna"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
+              </thead>
+              <tbody className="divide-y divide-[#F3F4F6]">
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-8 text-center text-xs text-gray-500 font-medium">
+                      Tidak ada pengguna yang cocok dengan pencarian atau filter.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedUsers.map((u) => (
+                  <tr key={u.id} className="hover:bg-[#F9FAFB] transition-colors group">
+                    <td className="px-5 py-3.5 font-bold text-[#111827] max-w-[200px] truncate" title={u.name}>
+                      {u.name}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-[#4B5563] max-w-[160px] truncate" title={u.eventTitle || "Semua Event"}>
+                      {u.eventTitle || "Semua Event"}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-xs text-gray-600 max-w-[180px] truncate" title={u.role === "user" ? `#${u.bibNumber}` : `@${u.username}`}>
+                      {u.role === "user" ? (
+                        <span className="font-bib text-brand font-bold text-sm">
+                          #{u.bibNumber}
+                        </span>
+                      ) : (
+                        `@${u.username}`
                       )}
-                      {u.id !== currentUser?.id &&
-                        (isSuperAdmin ||
+                    </td>
+                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                      {u.birthDate && u.birthDate !== "-" ? (
+                        <span className="inline-flex items-center gap-1.5 text-gray-700 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-lg font-mono text-xs font-medium">
+                          <Calendar className="w-3.5 h-3.5 text-brand" />
+                          {u.birthDate}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic text-xs font-mono">-</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                      <Badge
+                        variant="outline"
+                        className={`font-semibold capitalize px-2.5 py-0.5 rounded-full ${
+                          u.role === "super_admin"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : u.role === "admin"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : u.role === "photographer"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        }`}
+                      >
+                        {u.role === "super_admin"
+                          ? "Super Admin"
+                          : u.role === "admin"
+                            ? "Event Admin"
+                            : u.role === "photographer"
+                              ? "Fotografer"
+                              : "Peserta"}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-[#F9FAFB] z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] transition-colors">
+                      <div className="flex items-center justify-end gap-1">
+                        {(isSuperAdmin ||
+                          u.id === currentUser?.id ||
                           (u.role !== "admin" && u.role !== "super_admin")) && (
                           <Button
-                            id={`delete-user-${u.id}`}
-                            onClick={() => setDeleteConfirm(u)}
+                            id={`edit-user-${u.id}`}
+                            onClick={() => openEditModal(u)}
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
-                            title="Hapus Pengguna"
+                            className="h-8 w-8 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-xl"
+                            title="Edit Pengguna"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-              )}
-            </tbody>
-          </table>
+                        {u.id !== currentUser?.id &&
+                          (isSuperAdmin ||
+                            (u.role !== "admin" && u.role !== "super_admin")) && (
+                            <Button
+                              id={`delete-user-${u.id}`}
+                              onClick={() => setDeleteConfirm(u)}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                              title="Hapus Pengguna"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         {/* Shadcn UI Pagination Bar */}
