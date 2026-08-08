@@ -1,74 +1,108 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const fs = require('fs');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
-  },
-});
+const isR2Configured = Boolean(
+  process.env.R2_ACCOUNT_ID &&
+  process.env.R2_ACCESS_KEY_ID &&
+  process.env.R2_SECRET_ACCESS_KEY &&
+  !process.env.R2_ACCESS_KEY_ID.includes('YOUR_')
+);
+
+let r2Client = null;
+if (isR2Configured) {
+  try {
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      },
+    });
+  } catch (err) {
+    console.warn('⚠️ R2 Client init warning:', err.message);
+  }
+}
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'sepoto-photos';
 const PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN || '';
 
 /**
- * Upload buffer image to Cloudflare R2
- * @param {Buffer} buffer - Buffer file gambar
- * @param {string} key - File key di R2 (misal: "original/photo1.jpg" atau "watermarked/photo1.jpg")
- * @param {string} contentType - Mime type ("image/jpeg", "image/png", dll)
- * @returns {Promise<string>} URL publik/akses gambar
+ * Fallback: Simpan file ke disk lokal jika R2 belum dikonfigurasi atau gagal
  */
-async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
+async function uploadToLocal(buffer, key) {
   try {
-    const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-    });
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    const filePath = path.join(uploadsDir, key);
+    const fileDir = path.dirname(filePath);
 
-    await r2Client.send(command);
-
-    // Jika domain publik menggunakan r2.dev yang sering diblokir Telkomsel/Internet Baik,
-    // gunakan proxy Express local (/api/photos/file/${key}) agar gambar selalu tampil sempurna di browser.
-    if (PUBLIC_DOMAIN && !PUBLIC_DOMAIN.includes('r2.dev')) {
-      return `${PUBLIC_DOMAIN.replace(/\/$/, '')}/${key}`;
+    if (!fs.existsSync(fileDir)) {
+      fs.mkdirSync(fileDir, { recursive: true });
     }
-    const baseUrl = process.env.BACKEND_URL ? process.env.BACKEND_URL.replace(/\/$/, '') : `http://localhost:${process.env.PORT || 5000}`;
-    return `${baseUrl}/api/photos/file/${key}`;
-  } catch (error) {
-    console.error('❌ Cloudflare R2 Upload Error:', error);
-    throw error;
+
+    fs.writeFileSync(filePath, buffer);
+    const baseUrl = process.env.FRONTEND_URL || process.env.BACKEND_URL || '';
+    const domain = baseUrl ? baseUrl.replace(/\/$/, '') : '';
+    return `${domain}/api/photos/file/${key}`;
+  } catch (err) {
+    console.error('❌ Local Storage Upload Error:', err);
+    throw err;
   }
 }
 
 /**
- * Generate Presigned URL untuk download file asli dari Cloudflare R2
- * @param {string} key - File key di R2 (misal: "original/RAW-xxx.jpg")
- * @param {number} expiresInSeconds - Waktu kadaluarsa URL dalam detik (default: 300 = 5 menit)
- * @returns {Promise<string>} Presigned URL sementara untuk download
+ * Upload buffer image to Cloudflare R2 dengan otomatis Fallback ke Disk Lokal
+ */
+async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
+  if (r2Client) {
+    try {
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      });
+
+      await r2Client.send(command);
+
+      if (PUBLIC_DOMAIN && !PUBLIC_DOMAIN.includes('r2.dev') && !PUBLIC_DOMAIN.includes('YOUR_')) {
+        return `${PUBLIC_DOMAIN.replace(/\/$/, '')}/${key}`;
+      }
+      const baseUrl = process.env.FRONTEND_URL || process.env.BACKEND_URL || '';
+      const domain = baseUrl ? baseUrl.replace(/\/$/, '') : '';
+      return `${domain}/api/photos/file/${key}`;
+    } catch (error) {
+      console.warn('⚠️ Cloudflare R2 Upload Error, fallback ke penyimpanan lokal VPS:', error.message);
+    }
+  }
+
+  return await uploadToLocal(buffer, key);
+}
+
+/**
+ * Generate Presigned URL atau URL unduhan lokal
  */
 async function getPresignedDownloadUrl(key, expiresInSeconds = 300, filename = 'SEPOTO-HD-photo.jpg') {
-  try {
-    const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-      ResponseContentDisposition: `attachment; filename="${filename}"`,
-    });
+  if (r2Client) {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        ResponseContentDisposition: `attachment; filename="${filename}"`,
+      });
 
-    const presignedUrl = await getSignedUrl(r2Client, command, {
-      expiresIn: expiresInSeconds,
-    });
-
-    return presignedUrl;
-  } catch (error) {
-    console.error('❌ Cloudflare R2 Presigned URL Error:', error);
-    throw error;
+      return await getSignedUrl(r2Client, command, { expiresIn: expiresInSeconds });
+    } catch (error) {
+      console.warn('⚠️ Cloudflare R2 Presigned URL Error, fallback ke local proxy:', error.message);
+    }
   }
+
+  const baseUrl = process.env.FRONTEND_URL || process.env.BACKEND_URL || '';
+  const domain = baseUrl ? baseUrl.replace(/\/$/, '') : '';
+  return `${domain}/api/photos/file/${key}?download=true`;
 }
 
 module.exports = {

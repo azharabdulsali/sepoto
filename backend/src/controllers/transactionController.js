@@ -445,7 +445,7 @@ const downloadTransactionZip = async (req, res) => {
           ? match[1]
           : (item.original_url || '').replace(/^https?:\/\/[^\/]+\/(api\/photos\/file\/)?/, '');
 
-        if (key) {
+        if (key && r2Client) {
           const getCmd = new GetObjectCommand({
             Bucket: process.env.R2_BUCKET_NAME || 'sepoto-photos',
             Key: key,

@@ -344,9 +344,26 @@ const deletePhoto = async (req, res) => {
  */
 const proxyR2Image = async (req, res) => {
   try {
+    const fs = require('fs');
+    const path = require('path');
     const key = req.params.folder && req.params.filename ? `${req.params.folder}/${req.params.filename}` : req.params[0];
+
+    // Check local uploads disk storage first
+    const localFilePath = path.join(__dirname, '../../uploads', key);
+    if (fs.existsSync(localFilePath)) {
+      if (req.query.download === '1' || req.query.download === 'true') {
+        const downloadName = req.params.filename ? `SEPOTO-HD-${req.params.filename}` : 'SEPOTO-HD-PHOTO.jpg';
+        return res.download(localFilePath, downloadName);
+      }
+      return res.sendFile(localFilePath);
+    }
+
     const { r2Client } = require('../services/r2Service');
     const { GetObjectCommand } = require('@aws-sdk/client-s3');
+
+    if (!r2Client) {
+      return res.status(404).send('Gambar tidak ditemukan.');
+    }
 
     const command = new GetObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME || 'sepoto-photos',

@@ -154,12 +154,15 @@ async function initDb() {
       );
     `);
 
-    // Migrasi: Tambah kolom approved_by_id jika belum ada
+    // Migrasi: Tambah kolom approved_by_id & payment_proof_url jika belum ada
     await query(`
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='approved_by_id') THEN
           ALTER TABLE transactions ADD COLUMN approved_by_id INT REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='payment_proof_url') THEN
+          ALTER TABLE transactions ADD COLUMN payment_proof_url TEXT;
         END IF;
       END
       $$;

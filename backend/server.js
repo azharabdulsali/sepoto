@@ -62,9 +62,11 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Izinkan gambar dari frontend
 }));
 
-// ─── Body Parser: Batasi ukuran request ─────────────────────────────────
+// ─── Body Parser & Static File Serving ──────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── Rate Limiting: Auth endpoints (anti brute-force) ────────────────────
 const authLimiter = rateLimit({
