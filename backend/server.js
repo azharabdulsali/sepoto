@@ -28,10 +28,16 @@ if (!JWT_SECRET || JWT_SECRET === 'sepoto_jwt_secret_key_2026') {
 
 // ─── CORS: Hanya izinkan origin yang sudah terdaftar ────────────────────
 const ALLOWED_ORIGINS = [
-  process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+  process.env.FRONTEND_ORIGIN,
+  process.env.FRONTEND_URL,
+  'https://sepoto.id',
+  'https://www.sepoto.id',
+  'http://sepoto.id',
+  'http://www.sepoto.id',
+  'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',
-];
+].filter(Boolean);
 if (process.env.ADDITIONAL_ORIGINS) {
   ALLOWED_ORIGINS.push(...process.env.ADDITIONAL_ORIGINS.split(',').map((o) => o.trim()));
 }
