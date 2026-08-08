@@ -1,7 +1,8 @@
 const sharp = require('sharp');
 
 /**
- * Membuat watermark otomatis berulang (tiled grid) "SEPOTO.PROJECT" secara diagonal di atas foto
+ * Membuat watermark otomatis berulang (tiled grid) "sepoto.project" secara diagonal di atas foto
+ * Presisi sesuai dengan contoh foto rujukan.
  * @param {Buffer} inputBuffer - Buffer gambar asli resolusi tinggi
  * @returns {Promise<Buffer>} Buffer gambar yang sudah diberi watermark diagonal
  */
@@ -11,18 +12,18 @@ async function generateWatermark(inputBuffer) {
     const width = metadata.width || 1200;
     const height = metadata.height || 1600;
 
-    // Ukuran font & jarak grid proporsional (font lebih besar & jelas)
-    const fontSize = Math.max(20, Math.round(Math.min(width, height) * 0.045));
-    const stepX = Math.round(width * 0.28);
-    const stepY = Math.round(height * 0.14);
+    // Ukuran font & grid rapat presisi seperti contoh rujukan
+    const fontSize = Math.max(14, Math.round(Math.min(width, height) * 0.028));
+    const stepX = Math.round(width * 0.18);
+    const stepY = Math.round(height * 0.075);
 
     let textNodes = [];
 
-    // Loop grid berulang dari luar batas gambar agar area ter-cover penuh saat diputar -30 derajat
-    const startX = -Math.round(width * 0.4);
-    const endX = Math.round(width * 1.4);
-    const startY = -Math.round(height * 0.4);
-    const endY = Math.round(height * 1.4);
+    // Loop grid berulang dari luar batas gambar (-50% ke 150%) agar area ter-cover penuh saat diputar -35 derajat
+    const startX = -Math.round(width * 0.5);
+    const endX = Math.round(width * 1.5);
+    const startY = -Math.round(height * 0.5);
+    const endY = Math.round(height * 1.5);
 
     let rowIndex = 0;
     for (let y = startY; y <= endY; y += stepY) {
@@ -31,9 +32,9 @@ async function generateWatermark(inputBuffer) {
         const posX = Math.round(x + offsetX);
         const posY = Math.round(y);
         textNodes.push(`
-          <g transform="rotate(-30, ${posX}, ${posY})">
+          <g transform="rotate(-35, ${posX}, ${posY})">
             <text x="${posX}" y="${posY}" text-anchor="middle" dominant-baseline="middle" class="watermark-text">
-              SEPOTO.PROJECT
+              sepoto.project
             </text>
           </g>
         `);
@@ -41,20 +42,20 @@ async function generateWatermark(inputBuffer) {
       rowIndex++;
     }
 
-    // SVG Watermark Overlay berulang dengan outline gelap tebal & teks terang
+    // SVG Watermark Overlay berulang dengan outline halus & transparansi presisi
     const svgOverlay = `
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         <style>
           .watermark-text {
             fill: #ffffff;
-            fill-opacity: 0.65;
+            fill-opacity: 0.5;
             stroke: #000000;
-            stroke-opacity: 0.6;
-            stroke-width: 2px;
-            font-family: Arial, sans-serif;
+            stroke-opacity: 0.4;
+            stroke-width: 1.2px;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: ${fontSize}px;
-            font-weight: bold;
-            letter-spacing: 2px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
             paint-order: stroke fill;
           }
         </style>
