@@ -13,9 +13,9 @@ async function generateWatermark(inputBuffer) {
     const height = metadata.height || 1600;
 
     // Ukuran font & grid rapat presisi seperti contoh rujukan
-    const fontSize = Math.max(14, Math.round(Math.min(width, height) * 0.028));
-    const stepX = Math.round(width * 0.18);
-    const stepY = Math.round(height * 0.075);
+    const fontSize = Math.max(18, Math.round(Math.min(width, height) * 0.036));
+    const stepX = Math.round(width * 0.28);
+    const stepY = Math.round(height * 0.11);
 
     let textNodes = [];
 
@@ -35,8 +35,8 @@ async function generateWatermark(inputBuffer) {
           <g transform="rotate(-35, ${posX}, ${posY})">
             <text x="${posX}" y="${posY}" text-anchor="middle" dominant-baseline="middle"
               fill="#ffffff" fill-opacity="0.6"
-              stroke="#000000" stroke-opacity="0.45" stroke-width="1.2"
-              font-family="sans-serif" font-size="${fontSize}" font-weight="bold" letter-spacing="0.5">
+              stroke="#000000" stroke-opacity="0.4" stroke-width="1.5"
+              font-family="DejaVu Sans, Liberation Sans, Arial, sans-serif" font-size="${fontSize}" font-weight="bold" letter-spacing="0.5">
               sepoto.project
             </text>
           </g>
