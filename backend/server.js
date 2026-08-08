@@ -93,7 +93,7 @@ const uploadLimiter = rateLimit({
 });
 
 // ─── Health-Check Route ──────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
   res.json({
     status: 'OK',
@@ -144,12 +144,21 @@ app.use((req, res, next) => {
   });
 });
 
-// ─── Modular API Routes (dengan Rate Limiting) ───────────────────────────
+// ─── Modular API Routes (dukung dengan dan tanpa /api prefix) ───────────────────────────
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/photos/upload', uploadLimiter); // Extra limit untuk upload (dipasang sebelum photosRoutes)
+app.use('/auth', authLimiter, authRoutes);
+
+app.use('/api/photos/upload', uploadLimiter);
+app.use('/photos/upload', uploadLimiter);
+
 app.use('/api/photos', photosRoutes);
+app.use('/photos', photosRoutes);
+
 app.use('/api/events', eventsRoutes);
+app.use('/events', eventsRoutes);
+
 app.use('/api/transactions', transactionsRoutes);
+app.use('/transactions', transactionsRoutes);
 
 // ─── Global Error Handler ────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
