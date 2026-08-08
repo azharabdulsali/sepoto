@@ -200,20 +200,20 @@ async function initDb() {
       const defaultEventId = eventInsert.rows[0].id;
 
       // Hash passwords (bisa di-override lewat ENV saat deployment awal)
-      const rawAdminPass = process.env.INITIAL_ADMIN_PASSWORD || 'password';
+      const rawAdminPass = process.env.INITIAL_ADMIN_PASSWORD || 'password123';
       const rawPhotoPass = process.env.INITIAL_PHOTOGRAPHER_PASSWORD || 'foto123';
 
       if (!process.env.INITIAL_ADMIN_PASSWORD && process.env.NODE_ENV === 'production') {
-        console.warn('⚠️ PRODUKSI: INITIAL_ADMIN_PASSWORD tidak di-set! Menggunakan password default "password". Harap ubah setelah login!');
+        console.warn('⚠️ PRODUKSI: INITIAL_ADMIN_PASSWORD tidak di-set! Menggunakan password default "password123". Harap ubah setelah login!');
       }
 
       const adminPasswordHash = await bcrypt.hash(rawAdminPass, SALT_ROUNDS);
       const photographerPasswordHash = await bcrypt.hash(rawPhotoPass, SALT_ROUNDS);
 
-      // Seed Super Admin (username: admin)
+      // Seed Super Admin (username: super_admin)
       await query(
         `INSERT INTO users (event_id, name, username, password_hash, bib_number, role) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [null, 'Super Admin', 'admin', adminPasswordHash, null, 'super_admin']
+        [null, 'Super Admin', 'super_admin', adminPasswordHash, null, 'super_admin']
       );
 
       // Seed Photographer (username: fotografer)
@@ -231,14 +231,18 @@ async function initDb() {
       console.log('🌱 Default event and initial users seeded successfully!');
     }
 
-    // Pastikan Super Admin default (username: admin) punya password_hash jika belum ada
+    // Pastikan Super Admin default (username: super_admin) ter-update dengan username dan password_hash terbaru
+    const rawAdminPass = process.env.INITIAL_ADMIN_PASSWORD || 'password123';
+    const adminPasswordHash = await bcrypt.hash(rawAdminPass, SALT_ROUNDS);
     const adminCheck = await query(
-      `SELECT id, username, password_hash FROM users WHERE username = 'admin' LIMIT 1`
+      `SELECT id, username, password_hash FROM users WHERE role = 'super_admin' OR username IN ('admin', 'super_admin') LIMIT 1`
     );
-    if (adminCheck.rows.length > 0 && !adminCheck.rows[0].password_hash) {
-      const hash = await bcrypt.hash('password', SALT_ROUNDS);
-      await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, adminCheck.rows[0].id]);
-      console.log('🔐 Default Admin password_hash initialized.');
+    if (adminCheck.rows.length > 0) {
+      await query(
+        `UPDATE users SET username = 'super_admin', password_hash = $1 WHERE id = $2`,
+        [adminPasswordHash, adminCheck.rows[0].id]
+      );
+      console.log('🔐 Default Super Admin updated to username "super_admin" with configured password.');
     }
 
     // Pastikan Default Fotografer (username: fotografer) punya password_hash jika belum ada
