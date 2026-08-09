@@ -33,6 +33,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import ProtectedPhoto from "../ProtectedPhoto";
 import { api } from "../../services/api";
 import {
@@ -64,25 +73,37 @@ export default function MyPhotosTab({ onPhotosChange }) {
   const [editBib, setEditBib] = useState("");
   const [isSavingSingle, setIsSavingSingle] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
+  const [totalPhotos, setTotalPhotos] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const loadPhotos = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getMyPhotos();
+      const res = await api.getMyPhotos(currentPage, pageSize);
       if (res.success && res.photos) {
         setPhotos(res.photos);
-        onPhotosChange?.(res.photos.length);
+        setTotalPhotos(res.total || res.photos.length);
+        setTotalPages(res.totalPages || 1);
+        onPhotosChange?.(res.total || res.photos.length);
       } else {
         setPhotos([]);
+        setTotalPhotos(0);
+        setTotalPages(1);
         onPhotosChange?.(0);
       }
     } catch (err) {
       console.error("Fetch my photos error:", err);
       setPhotos([]);
+      setTotalPhotos(0);
+      setTotalPages(1);
       onPhotosChange?.(0);
     } finally {
       setLoading(false);
     }
-  }, [onPhotosChange]);
+  }, [currentPage, pageSize, onPhotosChange]);
 
   useEffect(() => {
     loadPhotos();
@@ -565,6 +586,60 @@ export default function MyPhotosTab({ onPhotosChange }) {
               </motion.div>
             );
           })}
+        </div>
+      )}
+
+      {/* Shadcn UI Pagination Bar (Fotografer) */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#E5E7EB]">
+          <p className="text-xs text-gray-500 font-medium">
+            Menampilkan Halaman <strong className="text-gray-900">{currentPage}</strong> dari{" "}
+            <strong className="text-gray-900">{totalPages}</strong> (Total {totalPhotos} Foto)
+          </p>
+          <Pagination className="justify-end w-auto m-0">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const pageNum = idx + 1;
+                if (
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                ) {
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(pageNum)}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                return null;
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
 

@@ -392,7 +392,7 @@ const proxyR2Image = async (req, res) => {
  */
 const getAdminPhotos = async (req, res) => {
   try {
-    const { eventId } = req.query;
+    const { eventId, page, limit } = req.query;
     let sql = `
       SELECT p.*, 
              u.name as photographer_name, 
@@ -411,7 +411,23 @@ const getAdminPhotos = async (req, res) => {
       params.push(eventId);
     }
 
+    // Total count query
+    const countSql = `SELECT COUNT(*) FROM (${sql}) AS count_table`;
+    const countRes = await query(countSql, params);
+    const total = parseInt(countRes.rows[0].count, 10);
+
     sql += ` ORDER BY p.id DESC`;
+
+    // Pagination LIMIT & OFFSET
+    const pageNum = page ? parseInt(page, 10) : null;
+    const limitNum = limit ? parseInt(limit, 10) : null;
+
+    if (pageNum && limitNum) {
+      const offset = (pageNum - 1) * limitNum;
+      sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limitNum, offset);
+    }
+
     const result = await query(sql, params);
 
     const photos = result.rows.map((row) => ({
@@ -431,7 +447,16 @@ const getAdminPhotos = async (req, res) => {
       createdAt: row.created_at,
     }));
 
-    return res.json({ success: true, photos });
+    const totalPages = limitNum ? Math.ceil(total / limitNum) : 1;
+
+    return res.json({
+      success: true,
+      photos,
+      total,
+      page: pageNum || 1,
+      totalPages: totalPages || 1,
+      hasMore: pageNum && limitNum ? pageNum < totalPages : false,
+    });
   } catch (error) {
     console.error('Fetch Admin Photos Error:', error);
     res.status(500).json({ success: false, message: 'Gagal mengambil foto galeri.' });
