@@ -348,11 +348,15 @@ const proxyR2Image = async (req, res) => {
     const path = require('path');
     const key = req.params.folder && req.params.filename ? `${req.params.folder}/${req.params.filename}` : req.params[0];
 
+    const customName = req.query.name || req.query.filename;
+    const downloadName = customName
+      ? decodeURIComponent(customName)
+      : (req.params.filename ? `SEPOTO-HD-${req.params.filename}` : 'SEPOTO-HD-PHOTO.jpg');
+
     // Check local uploads disk storage first
     const localFilePath = path.join(__dirname, '../../uploads', key);
     if (fs.existsSync(localFilePath)) {
       if (req.query.download === '1' || req.query.download === 'true') {
-        const downloadName = req.params.filename ? `SEPOTO-HD-${req.params.filename}` : 'SEPOTO-HD-PHOTO.jpg';
         return res.download(localFilePath, downloadName);
       }
       return res.sendFile(localFilePath);
@@ -375,7 +379,6 @@ const proxyR2Image = async (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000');
 
     if (req.query.download === '1' || req.query.download === 'true') {
-      const downloadName = req.params.filename ? `SEPOTO-HD-${req.params.filename}` : 'SEPOTO-HD-PHOTO.jpg';
       res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
     }
 

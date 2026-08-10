@@ -83,26 +83,15 @@ async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
 }
 
 /**
- * Generate Presigned URL atau URL unduhan lokal
+ * Generate Presigned URL atau URL unduhan lokal (melalui Proxy Backend agar 100% aman dari NoSuchKey & Blokir DNS)
  */
 async function getPresignedDownloadUrl(key, expiresInSeconds = 300, filename = 'SEPOTO-HD-photo.jpg') {
-  if (r2Client) {
-    try {
-      const command = new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: key,
-        ResponseContentDisposition: `attachment; filename="${filename}"`,
-      });
-
-      return await getSignedUrl(r2Client, command, { expiresIn: expiresInSeconds });
-    } catch (error) {
-      console.warn('⚠️ Cloudflare R2 Presigned URL Error, fallback ke local proxy:', error.message);
-    }
-  }
-
   const baseUrl = process.env.FRONTEND_URL || process.env.BACKEND_URL || '';
   const domain = baseUrl ? baseUrl.replace(/\/$/, '') : '';
-  return `${domain}/api/photos/file/${key}?download=true`;
+  const cleanName = filename ? encodeURIComponent(filename) : '';
+
+  // Menggunakan Backend Proxy untuk unduhan agar aman baik di lokal disk maupun Cloudflare R2
+  return `${domain}/api/photos/file/${key}?download=true${cleanName ? `&name=${cleanName}` : ''}`;
 }
 
 module.exports = {
