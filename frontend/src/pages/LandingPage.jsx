@@ -73,7 +73,7 @@ const itemVariants = {
 const SAMPLE_PHOTOS = [
   {
     id: 1,
-    url: "/images/sample-1.jpg",
+    url: "/images/1.webp",
     bib: "36",
     price: "Rp 30.000",
     author: "Robi Syianturi",
@@ -81,7 +81,7 @@ const SAMPLE_PHOTOS = [
   },
   {
     id: 2,
-    url: "/images/sample-2.jpg",
+    url: "/images/2.webp",
     bib: "2424",
     price: "Rp 10.000",
     author: "Cigul",
@@ -89,7 +89,7 @@ const SAMPLE_PHOTOS = [
   },
   {
     id: 3,
-    url: "/images/sample-3.jpg",
+    url: "/images/3.webp",
     bib: "108",
     price: "Rp 25.000",
     author: "Ibnu Jamil",
@@ -97,7 +97,7 @@ const SAMPLE_PHOTOS = [
   },
   {
     id: 4,
-    url: "/images/sample-4.jpg",
+    url: "/images/4.webp",
     bib: "20084",
     price: "Rp 10.000",
     author: "dr. Tirta",
