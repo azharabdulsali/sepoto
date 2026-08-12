@@ -74,34 +74,34 @@ const SAMPLE_PHOTOS = [
   {
     id: 1,
     url: "/images/1.webp",
-    bib: "36",
+    bib: "081039",
     price: "Rp 30.000",
-    author: "Robi Syianturi",
-    eventName: "Jakarta Marathon 2026",
+    author: "Sri Lestari",
+    eventName: "Bima Run 2026",
   },
   {
     id: 2,
     url: "/images/2.webp",
-    bib: "2424",
+    bib: "081096",
     price: "Rp 10.000",
-    author: "Cigul",
-    eventName: "Borobudur Marathon 2026",
+    author: "Rif'ain",
+    eventName: "Bima Run 2026",
   },
   {
     id: 3,
     url: "/images/3.webp",
-    bib: "108",
+    bib: "081134",
     price: "Rp 25.000",
-    author: "Ibnu Jamil",
-    eventName: "Bali 10K Run 2026",
+    author: "Start",
+    eventName: "Bima Run 2026",
   },
   {
     id: 4,
     url: "/images/4.webp",
-    bib: "20084",
+    bib: "081045",
     price: "Rp 10.000",
-    author: "dr. Tirta",
-    eventName: "Bandung Half Marathon",
+    author: "Foto Bareng",
+    eventName: "Bima Run 2026",
   },
 ];
 
@@ -208,7 +208,7 @@ export default function LandingPage() {
         if (res.success && res.events) {
           // Saring hanya event yang berstatus aktif (isActive === true)
           const activeEvents = res.events.filter(
-            (evt) => (evt.isActive ?? evt.is_active) === true
+            (evt) => (evt.isActive ?? evt.is_active) === true,
           );
           setEvents(activeEvents);
         }
@@ -254,8 +254,7 @@ export default function LandingPage() {
             >
               Cari & Unduh Foto Anda
               <br />
-              via Nomor BIB di{" "}
-              <SepotoLogo size="inherit" variant="gradient" />
+              via Nomor BIB di <SepotoLogo size="inherit" variant="gradient" />
             </motion.h1>
 
             {/* Subheadline */}
@@ -597,7 +596,8 @@ export default function LandingPage() {
                     Belum Ada Event Aktif Saat Ini
                   </h3>
                   <p className="text-xs sm:text-sm text-[#475569] mt-1 leading-relaxed">
-                    Saat ini belum ada event maraton yang sedang berlangsung. Silakan cek kembali nanti atau hubungi pihak penyelenggara.
+                    Saat ini belum ada event maraton yang sedang berlangsung.
+                    Silakan cek kembali nanti atau hubungi pihak penyelenggara.
                   </p>
                 </div>
               )}
