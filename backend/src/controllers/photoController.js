@@ -663,37 +663,60 @@ const deleteAllEventPhotos = async (req, res) => {
       return res.json({ success: true, message: 'Tidak ada foto yang perlu dihapus pada event ini.', deletedCount: 0 });
     }
 
-    // 5. Hapus file dari R2 dan disk lokal VPS (best-effort)
-    let deletedFileCount = 0;
-    for (const photo of photos) {
-      const originalKey = extractKey(photo.original_url);
-      const watermarkedKey = extractKey(photo.watermarked_url);
-
-      if (originalKey) {
-        await deleteFileEverywhere(originalKey);
-        deletedFileCount++;
-      }
-      if (watermarkedKey) {
-        await deleteFileEverywhere(watermarkedKey);
-        deletedFileCount++;
-      }
-    }
-
-    // 6. Hapus record foto dari database
+    // 5. Hapus record foto dari database TERLEBIH DAHULU agar respons API cepat
     const deleteResult = await query('DELETE FROM photos WHERE event_id = $1', [eventId]);
     const deletedCount = deleteResult.rowCount || photos.length;
 
-    console.log(`🗑️ Super Admin (ID: ${adminId}) menghapus ${deletedCount} foto dan ${deletedFileCount} file pada Event "${eventRes.rows[0].title}" (ID: ${eventId})`);
+    console.log(`🗑️ Super Admin (ID: ${adminId}) memulai penghapusan ${deletedCount} foto pada Event "${eventRes.rows[0].title}" (ID: ${eventId})`);
 
-    return res.json({
+    // Kirim respons sukses segera ke frontend agar tidak terjadi Timeout di VPS/Nginx
+    res.json({
       success: true,
-      message: `Berhasil menghapus ${deletedCount} foto dan ${deletedFileCount} file dari event "${eventRes.rows[0].title}".`,
+      message: `Memproses penghapusan ${deletedCount} foto. Data telah dihapus dari sistem, file fisik sedang dihapus di latar belakang.`,
       deletedCount,
-      deletedFileCount,
     });
+
+    // 6. Lakukan penghapusan file dari R2 dan lokal secara Asynchronous (Background Job)
+    // Menggunakan sistem antrean (batch) agar VPS tidak terbebani jika menghapus >10.000 file sekaligus.
+    (async () => {
+      try {
+        let deletedFileCount = 0;
+        const BATCH_SIZE = 50; // Hapus 50 foto per proses
+        
+        for (let i = 0; i < photos.length; i += BATCH_SIZE) {
+          const batch = photos.slice(i, i + BATCH_SIZE);
+          const deletePromises = [];
+
+          for (const photo of batch) {
+            const originalKey = extractKey(photo.original_url);
+            const watermarkedKey = extractKey(photo.watermarked_url);
+
+            if (originalKey) {
+              deletePromises.push(deleteFileEverywhere(originalKey).then(() => deletedFileCount++));
+            }
+            if (watermarkedKey) {
+              deletePromises.push(deleteFileEverywhere(watermarkedKey).then(() => deletedFileCount++));
+            }
+          }
+
+          // Tunggu batch ini selesai sebelum lanjut ke batch berikutnya
+          await Promise.allSettled(deletePromises);
+          
+          // Jeda 100ms agar CPU dan koneksi jaringan VPS bisa bernapas
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        console.log(`✅ [Background Job] Selesai menghapus ${deletedFileCount} file fisik dari Event "${eventRes.rows[0].title}" (ID: ${eventId})`);
+      } catch (bgError) {
+        console.error('❌ [Background Job] Error saat menghapus file:', bgError);
+      }
+    })();
+
   } catch (error) {
     console.error('Delete All Event Photos Error:', error);
-    res.status(500).json({ success: false, message: 'Gagal menghapus foto event.' });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Gagal menghapus foto event.' });
+    }
   }
 };
 
