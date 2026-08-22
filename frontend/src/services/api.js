@@ -210,6 +210,12 @@ export const api = {
       method: 'DELETE',
     }),
 
+  deleteAllEventPhotos: (eventId, password, eventTitle) =>
+    fetchApi(`/photos/admin/event/${eventId}/all`, {
+      method: 'DELETE',
+      body: JSON.stringify({ password, eventTitle }),
+    }),
+
   // ─── Events API ────────────────────────────────────────────────────────
   getActiveEvent: (eventId = '') => fetchApi(`/events/active${eventId ? `?eventId=${eventId}` : ''}`),
 

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
@@ -83,6 +83,41 @@ async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
 }
 
 /**
+ * Hapus file dari Cloudflare R2 (jika R2 aktif)
+ */
+async function deleteFromR2(key) {
+  if (r2Client) {
+    try {
+      await r2Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+    } catch (err) {
+      console.warn(`⚠️ R2 Delete Error (${key}):`, err.message);
+    }
+  }
+}
+
+/**
+ * Hapus file dari disk lokal VPS (jika ada)
+ */
+function deleteFromLocal(key) {
+  try {
+    const filePath = path.join(__dirname, '../../uploads', key);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (err) {
+    console.warn(`⚠️ Local Delete Error (${key}):`, err.message);
+  }
+}
+
+/**
+ * Hapus file dari R2 DAN disk lokal sekaligus (best-effort, tidak throw error)
+ */
+async function deleteFileEverywhere(key) {
+  await deleteFromR2(key);
+  deleteFromLocal(key);
+}
+
+/**
  * Generate Presigned URL atau URL unduhan lokal (melalui Proxy Backend agar 100% aman dari NoSuchKey & Blokir DNS)
  */
 async function getPresignedDownloadUrl(key, expiresInSeconds = 300, filename = 'SEPOTO-HD-photo.jpg') {
@@ -97,5 +132,9 @@ async function getPresignedDownloadUrl(key, expiresInSeconds = 300, filename = '
 module.exports = {
   r2Client,
   uploadToR2,
+  deleteFromR2,
+  deleteFromLocal,
+  deleteFileEverywhere,
   getPresignedDownloadUrl,
 };
+

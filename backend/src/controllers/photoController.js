@@ -1,5 +1,6 @@
+const bcrypt = require('bcrypt');
 const { query } = require('../config/db');
-const { uploadToR2 } = require('../services/r2Service');
+const { uploadToR2, deleteFileEverywhere } = require('../services/r2Service');
 const { generateWatermark } = require('../utils/watermark');
 
 /**
@@ -305,6 +306,18 @@ const updatePhoto = async (req, res) => {
 };
 
 /**
+ * Helper untuk mengekstrak key file (path relatif) dari URL
+ */
+const extractKey = (url) => {
+  if (!url) return null;
+  const matchOriginal = url.match(/(original\/[^?#]+)/);
+  if (matchOriginal) return matchOriginal[1];
+  const matchWatermarked = url.match(/(watermarked\/[^?#]+)/);
+  if (matchWatermarked) return matchWatermarked[1];
+  return url.replace(/^https?:\/\/[^\/]+\/(api\/photos\/file\/)?/, '');
+};
+
+/**
  * DELETE /api/photos/:id
  * Hapus foto (validasi kepemilikan: hanya pemilik foto yang bisa hapus)
  */
@@ -313,24 +326,33 @@ const deletePhoto = async (req, res) => {
     const { id } = req.params;
     const photographerId = req.user.id;
 
-    // Validasi kepemilikan foto
+    // Validasi kepemilikan foto dan ambil URL untuk menghapus file
     const photoCheck = await query(
-      'SELECT id FROM photos WHERE id = $1 AND photographer_id = $2',
+      'SELECT id, original_url, watermarked_url FROM photos WHERE id = $1 AND photographer_id = $2',
       [id, photographerId]
     );
 
     if (photoCheck.rows.length === 0) {
       return res.status(403).json({
         success: false,
-        message: 'Anda tidak memiliki hak untuk menghapus foto ini.',
+        message: 'Anda tidak memiliki hak untuk menghapus foto ini atau foto tidak ditemukan.',
       });
     }
 
+    const photo = photoCheck.rows[0];
+
+    // Hapus file fisik dari R2 dan lokal
+    const originalKey = extractKey(photo.original_url);
+    const watermarkedKey = extractKey(photo.watermarked_url);
+    if (originalKey) await deleteFileEverywhere(originalKey);
+    if (watermarkedKey) await deleteFileEverywhere(watermarkedKey);
+
+    // Hapus dari database
     await query('DELETE FROM photos WHERE id = $1', [id]);
 
     return res.json({
       success: true,
-      message: 'Foto berhasil dihapus.',
+      message: 'Foto berhasil dihapus secara permanen.',
     });
   } catch (error) {
     console.error('Delete Photo Error:', error);
@@ -556,16 +578,122 @@ const bulkUpdatePhotosAdmin = async (req, res) => {
 
 /**
  * DELETE /api/photos/admin/:id
- * Super Admin: Hapus foto dari database
+ * Super Admin: Hapus foto dari database dan storage
  */
 const deletePhotoAdmin = async (req, res) => {
   try {
     const { id } = req.params;
+
+    const photoCheck = await query('SELECT original_url, watermarked_url FROM photos WHERE id = $1', [id]);
+    if (photoCheck.rows.length === 0) {
+       return res.status(404).json({ success: false, message: 'Foto tidak ditemukan.' });
+    }
+
+    const photo = photoCheck.rows[0];
+
+    // Hapus file fisik
+    const originalKey = extractKey(photo.original_url);
+    const watermarkedKey = extractKey(photo.watermarked_url);
+    if (originalKey) await deleteFileEverywhere(originalKey);
+    if (watermarkedKey) await deleteFileEverywhere(watermarkedKey);
+
+    // Hapus dari database
     await query('DELETE FROM photos WHERE id = $1', [id]);
-    return res.json({ success: true, message: 'Foto berhasil dihapus oleh Super Admin.' });
+    return res.json({ success: true, message: 'Foto berhasil dihapus secara permanen oleh Super Admin.' });
   } catch (error) {
     console.error('Delete Photo Admin Error:', error);
     res.status(500).json({ success: false, message: 'Gagal menghapus foto.' });
+  }
+};
+
+/**
+ * DELETE /api/photos/admin/event/:eventId/all
+ * Super Admin: Hapus SEMUA foto pada event tertentu (dari R2, disk lokal VPS, dan Database).
+ * Validasi keamanan ganda: password Super Admin + nama event harus sesuai.
+ * Transaksi peserta TIDAK dihapus.
+ */
+const deleteAllEventPhotos = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { password, eventTitle } = req.body;
+    const adminId = req.user.id;
+
+    // 1. Validasi input
+    if (!password || !eventTitle) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password dan nama event wajib diisi untuk konfirmasi.',
+      });
+    }
+
+    // 2. Verifikasi password Super Admin
+    const userRes = await query('SELECT password_hash, role FROM users WHERE id = $1', [adminId]);
+    if (userRes.rows.length === 0 || userRes.rows[0].role !== 'super_admin') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, userRes.rows[0].password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Password Super Admin tidak valid.' });
+    }
+
+    // 3. Verifikasi nama event sesuai
+    const eventRes = await query('SELECT id, title FROM events WHERE id = $1', [eventId]);
+    if (eventRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Event tidak ditemukan.' });
+    }
+
+    const actualTitle = eventRes.rows[0].title.trim().toLowerCase();
+    const inputTitle = eventTitle.trim().toLowerCase();
+    if (actualTitle !== inputTitle) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nama event yang diketik tidak sesuai. Pastikan Anda mengetik nama event dengan benar.',
+      });
+    }
+
+    // 4. Ambil semua foto pada event ini
+    const photosRes = await query(
+      'SELECT id, original_url, watermarked_url FROM photos WHERE event_id = $1',
+      [eventId]
+    );
+
+    const photos = photosRes.rows;
+    if (photos.length === 0) {
+      return res.json({ success: true, message: 'Tidak ada foto yang perlu dihapus pada event ini.', deletedCount: 0 });
+    }
+
+    // 5. Hapus file dari R2 dan disk lokal VPS (best-effort)
+    let deletedFileCount = 0;
+    for (const photo of photos) {
+      const originalKey = extractKey(photo.original_url);
+      const watermarkedKey = extractKey(photo.watermarked_url);
+
+      if (originalKey) {
+        await deleteFileEverywhere(originalKey);
+        deletedFileCount++;
+      }
+      if (watermarkedKey) {
+        await deleteFileEverywhere(watermarkedKey);
+        deletedFileCount++;
+      }
+    }
+
+    // 6. Hapus record foto dari database
+    const deleteResult = await query('DELETE FROM photos WHERE event_id = $1', [eventId]);
+    const deletedCount = deleteResult.rowCount || photos.length;
+
+    console.log(`🗑️ Super Admin (ID: ${adminId}) menghapus ${deletedCount} foto dan ${deletedFileCount} file pada Event "${eventRes.rows[0].title}" (ID: ${eventId})`);
+
+    return res.json({
+      success: true,
+      message: `Berhasil menghapus ${deletedCount} foto dan ${deletedFileCount} file dari event "${eventRes.rows[0].title}".`,
+      deletedCount,
+      deletedFileCount,
+    });
+  } catch (error) {
+    console.error('Delete All Event Photos Error:', error);
+    res.status(500).json({ success: false, message: 'Gagal menghapus foto event.' });
   }
 };
 
@@ -580,5 +708,6 @@ module.exports = {
   bulkUpdatePhotosAdmin,
   deletePhoto,
   deletePhotoAdmin,
+  deleteAllEventPhotos,
   proxyR2Image,
 };

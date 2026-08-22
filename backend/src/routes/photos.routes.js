@@ -26,6 +26,7 @@ router.patch('/:id', verifyToken, requireRole('photographer'), photoController.u
 router.get('/admin', verifyToken, requireRole('super_admin'), photoController.getAdminPhotos);
 router.patch('/admin/bulk-update', verifyToken, requireRole('super_admin'), photoController.bulkUpdatePhotosAdmin);
 router.patch('/admin/:id', verifyToken, requireRole('super_admin'), photoController.updatePhotoAdmin);
+router.delete('/admin/event/:eventId/all', verifyToken, requireRole('super_admin'), photoController.deleteAllEventPhotos);
 router.delete('/admin/:id', verifyToken, requireRole('super_admin'), photoController.deletePhotoAdmin);
 
 // DELETE /api/photos/:id (Fotografer: Hapus foto milik sendiri)

@@ -12,6 +12,10 @@ import {
   Image as ImageIcon,
   Info,
   Phone,
+  Trash2,
+  AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +66,15 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
   const [uploadMessage, setUploadMessage] = useState("");
   const qrInputRef = useRef(null);
   const bannerInputRef = useRef(null);
+
+  // State untuk fitur hapus semua foto event
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteEventTitle, setDeleteEventTitle] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteSuccess, setDeleteSuccess] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
 
   const fetchEventData = useCallback(async (evId) => {
     try {
@@ -207,6 +220,46 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
       alert("Gagal menyimpan pengaturan event.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAllPhotos = async () => {
+    setDeleteError("");
+    setDeleteSuccess("");
+
+    if (!deletePassword.trim()) {
+      setDeleteError("Password Super Admin wajib diisi.");
+      return;
+    }
+    if (!deleteEventTitle.trim()) {
+      setDeleteError("Nama event wajib diketik ulang untuk konfirmasi.");
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      const res = await api.deleteAllEventPhotos(
+        selectedEventId,
+        deletePassword,
+        deleteEventTitle
+      );
+      if (res.success) {
+        setDeleteSuccess(res.message || "Semua foto berhasil dihapus.");
+        setDeletePassword("");
+        setDeleteEventTitle("");
+        setTimeout(() => {
+          setIsDeleteModalOpen(false);
+          setDeleteSuccess("");
+          if (onRefreshEvents) onRefreshEvents();
+        }, 3000);
+      } else {
+        setDeleteError(res.message || "Gagal menghapus foto event.");
+      }
+    } catch (err) {
+      console.error("Delete all event photos error:", err);
+      setDeleteError(err?.message || "Terjadi kesalahan saat menghapus foto event.");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -765,7 +818,190 @@ export default function EventSettingsTab({ events = [], onRefreshEvents }) {
             </div>
           )}
         </Card>
+
+        {/* ── Danger Zone: Hapus Semua Foto Event (Full-width di bawah 2-kolom) ── */}
+        {isSuperAdmin && (
+          <Card className="lg:col-span-2 bg-red-50/60 border-red-200 rounded-2xl p-5 shadow-sm space-y-3">
+            <div className="border-b border-red-200 pb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4.5 h-4.5 text-red-600" />
+              <h3 className="text-sm font-bold text-red-800">Zona Berbahaya</h3>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-red-800">
+                  Hapus Semua Foto Event
+                </p>
+                <p className="text-[11px] text-red-600/80 leading-relaxed">
+                  Menghapus <strong>seluruh foto</strong> (file di VPS Hostinger & Cloudflare R2, serta record di database) pada event yang sedang dipilih.
+                  Transaksi peserta <strong>tidak akan dihapus</strong>. Aksi ini <strong>tidak dapat dibatalkan</strong>.
+                </p>
+              </div>
+              <Button
+                id="open-delete-all-photos-modal"
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(true);
+                  setDeleteError("");
+                  setDeleteSuccess("");
+                  setDeletePassword("");
+                  setDeleteEventTitle("");
+                  setShowDeletePassword(false);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold h-10 px-5 rounded-xl shadow-sm shrink-0 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Hapus Semua Foto
+              </Button>
+            </div>
+          </Card>
+        )}
       </form>
+
+      {/* Modal Konfirmasi Hapus Semua Foto Event */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-red-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-red-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-red-800">
+                      Konfirmasi Hapus Semua Foto
+                    </h3>
+                    <p className="text-[11px] text-red-600/80">
+                      Aksi ini tidak dapat dibatalkan
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={deleteLoading}
+                  className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Info event yang dipilih */}
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+                <p className="text-xs text-red-700">
+                  Anda akan menghapus <strong>seluruh foto</strong> pada event:
+                </p>
+                <p className="text-sm font-bold text-red-900 mt-1">
+                  {events.find((e) => String(e.id) === String(selectedEventId))?.title || "—"}
+                </p>
+              </div>
+
+              {/* Notifikasi Error / Sukses */}
+              {deleteError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3 flex items-start gap-2">
+                  <X className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+              {deleteSuccess && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl p-3 flex items-start gap-2">
+                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{deleteSuccess}</span>
+                </div>
+              )}
+
+              {!deleteSuccess && (
+                <div className="space-y-3">
+                  {/* Input: Ketik Nama Event */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#374151] flex items-center gap-1">
+                      Ketik Nama Event
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      id="delete-confirm-event-title"
+                      type="text"
+                      value={deleteEventTitle}
+                      onChange={(e) => setDeleteEventTitle(e.target.value)}
+                      placeholder={events.find((e) => String(e.id) === String(selectedEventId))?.title || "Nama Event..."}
+                      disabled={deleteLoading}
+                      className="h-10 border-red-200 rounded-xl text-xs bg-white focus:border-red-400 focus:ring-red-400/20"
+                    />
+                    <p className="text-[10px] text-gray-400">
+                      Ketik ulang nama event di atas persis seperti yang tertulis untuk mengonfirmasi.
+                    </p>
+                  </div>
+
+                  {/* Input: Password Super Admin */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[#374151] flex items-center gap-1">
+                      Password Super Admin
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="delete-confirm-password"
+                        type={showDeletePassword ? "text" : "password"}
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="Masukkan password Anda"
+                        disabled={deleteLoading}
+                        className="h-10 border-red-200 rounded-xl text-xs bg-white focus:border-red-400 focus:ring-red-400/20 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowDeletePassword(!showDeletePassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showDeletePassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tombol Aksi */}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDeleteModalOpen(false)}
+                      disabled={deleteLoading}
+                      className="flex-1 text-xs font-bold h-10 rounded-xl border-gray-300"
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      id="confirm-delete-all-photos"
+                      type="button"
+                      onClick={handleDeleteAllPhotos}
+                      disabled={deleteLoading || !deletePassword.trim() || !deleteEventTitle.trim()}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold h-10 rounded-xl shadow-sm transition-all disabled:opacity-50"
+                    >
+                      {deleteLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      {deleteLoading ? "Menghapus..." : "Hapus Semua Foto"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
