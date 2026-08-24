@@ -141,6 +141,13 @@ async function initDb() {
       $$;
     `);
 
+    // Optimasi Performa: Buat Index untuk pencarian foto agar tidak lemot walau jumlah foto puluhan ribu
+    await query(`CREATE INDEX IF NOT EXISTS idx_photos_event_id ON photos (event_id);`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_photos_bib_tags ON photos USING GIN (to_tsvector('simple', bib_tags));`);
+    // Note: jika bib_tags format string (misal: "101,102"), index GIN / B-Tree bisa dipakai tergantung filter pencarian (ILIKE). 
+    // Fallback B-Tree Index untuk ILIKE optimization (gunakan trigram jika modul terinstal, jika tidak, index standar):
+    await query(`CREATE INDEX IF NOT EXISTS idx_photos_bib_tags_standard ON photos (bib_tags);`);
+
     // 4. Tabel transactions
     await query(`
       CREATE TABLE IF NOT EXISTS transactions (

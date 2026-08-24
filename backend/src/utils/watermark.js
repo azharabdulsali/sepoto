@@ -54,7 +54,8 @@ async function generateWatermark(inputBuffer) {
 
     const watermarkedBuffer = await sharp(inputBuffer)
       .composite([{ input: Buffer.from(svgOverlay), top: 0, left: 0 }])
-      .jpeg({ quality: 85 })
+      .resize({ width: 800, withoutEnlargement: true }) // Resize ke lebar maksimal 800px agar ringan diload
+      .webp({ quality: 80 }) // Gunakan format WebP yang jauh lebih ringan daripada JPEG
       .toBuffer();
 
     return watermarkedBuffer;
