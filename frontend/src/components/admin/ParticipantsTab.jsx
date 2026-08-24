@@ -958,13 +958,14 @@ export default function ParticipantsTab({
       {/* Dialog Modal: Tambah / Edit Pengguna */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border border-[#E5E7EB] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
-            >
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white border border-[#E5E7EB] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+              >
               <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3">
                 <div className="flex items-center gap-2">
                   {editingUser ? (
@@ -1143,6 +1144,7 @@ export default function ParticipantsTab({
                         onChange={(val) => setFormBirthDate(val)}
                         placeholder="Pilih Tanggal Lahir Peserta"
                         variant="light"
+                        position="top"
                       />
                     </div>
                   </>
@@ -1220,6 +1222,7 @@ export default function ParticipantsTab({
                 </div>
               </form>
             </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>
