@@ -77,7 +77,7 @@ const PhotoCard = ({ photo, onPreview }) => {
         )}
         <ProtectedPhoto
           src={photo.watermarkedUrl}
-          alt={`Foto event ${photo.bibTags ? `BIB ${photo.bibTags}` : "Umum"}`}
+          alt={`Foto event ${photo.bibTags ? `Label ${photo.bibTags}` : "Umum"}`}
           loading="lazy"
           onLoad={() => setLoaded(true)}
           className={`w-full h-full transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
@@ -219,7 +219,7 @@ const PhotoPreviewModal = ({ photo, onClose }) => {
             </span>
             {photo.bibTags && (
               <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5 font-bold">
-                BIB #{photo.bibTags}
+                Label: {photo.bibTags}
               </Badge>
             )}
           </div>
@@ -235,7 +235,7 @@ const PhotoPreviewModal = ({ photo, onClose }) => {
         <div className="relative flex-1 bg-black overflow-hidden flex items-center justify-center min-h-[300px] max-h-[60vh] p-2">
           <ProtectedPhoto
             src={photo.watermarkedUrl}
-            alt={`Preview Foto ${photo.bibTags ? `BIB ${photo.bibTags}` : ""}`}
+            alt={`Preview Foto ${photo.bibTags ? `Label ${photo.bibTags}` : ""}`}
             className="w-full h-full max-h-[58vh] flex items-center justify-center"
             imgClassName="w-full h-full object-contain max-h-[58vh] rounded-xl select-none"
           />
@@ -466,7 +466,7 @@ export default function GalleryPage() {
                   <SelectTrigger className="w-full sm:w-auto h-11 bg-slate-900/60 hover:bg-slate-800 text-white text-xs font-bold rounded-2xl px-4 border-slate-700 focus:ring-brand">
                     <SelectValue>
                       {currentActiveEventObj
-                        ? `${currentActiveEventObj.eventName} (BIB #${currentActiveEventObj.bibNumber})`
+                        ? `${currentActiveEventObj.eventName} (Nomor: ${currentActiveEventObj.bibNumber})`
                         : activeEvent?.title || "Pilih Event"}
                     </SelectValue>
                   </SelectTrigger>
@@ -477,7 +477,7 @@ export default function GalleryPage() {
                         value={String(evt.eventId)}
                         className="hover:bg-brand/20 text-xs py-2.5 px-3 rounded-xl cursor-pointer text-white focus:bg-brand/20 focus:text-white"
                       >
-                        {evt.eventName} (BIB #{evt.bibNumber})
+                        {evt.eventName} (Nomor: {evt.bibNumber})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -503,7 +503,7 @@ export default function GalleryPage() {
                       variant="outline"
                       className="font-bib text-brand border-brand/30 bg-brand/10 px-2 py-0.5 font-bold"
                     >
-                      BIB #{currentUser.bibNumber}
+                      Nomor Unik: {currentUser.bibNumber}
                     </Badge>
                   )}
                 </p>
@@ -529,7 +529,7 @@ export default function GalleryPage() {
                 type="text"
                 value={searchBib}
                 onChange={(e) => setSearchBib(e.target.value)}
-                placeholder="Cari Nomor BIB (misal: 101, 36, 2424)..."
+                placeholder="Cari Nomor Unik (misal: Kelompok 1, VIP A, 2424)..."
                 className="text-sm font-bib text-[#0F172A]"
               />
               {searchBib && (
@@ -563,8 +563,8 @@ export default function GalleryPage() {
               className="text-xs text-[#475569] mt-2 font-medium"
             >
               {filteredPhotos.length > 0
-                ? `${filteredPhotos.length} foto ditemukan untuk BIB "${searchBib}"`
-                : `Tidak ada foto dengan BIB "${searchBib}"`}
+                ? `${filteredPhotos.length} foto ditemukan untuk label "${searchBib}"`
+                : `Tidak ada foto dengan label "${searchBib}"`}
             </motion.p>
           )}
         </div>
@@ -575,7 +575,7 @@ export default function GalleryPage() {
             <div className="flex items-center gap-2 mb-3">
               <Camera className="w-4 h-4 text-brand" />
               <h2 className="text-sm font-bold text-[#0F172A]">
-                Foto Anda (BIB #{currentUser.bibNumber})
+                Foto Anda (Nomor: {currentUser.bibNumber})
               </h2>
               <Badge
                 variant="secondary"
@@ -598,7 +598,7 @@ export default function GalleryPage() {
             </h3>
             <p className="text-xs text-[#475569] mt-1 max-w-md mx-auto leading-relaxed">
               {searchBib
-                ? `Tidak ditemukan foto untuk Nomor BIB #${searchBib}. Pastikan nomor BIB sesuai.`
+                ? `Tidak ditemukan foto untuk Nomor/Label ${searchBib}. Pastikan pencarian sesuai.`
                 : "Belum ada foto yang diunggah oleh fotografer untuk event ini."}
             </p>
           </Card>
@@ -660,7 +660,7 @@ export default function GalleryPage() {
               Foto Tidak Ditemukan
             </p>
             <p className="text-sm text-[#475569] mt-1">
-              Coba kata kunci BIB yang berbeda atau hapus filter pencarian.
+              Coba kata kunci label yang berbeda atau hapus filter pencarian.
             </p>
           </div>
         )}

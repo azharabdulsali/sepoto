@@ -221,7 +221,7 @@ export default function TransactionsTab({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari berdasarkan Nomor Pesanan, Nama, Nomor BIB, atau ID..."
+            placeholder="Cari berdasarkan Nomor Pesanan, Nama, Nomor Unik, atau ID..."
             className="text-xs sm:text-sm font-medium text-[#111827]"
           />
           {search && (
@@ -390,12 +390,12 @@ export default function TransactionsTab({
                       </strong>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">Nomor BIB:</span>
+                      <span className="text-gray-500">Nomor Unik:</span>
                       <Badge
                         variant="secondary"
                         className="font-bib text-[10px] bg-brand/10 text-brand border-0 px-2 py-0.5"
                       >
-                        BIB #{t.bibNumber}
+                        Label: {t.bibNumber}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between text-xs">
@@ -619,13 +619,13 @@ export default function TransactionsTab({
                   </div>
                   <div>
                     <span className="text-gray-400 font-medium block">
-                      Nomor BIB Tag
+                      Nomor Unik Tag
                     </span>
                     <Badge
                       variant="secondary"
                       className="font-bib text-xs bg-brand/10 text-brand border-0 px-2 py-0.5 mt-1 inline-block"
                     >
-                      BIB #{selectedDetailTx?.bibNumber}
+                      Label: {selectedDetailTx?.bibNumber}
                     </Badge>
                   </div>
                   <div>

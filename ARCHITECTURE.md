@@ -41,12 +41,12 @@ Aplikasi Sepoto menggunakan arsitektur **Client-Server terpisah** (*Decoupled Ar
 1. **Super Admin**: Akses lintas event (`selectedEventFilter`).
 2. **Event Admin**: Akses terkunci pada `req.user.eventId`.
 3. **Photographer**: Upload foto ke `eventId` miliknya.
-4. **User / Peserta**: Login Nama + BIB, melihat foto galeri `eventId` miliknya.
+4. **User / Peserta**: Login Nama + Nomor Unik, melihat foto galeri `eventId` miliknya.
 
 ---
 
 ## 3. Alur Data & Keamanan Token
 
 * **JWT Payload:** `{ id, role, name, eventId }`
-* **Keunikan BIB:** Partial unique index PostgreSQL `idx_users_unique_event_bib` pada `(event_id, bib_number)`.
+* **Keunikan Nomor Unik:** Partial unique index PostgreSQL `idx_users_unique_event_bib` pada `(event_id, bib_number)`.
 * **Proteksi File RAW:** Foto asli tanpa watermark disimpan privat di Cloudflare R2 dan diakses via presigned URL / ZIP generator setelah status transaksi `approved`.

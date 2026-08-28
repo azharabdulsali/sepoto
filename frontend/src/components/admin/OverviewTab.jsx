@@ -273,7 +273,7 @@ export default function OverviewTab({
       },
       {
         accessorKey: "bibNumber",
-        header: "Nomor BIB",
+        header: "Nomor Unik",
         cell: ({ row }) => (
           <Badge
             variant="outline"
@@ -517,7 +517,7 @@ export default function OverviewTab({
                 type="text"
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Cari pesanan, nama, BIB..."
+                placeholder="Cari pesanan, nama, nomor unik..."
                 className="pl-9 pr-7 h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium shadow-xs"
               />
               {globalFilter && (
@@ -610,7 +610,7 @@ export default function OverviewTab({
                     <div>
                       <p className="font-bold text-[#111827]">{tx.userName}</p>
                       <p className="text-[11px] text-gray-500 font-mono">
-                        BIB #{tx.bibNumber} · {formatDate(tx.createdAt)}
+                        Label: {tx.bibNumber} · {formatDate(tx.createdAt)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -764,7 +764,7 @@ export default function OverviewTab({
                   <span className="font-bold text-[#111827]">{selectedDetailTx.userName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500 font-medium">Nomor BIB:</span>
+                  <span className="text-gray-500 font-medium">Nomor Unik:</span>
                   <span className="font-bib font-bold text-brand">#{selectedDetailTx.bibNumber}</span>
                 </div>
                 <div className="flex justify-between">

@@ -8,11 +8,20 @@ const sharp = require('sharp');
  */
 async function generateWatermark(inputBuffer) {
   try {
-    const metadata = await sharp(inputBuffer).metadata();
-    const width = metadata.width || 1200;
-    const height = metadata.height || 1600;
+    // 1. Normalize orientation and resize FIRST to reduce memory and fix pipeline ordering.
+    // Sharp's composite evaluates AFTER resize in the same pipeline, so if we generate
+    // the SVG based on original dimensions, it will be larger than the resized image.
+    const resizedBuffer = await sharp(inputBuffer)
+      .rotate()
+      .resize({ width: 800, withoutEnlargement: true })
+      .toBuffer();
 
-    // Ukuran font & grid rapat presisi seperti contoh rujukan
+    const image = sharp(resizedBuffer);
+    const metadata = await image.metadata();
+    const width = metadata.width || 800;
+    const height = metadata.height || 600;
+
+    // 2. Generate SVG overlay using the exact dimensions of the resized image
     const fontSize = Math.max(18, Math.round(Math.min(width, height) * 0.036));
     const stepX = Math.round(width * 0.28);
     const stepY = Math.round(height * 0.11);
@@ -45,16 +54,16 @@ async function generateWatermark(inputBuffer) {
       rowIndex++;
     }
 
-    // SVG Watermark Overlay berulang dengan inline attributes untuk kompatibilitas 100% librsvg/Sharp
+    // SVG Watermark Overlay
     const svgOverlay = `
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         ${textNodes.join('\n')}
       </svg>
     `;
 
-    const watermarkedBuffer = await sharp(inputBuffer)
+    // 3. Composite the properly sized SVG and export to WebP
+    const watermarkedBuffer = await image
       .composite([{ input: Buffer.from(svgOverlay), top: 0, left: 0 }])
-      .resize({ width: 800, withoutEnlargement: true }) // Resize ke lebar maksimal 800px agar ringan diload
       .webp({ quality: 80 }) // Gunakan format WebP yang jauh lebih ringan daripada JPEG
       .toBuffer();
 

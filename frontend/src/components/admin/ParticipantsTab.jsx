@@ -197,7 +197,7 @@ export default function ParticipantsTab({
 
   const downloadCsvTemplate = (e) => {
     if (e) e.preventDefault();
-    const csvContent = "Nama Lengkap,Nomor BIB,Tanggal Lahir\nBudi Santoso,1001,17/08/1995\nSiti Aminah,1002,25/12/1998\n";
+    const csvContent = "Nama Lengkap,Nomor Unik,Tanggal Event\nBudi Santoso,Kelompok 1,17/08/1995\nSiti Aminah,VIP A,25/12/1998\n";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -260,7 +260,7 @@ export default function ParticipantsTab({
         setActionAlert({
           type: "error",
           title: "Format Data Tidak Sesuai",
-          message: "Tidak ada baris data Nama Lengkap dan Nomor BIB yang valid dalam file.",
+          message: "Tidak ada baris data Nama Lengkap dan Nomor Unik yang valid dalam file.",
         });
         setIsImporting(false);
         return;
@@ -348,7 +348,7 @@ export default function ParticipantsTab({
     }
 
     if (addRole === "user" && !formBib.trim()) {
-      setFormError("Nomor BIB wajib diisi untuk peserta.");
+      setFormError("Nomor Unik wajib diisi untuk peserta.");
       return;
     }
 
@@ -491,11 +491,11 @@ export default function ParticipantsTab({
               </span>
               ,{" "}
               <span className="font-bib text-brand font-bold">
-                Nomor BIB
+                Nomor Unik
               </span>
               , dan{" "}
               <span className="font-bib text-brand font-bold">
-                Tanggal Lahir
+                Tanggal Event
               </span>
               .
             </p>
@@ -562,7 +562,7 @@ export default function ParticipantsTab({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama, BIB, username..."
+                placeholder="Cari nama, Nomor Unik, username..."
                 className="pl-9 pr-7 h-9 border-[#E5E7EB] rounded-xl text-xs bg-white font-medium shadow-xs"
               />
               {searchQuery && (
@@ -775,10 +775,10 @@ export default function ParticipantsTab({
                     Event
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold min-w-[160px]">
-                    BIB / Username
+                    Nomor Unik / Username
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold whitespace-nowrap">
-                    Tanggal Lahir
+                    Tanggal Event
                   </th>
                   <th className="text-left px-5 py-3.5 text-xs font-bib text-[#4B5563] uppercase tracking-wider font-bold whitespace-nowrap">
                     Role
@@ -1120,7 +1120,7 @@ export default function ParticipantsTab({
                   <>
                     <div className="space-y-1">
                       <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
-                        Nomor BIB
+                        Nomor Unik
                       </label>
                       <div className="relative">
                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1129,7 +1129,7 @@ export default function ParticipantsTab({
                           required
                           value={formBib}
                           onChange={(e) => setFormBib(e.target.value)}
-                          placeholder="Contoh: 101, A101, atau A-101"
+                          placeholder="Contoh: Kelompok 1, atau 1029"
                           className="pl-9 h-10 text-xs font-bib border-[#E5E7EB] rounded-xl"
                         />
                       </div>
@@ -1137,12 +1137,12 @@ export default function ParticipantsTab({
 
                     <div className="space-y-1">
                       <label className="block text-xs font-bib uppercase tracking-widest text-[#4B5563] font-bold">
-                        Tanggal Lahir
+                        Tanggal Event
                       </label>
                       <DatePicker
                         value={formBirthDate}
                         onChange={(val) => setFormBirthDate(val)}
-                        placeholder="Pilih Tanggal Lahir Peserta"
+                        placeholder="Pilih Tanggal Event Peserta"
                         variant="light"
                         position="top"
                       />

@@ -384,7 +384,7 @@ export default function AdminPhotosTab({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari foto berdasarkan BIB, fotografer, atau berkas..."
+              placeholder="Cari foto berdasarkan Nomor Unik, fotografer, atau berkas..."
               className="text-xs sm:text-sm font-medium text-[#111827]"
             />
             {search && (
@@ -495,7 +495,7 @@ export default function AdminPhotosTab({
                 {selectedIds.size} Foto Terpilih
               </Badge>
               <span className="text-xs text-gray-600 hidden sm:inline font-medium">
-                Siap untuk diubah harga atau tag BIB secara bersamaan
+                Siap untuk diubah harga atau label secara bersamaan
               </span>
             </div>
 
@@ -632,14 +632,14 @@ export default function AdminPhotosTab({
                         variant="outline"
                         className="font-bib text-[10px] bg-brand/10 text-brand border-brand/20 px-1.5 py-0"
                       >
-                        BIB #{photo.bibTags}
+                        Label: {photo.bibTags}
                       </Badge>
                     ) : (
                       <Badge
                         variant="outline"
                         className="font-bib text-[10px] bg-gray-100 text-gray-500 border-gray-200 px-1.5 py-0"
                       >
-                        Tanpa BIB
+                        Tanpa Label
                       </Badge>
                     )}
                     <span className="text-[10px] text-gray-500 truncate">
@@ -647,7 +647,7 @@ export default function AdminPhotosTab({
                     </span>
                   </div>
 
-                  {/* Audit Trail Badge (Siapa yang set harga / BIB) */}
+                  {/* Audit Trail Badge (Siapa yang set harga / Label) */}
                   <div className="pt-1 border-t border-gray-100 flex items-center justify-between text-[10px]">
                     <span className="text-gray-400 truncate">
                       {isUpdated ? (
@@ -681,7 +681,7 @@ export default function AdminPhotosTab({
                           setEditBib(photo.bibTags || "");
                         }}
                         className="p-1 text-gray-500 hover:text-brand transition-colors"
-                        title="Edit Harga & BIB"
+                        title="Edit Harga & Label"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -764,10 +764,10 @@ export default function AdminPhotosTab({
         <AlertDialogContent className="bg-white rounded-2xl border-[#E5E7EB] max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base font-bold text-[#111827]">
-              Edit Harga & BIB Tag Foto
+              Edit Harga & Label Foto
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-gray-500">
-              Perbarui harga jual dan nomor BIB untuk berkas{" "}
+              Perbarui harga jual dan nomor unik/label untuk berkas{" "}
               <strong>{editPhoto?.originalFilename}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -789,7 +789,7 @@ export default function AdminPhotosTab({
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Nomor BIB Tag
+                Nomor Unik Tag
               </label>
               <Input
                 type="text"
@@ -836,7 +836,7 @@ export default function AdminPhotosTab({
               Edit ({selectedIds.size} Foto)
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-gray-500">
-              Atur harga atau tag BIB sekaligus untuk {selectedIds.size} foto
+              Atur harga atau label sekaligus untuk {selectedIds.size} foto
               yang dipilih.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -858,7 +858,7 @@ export default function AdminPhotosTab({
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Set BIB Tag Baru (Opsional)
+                Set Label Baru (Opsional)
               </label>
               <Input
                 type="text"

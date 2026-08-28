@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Lock, Loader2, AlertCircle, User, LogIn, Clock, Calendar, Trophy, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Lock, Loader2, AlertCircle, User, LogIn, Clock, Calendar, Trophy, ChevronRight, Eye, EyeOff, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +71,7 @@ export default function Login() {
     let payload = {};
     if (activeTab === 'user') {
       if (!fullName.trim() || !bibNumber.trim() || !birthDate.trim()) {
-        setError('Nama Lengkap, Nomor BIB, dan Tanggal Lahir wajib diisi.');
+        setError('Nama Lengkap, Nomor Unik, dan Tanggal Event wajib diisi.');
         return;
       }
       payload = { role: 'user', name: fullName.trim(), bibNumber: bibNumber.trim(), birthDate: birthDate.trim() };
@@ -250,32 +250,32 @@ export default function Login() {
                     </div>
                   </div>
 
-                  {/* Nomor BIB */}
+                  {/* Nomor Unik */}
                   <div className="space-y-1.5">
                     <label htmlFor="login-bib" className="block text-[10px] font-bib uppercase tracking-widest text-slate-400 font-semibold">
-                      Nomor BIB Peserta
+                      Nomor Unik Peserta
                     </label>
                     <div className="relative">
-                      <Trophy className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
+                      <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                       <Input
                         id="login-bib"
                         type="text"
-                        inputMode="numeric"
+                        inputMode="text"
                         required
                         value={bibNumber}
                         onChange={(e) => { setBibNumber(e.target.value); setError(''); }}
-                        placeholder="Contoh: 1001 atau 36"
+                        placeholder="Contoh: Kelompok 1, atau 1029"
                         disabled={isLoading}
                         className="pl-10 h-12 bg-slate-900/60 border-slate-700/80 text-white placeholder:text-slate-500 font-bib focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 rounded-xl text-sm transition-all"
                       />
                     </div>
                   </div>
 
-                  {/* Tanggal Lahir */}
+                  {/* Tanggal Event */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label htmlFor="login-birthdate" className="block text-[10px] font-bib uppercase tracking-widest text-slate-400 font-semibold">
-                        Tanggal Lahir
+                        Tanggal Event
                       </label>
                       <span className="text-[10px] text-slate-400">Pilih dari Kalender</span>
                     </div>
@@ -283,7 +283,7 @@ export default function Login() {
                       id="login-birthdate"
                       value={birthDate}
                       onChange={(val) => { setBirthDate(val); setError(''); }}
-                      placeholder="Pilih Tanggal Lahir"
+                      placeholder="Pilih Tanggal Event"
                       disabled={isLoading}
                       variant="dark"
                       position="top"
@@ -380,7 +380,7 @@ export default function Login() {
           <CardFooter className="flex-col gap-1.5 bg-slate-900/60 border-t border-slate-700/60 py-4 px-6">
             {activeTab === 'user' ? (
               <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-                <strong className="text-brand">Peserta Event:</strong> Gunakan Nama Lengkap, Nomor BIB & Tanggal Lahir sesuai pendaftaran event Anda.
+                <strong className="text-brand">Peserta Event:</strong> Gunakan Nama Lengkap, Nomor Unik & Tanggal Event sesuai pendaftaran event Anda.
               </p>
             ) : (
               <p className="text-[11px] text-slate-400 text-center leading-relaxed">
@@ -438,7 +438,7 @@ export default function Login() {
                       </p>
                     )}
                     <p className="text-[10px] font-bib text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full inline-block mt-1">
-                      BIB #{item.bibNumber}
+                      Label: {item.bibNumber}
                     </p>
                   </div>
 

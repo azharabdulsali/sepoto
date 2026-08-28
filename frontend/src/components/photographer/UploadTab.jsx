@@ -240,7 +240,7 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
         <Card className="bg-[#F9FAFB] border-[#E5E7EB] rounded-2xl p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-[#111827]">
-              Atur Harga & BIB Massal ({previews.length} foto)
+              Atur Harga & Label Massal ({previews.length} foto)
             </p>
             <motion.div whileTap={{ scale: 0.96 }}>
               <Button
@@ -291,7 +291,7 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
 
             <div className="space-y-1">
               <label className="block text-[11px] font-bold text-[#4B5563]">
-                Set Nomor BIB ke Semua Foto
+                Set Label / Nomor Unik ke Semua Foto
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -314,14 +314,14 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
                   size="sm"
                   className="h-10 px-3 text-xs font-bold"
                 >
-                  Set BIB
+                  Set Label
                 </Button>
               </div>
             </div>
           </div>
           <p className="text-[11px] text-[#9CA3AF]">
             Anda dapat memilih foto individual di bawah jika ingin mengubah
-            harga/BIB tertentu saja.
+            harga/label tertentu saja.
           </p>
         </Card>
       )}
@@ -441,7 +441,7 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
                           ),
                         )
                       }
-                      placeholder="Tag BIB"
+                      placeholder="Tag Nomor Unik / Label"
                       className="pl-8 h-8 text-xs border-[#E5E7EB] font-bib"
                     />
                   </div>

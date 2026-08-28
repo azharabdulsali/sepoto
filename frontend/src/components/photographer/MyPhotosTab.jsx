@@ -142,7 +142,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
       setActionAlert({
         type: "error",
         title: "Tidak Ada Perubahan",
-        message: "Masukkan set harga baru atau BIB tag baru terlebih dahulu.",
+        message: "Masukkan set harga baru atau label baru terlebih dahulu.",
       });
       return;
     }
@@ -355,7 +355,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari berdasarkan BIB atau ID foto..."
+            placeholder="Cari berdasarkan Nomor Unik atau ID foto..."
             className="text-xs sm:text-sm font-bib text-[#111827]"
           />
           {search && (
@@ -385,7 +385,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
                 {selected.size} Foto Terpilih
               </Badge>
               <span className="text-xs text-gray-300 hidden md:inline">
-                Siap untuk diubah harga atau tag BIB secara bersamaan
+                Siap untuk diubah harga atau labelnya secara bersamaan
               </span>
             </div>
 
@@ -526,7 +526,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
                     </div>
                   </div>
 
-                  {/* Details, BIB Tag, and Action Buttons (Pencil & Trash2) */}
+                  {/* Details, Label, and Action Buttons (Pencil & Trash2) */}
                   <div className="p-3 space-y-1.5 bg-white">
                     <div className="flex items-center justify-between gap-1 text-xs">
                       <span
@@ -544,14 +544,14 @@ export default function MyPhotosTab({ onPhotosChange }) {
                             variant="outline"
                             className="font-bib text-[10px] bg-brand/10 text-brand border-brand/20 px-1.5 py-0"
                           >
-                            BIB #{photo.bibTags}
+                            {photo.bibTags}
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
                             className="font-bib text-[10px] bg-gray-100 text-gray-500 border-gray-200 px-1.5 py-0"
                           >
-                            Tanpa BIB
+                            Tanpa Label
                           </Badge>
                         )}
                       </div>
@@ -566,7 +566,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
                             setEditBib(photo.bibTags || "");
                           }}
                           className="p-1.5 text-gray-500 hover:text-brand hover:bg-orange-50 rounded-lg transition-colors"
-                          title="Edit Harga & BIB"
+                          title="Edit Harga & Label"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -679,7 +679,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
               Edit ({selected.size} Foto)
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-gray-500">
-              Atur harga atau tag BIB sekaligus untuk {selected.size} foto yang dipilih.
+              Atur harga atau label sekaligus untuk {selected.size} foto yang dipilih.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -700,7 +700,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Set BIB Tag Baru (Opsional)
+                Set Nomor Unik / Label Baru (Opsional)
               </label>
               <Input
                 type="text"
@@ -743,7 +743,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
               Edit Detail Foto
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-gray-500">
-              Perbarui harga jual dan nomor BIB untuk berkas <strong>{editPhoto?.originalFilename || editPhoto?.original_filename || `Foto #${editPhoto?.id}`}</strong>.
+              Perbarui harga jual dan label untuk berkas <strong>{editPhoto?.originalFilename || editPhoto?.original_filename || `Foto #${editPhoto?.id}`}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -764,7 +764,7 @@ export default function MyPhotosTab({ onPhotosChange }) {
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                Nomor BIB Tag
+                Nomor Unik / Label
               </label>
               <Input
                 type="text"

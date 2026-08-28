@@ -406,7 +406,9 @@ const proxyR2Image = async (req, res) => {
 
     response.Body.pipe(res);
   } catch (error) {
-    console.error('Proxy R2 Image Error:', error);
+    if (error.name !== 'NoSuchKey' && error.Code !== 'NoSuchKey') {
+      console.error('Proxy R2 Image Error:', error);
+    }
     res.status(404).send('Gambar tidak ditemukan.');
   }
 };

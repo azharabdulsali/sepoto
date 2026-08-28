@@ -28,7 +28,7 @@ Menyimpan akun seluruh pengguna sistem, mencakup **Super Admin**, **Event Admin*
 * `created_at` (TIMESTAMP / DEFAULT CURRENT_TIMESTAMP)
 
 > *Indeks Keunikan:*
-> `idx_users_unique_event_bib`: **UNIQUE INDEX ON `users(event_id, bib_number)` WHERE `bib_number IS NOT NULL AND role = 'user'`** (Memastikan Nomor BIB unik per event).
+> `idx_users_unique_event_bib`: **UNIQUE INDEX ON `users(event_id, bib_number)` WHERE `bib_number IS NOT NULL AND role = 'user'`** (Memastikan Nomor Unik unik per event).
 
 ### C. Tabel `photos`
 Menyimpan metadata foto yang diunggah oleh fotografer, beserta tautan ke Cloudflare R2 dan harga jualnya.
@@ -39,7 +39,7 @@ Menyimpan metadata foto yang diunggah oleh fotografer, beserta tautan ke Cloudfl
 * `watermarked_url` (TEXT / NOT NULL) - Tautan file dengan watermark di Cloudflare R2 (Publik)
 * `original_filename` (VARCHAR(255) / NULL) - Nama file asli saat diunggah
 * `price` (DECIMAL(10, 2) / DEFAULT 0.00) - Harga jual foto
-* `bib_tags` (VARCHAR(255) / NULL) - Tag nomor BIB terkait pada foto (opsional untuk pencarian)
+* `bib_tags` (VARCHAR(255) / NULL) - Tag nomor unik terkait pada foto (opsional untuk pencarian)
 * `orientation` (VARCHAR(20) / DEFAULT 'portrait') - Orientasi foto ('portrait' / 'landscape')
 * `created_at` (TIMESTAMP / DEFAULT CURRENT_TIMESTAMP)
 

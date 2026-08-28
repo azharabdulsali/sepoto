@@ -95,7 +95,7 @@ export default function CartStepItemList({
                 title={photo.originalFilename || photo.original_filename || `Foto #${photo.id}`}
               >
                 {photo.originalFilename || photo.original_filename || photo.title || photo.name || `Foto #${photo.id}`}
-                {photo.bibTags ? ` (BIB #${photo.bibTags})` : ""}
+                {photo.bibTags ? ` (Label: ${photo.bibTags})` : ""}
               </span>
               <span className="font-semibold text-[#111827]">
                 {formatRupiah(photo.price)}

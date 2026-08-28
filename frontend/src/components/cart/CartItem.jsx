@@ -42,7 +42,7 @@ export default function CartItem({ photo, onRemove }) {
             variant="secondary"
             className="font-bib text-[10px] text-brand bg-brand/10 mb-1 px-2 py-0.5"
           >
-            BIB #{photo.bibTags}
+            Label: {photo.bibTags}
           </Badge>
         )}
         <p className="text-sm font-bold text-brand">

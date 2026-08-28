@@ -53,7 +53,7 @@ export const buildWhatsAppUrl = ({
     ``,
     `*Nomor Order:* ${orderNumber}`,
     `*Nama:* ${userName}`,
-    bibNumber ? `*BIB:* #${bibNumber}` : "",
+    bibNumber ? `*Label:* ${bibNumber}` : "",
     ``,
     `*Daftar Foto yang Dibeli:*`,
     photoList,

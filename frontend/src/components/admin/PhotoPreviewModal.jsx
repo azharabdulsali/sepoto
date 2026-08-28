@@ -43,7 +43,7 @@ export default function PhotoPreviewModal({ photo, onClose }) {
             <span className="text-sm font-bold">Pratinjau Foto (Super Admin)</span>
             {bibVal && (
               <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5">
-                BIB #{bibVal}
+                Label: {bibVal}
               </Badge>
             )}
             <Badge variant="outline" className="font-bib text-[10px] bg-white/10 text-white border-white/20">

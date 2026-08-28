@@ -237,7 +237,7 @@ function OrderCard({ order, currentUser, activeEvent }) {
                             variant="secondary"
                             className="font-bib text-[9px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-md font-bold"
                           >
-                            BIB #{photo.bibTags}
+                            Label: {photo.bibTags}
                           </Badge>
                         )}
                       </div>
@@ -380,7 +380,7 @@ function OrderCard({ order, currentUser, activeEvent }) {
                   </span>
                   {previewPhoto.bibTags && (
                     <Badge className="font-bib text-[10px] bg-brand text-white border-0 px-2 py-0.5 font-bold">
-                      BIB #{previewPhoto.bibTags}
+                      Label: {previewPhoto.bibTags}
                     </Badge>
                   )}
                   <Badge
@@ -518,7 +518,7 @@ export default function OrderHistory() {
                       variant="outline"
                       className="font-bib text-brand border-brand/30 bg-brand/10 px-2 py-0.5 font-bold"
                     >
-                      BIB #{currentUser.bibNumber}
+                      Label: {currentUser.bibNumber}
                     </Badge>
                   )}
                 </p>

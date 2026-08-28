@@ -34,4 +34,4 @@ AI harus menyadari dan menyesuaikan diri dengan konteks latar belakang pengemban
 ## 4. Instruksi Respons Spesifik Proyek Sepoto
 * Saat membuat kode Backend, selalu gunakan pendekatan Express.js terpisah dengan integrasi *Multer*, *Sharp*, dan *AWS SDK* untuk Cloudflare R2.
 * Saat membuat kode Frontend, gunakan React (Vite) dengan *Tailwind CSS* yang mematuhi pendekatan *Mobile-First* (responsif untuk layar *smartphone* peserta *event*).
-* Pastikan alur spesifik seperti login berbasis Nama & BIB, pengaturan harga multi-select oleh fotografer, keranjang, QR statis, hingga konfirmasi WhatsApp selalu terjaga konsistensinya dalam setiap modul kode yang dibuat.
+* Pastikan alur spesifik seperti login berbasis Nama & Nomor Unik, pengaturan harga multi-select oleh fotografer, keranjang, QR statis, hingga konfirmasi WhatsApp selalu terjaga konsistensinya dalam setiap modul kode yang dibuat.

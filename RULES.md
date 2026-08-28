@@ -34,8 +34,8 @@ Dokumen ini berisi panduan, standar penulisan kode, serta aturan operasional yan
   * **Fotografer** hanya dapat mengelola foto yang diunggah oleh akun mereka sendiri.
 * **Proteksi File Asli (Clean Files):** 
   * File foto asli tanpa *watermark* yang disimpan di Cloudflare R2 tidak boleh memiliki tautan publik bebas. Tautan unduh hanya boleh dibuka aksesnya oleh backend setelah status transaksi di database bernilai `approved`.
-* **Keunikan BIB Per Event:**
-  * Nomor BIB unik berlaku per event menggunakan `idx_users_unique_event_bib` pada `(event_id, bib_number)`.
+* **Keunikan Nomor Unik Per Event:**
+  * Nomor Unik unik berlaku per event menggunakan `idx_users_unique_event_bib` pada `(event_id, bib_number)`.
 
 ---
 

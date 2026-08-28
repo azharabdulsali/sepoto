@@ -1,8 +1,8 @@
 # Sepoto 📷
 
-**Sepoto** adalah aplikasi web galeri fotografi dan unduh digital yang dirancang khusus untuk *event* berdurasi singkat (seperti lari maraton, wisuda, atau gathering) dengan dukungan *multi-event* bersamaan.
+**Sepoto** adalah aplikasi web galeri fotografi dan unduh digital yang dirancang khusus untuk *event* berdurasi singkat (seperti event event umum, wisuda, atau gathering) dengan dukungan *multi-event* bersamaan.
 
-Aplikasi ini bertujuan untuk memudahkan fotografer mengunggah dan memberi harga pada karya mereka per event, memudahkan peserta (*user*) mencari foto pribadi berdasarkan Nomor BIB/Nama pada event yang diikutinya, serta menyediakan alur pembelian digital yang sederhana melalui QRIS statis dan konfirmasi manual via WhatsApp.
+Aplikasi ini bertujuan untuk memudahkan fotografer mengunggah dan memberi harga pada karya mereka per event, memudahkan peserta (*user*) mencari foto pribadi berdasarkan Nomor Unik/Nama pada event yang diikutinya, serta menyediakan alur pembelian digital yang sederhana melalui QRIS statis dan konfirmasi manual via WhatsApp.
 
 ---
 
@@ -12,7 +12,7 @@ Aplikasi ini bertujuan untuk memudahkan fotografer mengunggah dan memberi harga 
 - **Multi-Event Scoping:**
   - **Super Admin**: Akses penuh lintas event dengan Filter Event Global di header dashboard.
   - **Event Admin**: Akses dan pengelolaan terkunci khusus untuk event miliknya (overview, verifikasi pembayaran, peserta, dan fotografer).
-- **Per-Event BIB Uniqueness:** Keunikan nomor BIB berlaku per event (`idx_users_unique_event_bib`), memungkinkan peserta di event berbeda menggunakan nomor BIB yang sama.
+- **Per-Event Nomor Unik Uniqueness:** Keunikan nomor unik berlaku per event (`idx_users_unique_event_bib`), memungkinkan peserta di event berbeda menggunakan nomor unik yang sama.
 - **Isolated Participant Gallery:** Galeri foto peserta secara otomatis menyesuaikan (*scoped*) khusus dengan event yang diikuti peserta.
 - **Auto Watermarking:** Otomatis menambahkan watermark pada foto *preview* saat diunggah (menggunakan Node.js + Sharp).
 - **Unduhan Aman:** File resolusi tinggi tanpa watermark disimpan secara privat di Cloudflare R2 dan hanya dapat diunduh setelah pembayaran disetujui.

@@ -112,9 +112,9 @@ const TESTIMONIALS = [
     name: "Robi Syianturi",
     role: "National Runner",
     content:
-      "Sepoto mempermudah saya mencari foto garis finish cukup masukkan BIB 36. Hasil foto HD dan sangat cepat!",
+      "Sepoto mempermudah saya mencari foto momen saya cukup masukkan Label 36. Hasil foto HD dan sangat cepat!",
     rating: 5,
-    tag: "Peserta Maraton",
+    tag: "Peserta Event",
   },
   {
     id: 2,
@@ -141,7 +141,7 @@ const FAQ_ITEMS = [
   {
     question: "Bagaimana cara menemukan foto saya di Sepoto?",
     answer:
-      "Cukup masuk ke portal event, ketik Nama dan Nomor Dada (BIB) Anda. Sistem Sepoto akan otomatis menampilkan seluruh foto aksi Anda.",
+      "Cukup masuk ke portal event, ketik Nama dan Nomor Unik Anda. Sistem Sepoto akan otomatis menampilkan seluruh foto aksi Anda.",
   },
   {
     question: "Bagaimana proses pembayaran via QRIS?",
@@ -154,9 +154,9 @@ const FAQ_ITEMS = [
       "Seketika pembayaran QRIS dikonfirmasi otomatis, tombol unduh foto resolusi tinggi (HD) tanpa watermark akan langsung aktif.",
   },
   {
-    question: "Bagaimana jika nomor BIB saya terhalang saat lari?",
+    question: "Bagaimana jika nomor unik / label saya terhalang saat difoto?",
     answer:
-      "Jika tidak terdeteksi via pencarian BIB, Anda dapat mencari berdasarkan filter estimasi waktu melintas dan zona lokasi fotografer.",
+      "Jika tidak terdeteksi via pencarian Nomor Unik, Anda dapat mencari berdasarkan filter fotografer.",
   },
   {
     question: "Apakah foto yang diunduh berkualitas asli (HD Resolution)?",
@@ -243,7 +243,7 @@ export default function LandingPage() {
             <motion.div variants={itemVariants}>
               <Badge className="font-bib text-[11px] sm:text-xs tracking-wider uppercase bg-[#FFF7ED] text-[#C2410C] border border-[#FFEDD5] px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5 font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-[#EA580C] shrink-0" />
-                <span>PLATFORM FOTO MARATON & EVENT OLAHRAGA</span>
+                <span>PLATFORM FOTO EVENT</span>
               </Badge>
             </motion.div>
 
@@ -254,7 +254,7 @@ export default function LandingPage() {
             >
               Cari & Unduh Foto Anda
               <br />
-              via Nomor BIB di <SepotoLogo size="inherit" variant="gradient" />
+              di <SepotoLogo size="inherit" variant="gradient" />
             </motion.h1>
 
             {/* Subheadline */}
@@ -263,7 +263,7 @@ export default function LandingPage() {
               className="text-xs sm:text-lg text-[#475569] max-w-2xl leading-relaxed font-medium px-1"
             >
               Temukan foto aksi terbaik Anda secara instan menggunakan{" "}
-              <strong className="text-[#0F172A]">Nomor Dada (BIB)</strong>.
+              <strong className="text-[#0F172A]">Nomor Unik / Label</strong>.
               Bayar praktis via QRIS dan unduh foto kualitas HD bebas watermark.
             </motion.p>
 
@@ -281,7 +281,7 @@ export default function LandingPage() {
                       inputMode="numeric"
                       value={demoBib}
                       onChange={(e) => setDemoBib(e.target.value)}
-                      placeholder="Masukkan Nomor BIB Anda..."
+                      placeholder="Masukkan Nomor Unik Anda..."
                       className="pl-10 h-11 border-0 bg-transparent text-xs sm:text-sm font-bib focus-visible:ring-0 text-[#0F172A] placeholder:text-[#94A3B8]"
                     />
                   </div>
@@ -290,13 +290,13 @@ export default function LandingPage() {
                     size="lg"
                     className="bg-brand hover:bg-[#C2410C] text-white font-bold text-xs sm:text-sm h-11 px-5 rounded-xl shrink-0 min-h-[44px] shadow-md shadow-orange-600/20 active:scale-95 transition-transform"
                   >
-                    <span>Cari BIB</span>
+                    <span>Cari Label</span>
                     <ArrowRight className="w-4 h-4 ml-1 hidden sm:inline-block" />
                   </Button>
                 </div>
               </form>
               <div className="flex items-center justify-center gap-1.5 mt-2.5 text-[11px] text-[#64748B]">
-                <span>Contoh BIB demo:</span>
+                <span>Contoh Label demo:</span>
                 {["36", "108", "2424"].map((bib) => (
                   <button
                     key={bib}
@@ -340,7 +340,7 @@ export default function LandingPage() {
               <span className="font-bold text-[#0F172A]">4.9/5</span>
               <span>•</span>
               <span>
-                Dipercaya <strong>5.000+</strong> Peserta Lari
+                Dipercaya <strong>5.000+</strong> Peserta
               </span>
             </motion.div>
           </motion.div>
@@ -416,8 +416,8 @@ export default function LandingPage() {
                 <li className="flex items-start gap-2.5">
                   <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <span>
-                    <strong>BIB Search:</strong> Ketik nomor BIB Dada Anda, foto
-                    muncul instan.
+                    <strong>Label Search:</strong> Ketik nomor unik/label Anda,
+                    foto muncul instan.
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
@@ -453,7 +453,7 @@ export default function LandingPage() {
                 Jelajahi Event Terdaftar
               </h2>
               <p className="text-xs sm:text-sm text-[#475569] mt-1">
-                Pilih event aktif untuk menemukan foto aksi maraton Anda.
+                Pilih event aktif untuk menemukan foto Anda.
               </p>
             </div>
 
@@ -627,8 +627,8 @@ export default function LandingPage() {
               {
                 step: "01",
                 icon: User,
-                title: "Input Nomor BIB",
-                desc: "Masuk ke portal event, ketik Nama dan Nomor Dada (BIB) Anda.",
+                title: "Input Nomor Unik",
+                desc: "Masuk ke portal event, ketik Nama dan Nomor Unik Anda.",
               },
               {
                 step: "02",
@@ -872,7 +872,7 @@ export default function LandingPage() {
                 Siap Menemukan Foto Terbaik Maraton Anda?
               </h2>
               <p className="text-xs sm:text-base text-slate-300 leading-relaxed max-w-xl mx-auto">
-                Cari via Nomor BIB Dada dan unduh versi kualitas HD tanpa
+                Cari via Nomor Unik Dada dan unduh versi kualitas HD tanpa
                 watermark sekarang juga.
               </p>
               <div className="pt-2">
@@ -882,7 +882,7 @@ export default function LandingPage() {
                   className="w-full sm:w-auto min-h-[52px] px-8 bg-brand hover:bg-[#C2410C] text-white font-bold text-sm sm:text-base rounded-2xl shadow-xl shadow-orange-600/30 transition-all flex items-center justify-center gap-2 mx-auto active:scale-95"
                 >
                   <Search className="w-5 h-5" />
-                  <span>Cari Foto BIB Sekarang</span>
+                  <span>Cari Foto Anda Sekarang</span>
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </div>
@@ -958,7 +958,7 @@ export default function LandingPage() {
             className="w-full bg-brand hover:bg-[#C2410C] text-white font-bold text-xs min-h-[48px] rounded-xl shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 active:scale-95"
           >
             <Search className="w-4 h-4" />
-            <span>Cari Foto BIB Sekarang</span>
+            <span>Cari Foto Anda Sekarang</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
@@ -973,7 +973,7 @@ export default function LandingPage() {
           <DialogContent className="bg-white border border-[#E2E8F0] rounded-3xl p-5 max-w-md shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-[#0F172A]">
-                Pratinjau Foto BIB #{selectedSamplePhoto?.bib}
+                Pratinjau Foto Label #{selectedSamplePhoto?.bib}
               </DialogTitle>
               <DialogDescription className="text-xs text-[#475569]">
                 {selectedSamplePhoto?.eventName} • Fotografer:{" "}
@@ -986,7 +986,7 @@ export default function LandingPage() {
                 <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
                   <ProtectedPhoto
                     src={selectedSamplePhoto.url}
-                    alt={`Preview BIB ${selectedSamplePhoto.bib}`}
+                    alt={`Preview Label ${selectedSamplePhoto.bib}`}
                     className="w-full h-full"
                     imgClassName="w-full h-full object-cover"
                   />
