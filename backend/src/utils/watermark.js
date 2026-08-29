@@ -24,12 +24,21 @@ async function generateWatermark(inputBuffer) {
     const path = require('path');
     const watermarkPath = path.join(__dirname, 'watermark.png');
 
-    // 2. Composite the pre-rendered transparent PNG watermark using tiling.
-    // The watermark.png is now a small 350x200 tile, guaranteeing it is smaller than any photo.
-    // This allows seamless tiling across any resolution (Portrait/Landscape) without stretching or crashing.
+    // Make it 100% foolproof:
+    // Our base tile is 350x200. If a user uploads an EXTREMELY small thumbnail (e.g. 100x100),
+    // tile: true would throw an error. So we handle that edge case dynamically.
+    let overlayOptions = { input: watermarkPath, tile: true, top: 0, left: 0 };
+    
+    if (width < 350 || height < 200) {
+      const croppedTile = await sharp(watermarkPath)
+        .resize(width, height, { fit: 'cover', position: 'center' })
+        .toBuffer();
+      overlayOptions = { input: croppedTile, top: 0, left: 0 };
+    }
+
     const watermarkedBuffer = await image
-      .composite([{ input: watermarkPath, tile: true, top: 0, left: 0 }])
-      .webp({ quality: 80 }) // Gunakan format WebP yang jauh lebih ringan daripada JPEG
+      .composite([overlayOptions])
+      .webp({ quality: 80 }) 
       .toBuffer();
 
     return watermarkedBuffer;
