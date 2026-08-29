@@ -24,10 +24,16 @@ async function generateWatermark(inputBuffer) {
     const path = require('path');
     const watermarkPath = path.join(__dirname, 'watermark.png');
 
+    // Crop the 800x800 watermark to match the exact dimensions of the image.
+    // This prevents "Image to composite must have same dimensions or smaller" errors on landscape images.
+    const croppedWatermark = await sharp(watermarkPath)
+      .resize(width, height, { fit: 'cover', position: 'center' })
+      .toBuffer();
+
     // 2. Composite the pre-rendered transparent PNG watermark 
     // This bypasses Linux font dependency issues since it's already a pixel image.
     const watermarkedBuffer = await image
-      .composite([{ input: watermarkPath, tile: true, top: 0, left: 0 }])
+      .composite([{ input: croppedWatermark, top: 0, left: 0 }])
       .webp({ quality: 80 }) // Gunakan format WebP yang jauh lebih ringan daripada JPEG
       .toBuffer();
 
