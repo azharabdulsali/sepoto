@@ -169,8 +169,14 @@ export default function TransactionsTab({
     );
   });
 
+  // Reset pagination on filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, photographerFilter, search, selectedEventFilter]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
   return (
     <div className="space-y-4">

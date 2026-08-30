@@ -142,10 +142,6 @@ export default function AdminPhotosTab({
     fetchPhotos();
   }, [fetchPhotos]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [photographerFilter, selectedEventFilter]);
-
   const filtered = useMemo(() => {
     return photos.filter((p) => {
       const q = search.trim().toLowerCase();
@@ -404,9 +400,10 @@ export default function AdminPhotosTab({
           {events.length > 0 && (
             <Select
               value={String(selectedEventFilter)}
-              onValueChange={(val) =>
-                onEventFilterChange && onEventFilterChange(val)
-              }
+              onValueChange={(val) => {
+                if (onEventFilterChange) onEventFilterChange(val);
+                setCurrentPage(1);
+              }}
             >
               <SelectTrigger className="!h-11 w-44 sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
                 <SelectValue placeholder="Pilih Event...">
@@ -436,7 +433,10 @@ export default function AdminPhotosTab({
           {availablePhotographers.length > 0 && (
             <Select
               value={photographerFilter}
-              onValueChange={setPhotographerFilter}
+              onValueChange={(val) => {
+                setPhotographerFilter(val);
+                setCurrentPage(1);
+              }}
             >
               <SelectTrigger className="!h-11 w-44 sm:w-48 border border-[#E5E7EB] rounded-xl px-3.5 text-xs bg-white font-medium text-[#111827] shadow-xs flex items-center justify-between shrink-0">
                 <SelectValue placeholder="Fotografer...">
