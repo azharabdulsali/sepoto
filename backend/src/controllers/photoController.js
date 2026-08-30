@@ -120,8 +120,16 @@ const uploadPhotos = async (req, res) => {
         const fileMetadata = metadataArray[fileIndex] || {};
         
         // Ambil harga dan bib dari metadata individual jika ada, jika tidak gunakan harga/bib global (fallback)
-        const currentPrice = fileMetadata.price !== undefined ? Number(fileMetadata.price) : photoPrice;
-        const currentBib = fileMetadata.bibTag !== undefined ? String(fileMetadata.bibTag).trim() : String(bibTags).trim();
+        const currentPrice = (fileMetadata.price !== undefined && fileMetadata.price !== null) ? Number(fileMetadata.price) : photoPrice;
+        let currentBib = (fileMetadata.bibTag !== undefined && fileMetadata.bibTag !== null) 
+          ? String(fileMetadata.bibTag).trim() 
+          : String(bibTags || '').trim();
+
+        // Otomatis bersihkan dan hilangkan duplikasi tag berulang (misal: "test label, test label" -> "test label")
+        if (currentBib) {
+          const uniqueTags = Array.from(new Set(currentBib.split(',').map(t => t.trim()).filter(Boolean)));
+          currentBib = uniqueTags.join(', ');
+        }
 
         const timeId = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const originalName = file.originalname || `IMG_${timeId}.jpg`;
@@ -446,7 +454,7 @@ const proxyR2Image = async (req, res) => {
  */
 const getAdminPhotos = async (req, res) => {
   try {
-    const { eventId, page, limit, photographerId } = req.query;
+    const { eventId, page, limit, photographerId, search } = req.query;
     let sql = `
       SELECT p.*, 
              u.name as photographer_name, 
@@ -472,6 +480,17 @@ const getAdminPhotos = async (req, res) => {
         sql += ` WHERE p.photographer_id = $${params.length + 1}`;
       }
       params.push(photographerId);
+    }
+
+    if (search && String(search).trim() !== '') {
+      const s = `%${String(search).trim().toLowerCase()}%`;
+      const searchCond = `(LOWER(COALESCE(p.bib_tags, '')) LIKE $${params.length + 1} OR LOWER(COALESCE(p.original_filename, '')) LIKE $${params.length + 1} OR LOWER(COALESCE(u.name, '')) LIKE $${params.length + 1})`;
+      if (params.length > 0) {
+        sql += ` AND ${searchCond}`;
+      } else {
+        sql += ` WHERE ${searchCond}`;
+      }
+      params.push(s);
     }
 
     // Total count query

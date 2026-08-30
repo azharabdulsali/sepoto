@@ -100,8 +100,8 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
       });
 
       // Tetap kirim price dan bibTags global sebagai fallback untuk backward compatibility
-      const avgPrice = metadataArray[0]?.price || 0;
-      const globalBibs = metadataArray.map(m => m.bibTag).filter(Boolean).join(",") || "";
+      const avgPrice = metadataArray[0]?.price || (bulkPrice ? Number(bulkPrice) : 0);
+      const globalBibs = bulkBib ? bulkBib.trim() : (metadataArray[0]?.bibTag || "");
       
       formData.append("price", avgPrice);
       formData.append("bibTags", globalBibs);

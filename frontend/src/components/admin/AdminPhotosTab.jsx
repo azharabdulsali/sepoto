@@ -118,11 +118,11 @@ export default function AdminPhotosTab({
   const fetchPhotos = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getAdminPhotos(selectedEventFilter, currentPage, pageSize, photographerFilter);
+      const res = await api.getAdminPhotos(selectedEventFilter, currentPage, pageSize, photographerFilter, search);
       if (res.success && res.photos) {
         setPhotos(res.photos);
-        setTotalPhotos(res.total || res.photos.length);
-        setTotalPages(res.totalPages || 1);
+        setTotalPhotos(res.total !== undefined ? res.total : res.photos.length);
+        setTotalPages(res.totalPages !== undefined ? res.totalPages : 1);
       } else {
         setPhotos([]);
         setTotalPhotos(0);
@@ -136,25 +136,13 @@ export default function AdminPhotosTab({
     } finally {
       setLoading(false);
     }
-  }, [selectedEventFilter, currentPage, pageSize, photographerFilter]);
+  }, [selectedEventFilter, currentPage, pageSize, photographerFilter, search]);
 
   useEffect(() => {
     fetchPhotos();
   }, [fetchPhotos]);
 
-  const filtered = useMemo(() => {
-    return photos.filter((p) => {
-      const q = search.trim().toLowerCase();
-      if (!q) return true;
-
-      const matchSearch =
-        (p.bibTags && p.bibTags.toLowerCase().includes(q)) ||
-        (p.originalFilename && p.originalFilename.toLowerCase().includes(q)) ||
-        (p.photographerName && p.photographerName.toLowerCase().includes(q));
-
-      return matchSearch;
-    });
-  }, [photos, search]);
+  const filtered = photos;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filtered.length) {
@@ -380,14 +368,20 @@ export default function AdminPhotosTab({
             <InputGroupInput
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Cari foto berdasarkan Nomor Unik, fotografer, atau berkas..."
               className="text-xs sm:text-sm font-medium text-[#111827]"
             />
             {search && (
               <InputGroupAddon align="inline-end">
                 <InputGroupButton
-                  onClick={() => setSearch("")}
+                  onClick={() => {
+                    setSearch("");
+                    setCurrentPage(1);
+                  }}
                   title="Bersihkan pencarian"
                 >
                   <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
