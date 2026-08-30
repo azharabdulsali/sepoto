@@ -142,6 +142,10 @@ export default function AdminPhotosTab({
     fetchPhotos();
   }, [fetchPhotos]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [photographerFilter, selectedEventFilter]);
+
   const filtered = useMemo(() => {
     return photos.filter((p) => {
       const q = search.trim().toLowerCase();

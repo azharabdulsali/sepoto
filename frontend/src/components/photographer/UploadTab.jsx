@@ -93,7 +93,6 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
       
       const metadataArray = [];
       previews.forEach((p) => {
-        formData.append("photos", p.file);
         metadataArray.push({
           price: p.price ? Number(p.price) : (bulkPrice ? Number(bulkPrice) : 0),
           bibTag: p.bib ? p.bib.trim() : (bulkBib ? bulkBib.trim() : "")
@@ -111,6 +110,11 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
       if (selectedEventId) {
         formData.append("eventId", selectedEventId);
       }
+
+      // Append files AFTER all text fields so multer parses text fields correctly
+      previews.forEach((p) => {
+        formData.append("photos", p.file);
+      });
 
       const res = await api.uploadPhotos(formData);
       if (res.success) {
