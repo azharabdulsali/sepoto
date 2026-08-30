@@ -90,25 +90,24 @@ export default function UploadTab({ onUploadSuccess, selectedEventId }) {
     setIsUploading(true);
     try {
       const formData = new FormData();
+      
+      const metadataArray = [];
       previews.forEach((p) => {
         formData.append("photos", p.file);
+        metadataArray.push({
+          price: p.price ? Number(p.price) : (bulkPrice ? Number(bulkPrice) : 0),
+          bibTag: p.bib ? p.bib.trim() : (bulkBib ? bulkBib.trim() : "")
+        });
       });
 
-      const avgPrice = previews[0]?.price
-        ? Number(previews[0].price)
-        : bulkPrice
-          ? Number(bulkPrice)
-          : 0;
-      const bibs =
-        previews
-          .map((p) => p.bib)
-          .filter(Boolean)
-          .join(",") ||
-        bulkBib ||
-        "";
-
+      // Tetap kirim price dan bibTags global sebagai fallback untuk backward compatibility
+      const avgPrice = metadataArray[0]?.price || 0;
+      const globalBibs = metadataArray.map(m => m.bibTag).filter(Boolean).join(",") || "";
+      
       formData.append("price", avgPrice);
-      formData.append("bibTags", bibs);
+      formData.append("bibTags", globalBibs);
+      formData.append("metadata", JSON.stringify(metadataArray)); // Kirim metadata individual
+
       if (selectedEventId) {
         formData.append("eventId", selectedEventId);
       }

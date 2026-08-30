@@ -81,12 +81,21 @@ const getPhotos = async (req, res) => {
 const uploadPhotos = async (req, res) => {
   try {
     const photographerId = req.user.id; // Dari JWT token
-    const { price = 0, bibTags = '', orientation = 'portrait', eventId } = req.body;
+    const { price = 0, bibTags = '', orientation = 'portrait', eventId, metadata } = req.body;
     const photoPrice = Number(price) || 0;
     const files = req.files;
 
     if (!files || files.length === 0) {
       return res.status(400).json({ success: false, message: 'Tidak ada file foto yang diunggah.' });
+    }
+
+    let metadataArray = [];
+    if (metadata) {
+      try {
+        metadataArray = JSON.parse(metadata);
+      } catch (e) {
+        console.warn('Gagal parsing metadata individual:', e);
+      }
     }
 
     // Ambil event_id fotografer (dari body, token, atau tabel users)
@@ -106,7 +115,14 @@ const uploadPhotos = async (req, res) => {
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
       const batch = files.slice(i, i + BATCH_SIZE);
       
-      const batchPromises = batch.map(async (file) => {
+      const batchPromises = batch.map(async (file, indexInBatch) => {
+        const fileIndex = i + indexInBatch;
+        const fileMetadata = metadataArray[fileIndex] || {};
+        
+        // Ambil harga dan bib dari metadata individual jika ada, jika tidak gunakan harga/bib global (fallback)
+        const currentPrice = fileMetadata.price !== undefined ? Number(fileMetadata.price) : photoPrice;
+        const currentBib = fileMetadata.bibTag !== undefined ? String(fileMetadata.bibTag).trim() : String(bibTags).trim();
+
         const timeId = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const originalName = file.originalname || `IMG_${timeId}.jpg`;
         const originalKey = `original/RAW-${timeId}.jpg`;
@@ -125,7 +141,7 @@ const uploadPhotos = async (req, res) => {
         const dbRes = await query(
           `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-          [photoEventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation, originalName]
+          [photoEventId, photographerId, originalUrl, watermarkedUrl, currentPrice, currentBib, orientation, originalName]
         );
 
         return dbRes.rows[0];
