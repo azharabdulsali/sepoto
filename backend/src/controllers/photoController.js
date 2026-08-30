@@ -101,28 +101,39 @@ const uploadPhotos = async (req, res) => {
     }
 
     const uploadedRecords = [];
+    const BATCH_SIZE = 3; // Proses 3 foto secara paralel agar lebih cepat dan mencegah Timeout
 
-    for (const file of files) {
-      const timeId = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const originalName = file.originalname || `IMG_${timeId}.jpg`;
-      const originalKey = `original/RAW-${timeId}.jpg`;
-      const watermarkedKey = `watermarked/WM-${timeId}.jpg`;
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
+      
+      const batchPromises = batch.map(async (file) => {
+        const timeId = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const originalName = file.originalname || `IMG_${timeId}.jpg`;
+        const originalKey = `original/RAW-${timeId}.jpg`;
+        const watermarkedKey = `watermarked/WM-${timeId}.jpg`;
 
-      // 1. Generate Watermark Buffer dengan Sharp
-      const wmBuffer = await generateWatermark(file.buffer);
+        // 1. Generate Watermark Buffer dengan Sharp
+        const wmBuffer = await generateWatermark(file.buffer);
 
-      // 2. Upload file asli (clean) & watermarked ke Cloudflare R2
-      const originalUrl = await uploadToR2(file.buffer, originalKey, file.mimetype);
-      const watermarkedUrl = await uploadToR2(wmBuffer, watermarkedKey, 'image/jpeg');
+        // 2. Upload file asli (clean) & watermarked ke Cloudflare R2 secara paralel
+        const [originalUrl, watermarkedUrl] = await Promise.all([
+          uploadToR2(file.buffer, originalKey, file.mimetype),
+          uploadToR2(wmBuffer, watermarkedKey, 'image/jpeg')
+        ]);
 
-      // 3. Simpan metadata ke PostgreSQL
-      const dbRes = await query(
-        `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [photoEventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation, originalName]
-      );
+        // 3. Simpan metadata ke PostgreSQL
+        const dbRes = await query(
+          `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+          [photoEventId, photographerId, originalUrl, watermarkedUrl, photoPrice, bibTags, orientation, originalName]
+        );
 
-      uploadedRecords.push(dbRes.rows[0]);
+        return dbRes.rows[0];
+      });
+
+      // Tunggu batch ini selesai sebelum lanjut ke batch berikutnya
+      const batchResults = await Promise.all(batchPromises);
+      uploadedRecords.push(...batchResults);
     }
 
     return res.json({
