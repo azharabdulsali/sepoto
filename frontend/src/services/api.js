@@ -184,11 +184,12 @@ export const api = {
       method: 'DELETE',
     }),
 
-  getAdminPhotos: (eventId = '', page = null, limit = null) => {
+  getAdminPhotos: (eventId = '', page = null, limit = null, photographerId = 'all') => {
     const params = new URLSearchParams();
     if (eventId) params.append('eventId', eventId);
     if (page) params.append('page', page);
     if (limit) params.append('limit', limit);
+    if (photographerId !== 'all') params.append('photographerId', photographerId);
     const q = params.toString();
     return fetchApi(`/photos/admin${q ? `?${q}` : ''}`);
   },

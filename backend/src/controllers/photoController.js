@@ -446,7 +446,7 @@ const proxyR2Image = async (req, res) => {
  */
 const getAdminPhotos = async (req, res) => {
   try {
-    const { eventId, page, limit } = req.query;
+    const { eventId, page, limit, photographerId } = req.query;
     let sql = `
       SELECT p.*, 
              u.name as photographer_name, 
@@ -461,8 +461,17 @@ const getAdminPhotos = async (req, res) => {
     const params = [];
 
     if (eventId && eventId !== 'all') {
-      sql += ` WHERE p.event_id = $1 OR u.event_id = $1`;
+      sql += ` WHERE (p.event_id = $1 OR u.event_id = $1)`;
       params.push(eventId);
+    }
+
+    if (photographerId && photographerId !== 'all') {
+      if (params.length > 0) {
+        sql += ` AND p.photographer_id = $${params.length + 1}`;
+      } else {
+        sql += ` WHERE p.photographer_id = $${params.length + 1}`;
+      }
+      params.push(photographerId);
     }
 
     // Total count query

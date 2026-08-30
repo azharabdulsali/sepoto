@@ -118,7 +118,7 @@ export default function AdminPhotosTab({
   const fetchPhotos = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getAdminPhotos(selectedEventFilter, currentPage, pageSize);
+      const res = await api.getAdminPhotos(selectedEventFilter, currentPage, pageSize, photographerFilter);
       if (res.success && res.photos) {
         setPhotos(res.photos);
         setTotalPhotos(res.total || res.photos.length);
@@ -136,7 +136,7 @@ export default function AdminPhotosTab({
     } finally {
       setLoading(false);
     }
-  }, [selectedEventFilter, currentPage, pageSize]);
+  }, [selectedEventFilter, currentPage, pageSize, photographerFilter]);
 
   useEffect(() => {
     fetchPhotos();
@@ -144,20 +144,17 @@ export default function AdminPhotosTab({
 
   const filtered = useMemo(() => {
     return photos.filter((p) => {
-      const matchPhotographer =
-        photographerFilter === "all" ||
-        String(p.photographerId) === String(photographerFilter);
       const q = search.trim().toLowerCase();
-      if (!q) return matchPhotographer;
+      if (!q) return true;
 
       const matchSearch =
         (p.bibTags && p.bibTags.toLowerCase().includes(q)) ||
         (p.originalFilename && p.originalFilename.toLowerCase().includes(q)) ||
         (p.photographerName && p.photographerName.toLowerCase().includes(q));
 
-      return matchPhotographer && matchSearch;
+      return matchSearch;
     });
-  }, [photos, search, photographerFilter]);
+  }, [photos, search]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filtered.length) {
@@ -442,7 +439,7 @@ export default function AdminPhotosTab({
                   {photographerFilter === "all"
                     ? "Semua Fotografer"
                     : availablePhotographers.find(
-                        (p) => String(p.id) === String(photographerFilter),
+                        (p) => String(p.id) === String(photographerFilter)
                       )?.name || "Fotografer..."}
                 </SelectValue>
               </SelectTrigger>
