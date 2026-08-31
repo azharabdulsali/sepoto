@@ -1,12 +1,29 @@
 const multer = require('multer');
 
+const path = require('path');
+const fs = require('fs');
+
+// Pastikan folder temp ada
+const tempDir = path.join(__dirname, '../../uploads/temp');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+}
+
 /**
  * Konfigurasi Multer untuk upload foto
- * - Menggunakan memoryStorage (buffer) agar bisa langsung diproses Sharp
+ * - Menggunakan diskStorage agar RAM VPS (yang terbatas) tidak penuh (OOM) saat menerima 50 foto @10MB
  * - Limit: 20MB per file, maksimal 50 file sekaligus per batch upload
  */
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, tempDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  }),
   limits: {
     fileSize: 20 * 1024 * 1024, // 20 MB per file
   },

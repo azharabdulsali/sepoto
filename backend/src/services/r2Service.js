@@ -76,6 +76,11 @@ async function uploadToR2(buffer, key, contentType = 'image/jpeg') {
       return `${domain}/api/photos/file/${key}`;
     } catch (error) {
       console.warn('⚠️ Cloudflare R2 Upload Error, fallback ke penyimpanan lokal VPS:', error.message);
+      // Jika input adalah Node.js Stream, stream kemungkinan besar sudah dikonsumsi sebagian (corrupt)
+      // Jadi tidak bisa dilanjutkan ke fallback (disk lokal) karena fs.writeFileSync menolak Stream.
+      if (buffer && typeof buffer.pipe === 'function') {
+         throw new Error(`Cloudflare R2 timeout/error saat streaming file. Upload dibatalkan: ${error.message}`);
+      }
     }
   }
 

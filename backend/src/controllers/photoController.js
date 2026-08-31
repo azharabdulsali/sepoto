@@ -1,3 +1,4 @@
+const fs = require('fs');
 const bcrypt = require('bcrypt');
 const { query } = require('../config/db');
 const { uploadToR2, deleteFileEverywhere } = require('../services/r2Service');
@@ -110,7 +111,9 @@ const uploadPhotos = async (req, res) => {
     }
 
     const uploadedRecords = [];
-    const BATCH_SIZE = 3; // Proses 3 foto secara paralel agar lebih cepat dan mencegah Timeout
+    // Batasi Batch Size menjadi 1 untuk mencegah VPS OOM atau Timeout dari Cloudflare R2
+    // karena 1 foto bisa memakan 10MB (file) + 60MB RAM (saat Sharp memproses raw pixel)
+    const BATCH_SIZE = 1; 
 
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
       const batch = files.slice(i, i + BATCH_SIZE);
@@ -136,28 +139,53 @@ const uploadPhotos = async (req, res) => {
         const originalKey = `original/RAW-${timeId}.jpg`;
         const watermarkedKey = `watermarked/WM-${timeId}.jpg`;
 
-        // 1. Generate Watermark Buffer dengan Sharp
-        const wmBuffer = await generateWatermark(file.buffer);
+        let originalFileStream = null;
+        try {
+          // 1. Generate Watermark Buffer menggunakan Sharp secara langsung dari Disk (tanpa Buffer Node.js)
+          const wmBuffer = await generateWatermark(file.path);
 
-        // 2. Upload file asli (clean) & watermarked ke Cloudflare R2 secara paralel
-        const [originalUrl, watermarkedUrl] = await Promise.all([
-          uploadToR2(file.buffer, originalKey, file.mimetype),
-          uploadToR2(wmBuffer, watermarkedKey, 'image/jpeg')
-        ]);
+          // 2. Gunakan Node.js Stream untuk Upload file asli langsung dari Hard Disk ke Cloudflare R2 (Konsumsi 0 MB RAM)
+          originalFileStream = fs.createReadStream(file.path);
 
-        // 3. Simpan metadata ke PostgreSQL
-        const dbRes = await query(
-          `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-          [photoEventId, photographerId, originalUrl, watermarkedUrl, currentPrice, currentBib, orientation, originalName]
-        );
+          // 3. Upload file asli & watermarked ke Cloudflare R2 secara BERURUTAN (Bukan Paralel)
+          // Menghindari bottleneck / saturasi bandwidth jaringan pada VPS yang dapat memicu Timeout R2
+          const originalUrl = await uploadToR2(originalFileStream, originalKey, file.mimetype);
+          const watermarkedUrl = await uploadToR2(wmBuffer, watermarkedKey, 'image/jpeg');
 
-        return dbRes.rows[0];
+          // 4. Simpan metadata ke PostgreSQL
+          const dbRes = await query(
+            `INSERT INTO photos (event_id, photographer_id, original_url, watermarked_url, price, bib_tags, orientation, original_filename)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [photoEventId, photographerId, originalUrl, watermarkedUrl, currentPrice, currentBib, orientation, originalName]
+          );
+
+          return dbRes.rows[0];
+        } catch (err) {
+          // Tangkap error per file agar gagalnya 1 foto TIDAK menghentikan 49 foto lainnya!
+          console.error(`❌ Gagal memproses file ${originalName}:`, err.message);
+          return null; // Return null sebagai penanda gagal, jangan throw error ke Promise.all
+        } finally {
+          // Tutup jalur stream secara eksplisit untuk mencegah kebocoran File Descriptor (EMFILE error)
+          if (originalFileStream) {
+            originalFileStream.destroy();
+          }
+          // Selalu hapus file temporary dari disk (VPS) untuk menghindari disk penuh
+          if (file.path && fs.existsSync(file.path)) {
+            await fs.promises.unlink(file.path).catch(err => console.error('Gagal hapus temp file:', err));
+          }
+        }
       });
 
-      // Tunggu batch ini selesai sebelum lanjut ke batch berikutnya
+      // Tunggu batch ini selesai. Karena ada catch() di dalam map, Promise.all tidak akan pernah reject / crash!
       const batchResults = await Promise.all(batchPromises);
-      uploadedRecords.push(...batchResults);
+      
+      // Filter data yang 'null' (yang gagal di-upload) sebelum digabungkan
+      const successfulUploads = batchResults.filter(result => result !== null);
+      uploadedRecords.push(...successfulUploads);
+    }
+
+    if (uploadedRecords.length === 0 && files.length > 0) {
+      return res.status(500).json({ success: false, message: 'Semua foto gagal diunggah ke server / Cloudflare R2.' });
     }
 
     return res.json({
@@ -168,6 +196,18 @@ const uploadPhotos = async (req, res) => {
   } catch (error) {
     console.error('Upload Error:', error);
     res.status(500).json({ success: false, message: 'Terjadi kesalahan saat unggah foto ke Cloudflare R2.' });
+  } finally {
+    // SAFETY NET Kritis: 
+    // Jika loop terhenti di tengah jalan karena error R2 (misal di foto ke-30 dari 50),
+    // file ke-31 hingga ke-50 akan selamanya nyangkut di hard disk dan membuat VPS penuh.
+    // Blok finally ini menjamin SEMUA file temp dari Multer PASTI dihapus apapun yang terjadi.
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        if (file.path && fs.existsSync(file.path)) {
+          fs.promises.unlink(file.path).catch(() => {});
+        }
+      }
+    }
   }
 };
 
